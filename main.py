@@ -26,7 +26,7 @@ class Bot_base(commands.Bot):
         #await bot.tree.sync()
     
 
-bot = Bot_base(help_command=None, application_id=1042419983608729632, case_insensitive=True, owner_ids=[488614633670967307], activity=discord.Activity(type=discord.ActivityType.playing, name="with discord API"), stats=discord.Status.idle)
+bot = Bot_base(help_command=None, application_id=998152864201457754, case_insensitive=True, owner_ids=[488614633670967307], activity=discord.Activity(type=discord.ActivityType.playing, name="with discord API"), stats=discord.Status.idle)
 
 async def main():
 
