@@ -7,7 +7,7 @@ from utils.db import Document
 from utils.views.payout_config import Config_view
 from utils.transformer import MultipleMember
 from utils.views.buttons import Payout_Buttton
-
+from io import BytesIO
 
 class Payout(commands.GroupCog, name="payout", description="Payout commands"):
     def __init__(self, bot):
@@ -141,6 +141,7 @@ class Payout(commands.GroupCog, name="payout", description="Payout commands"):
         await interaction.edit_original_response(embed=finished_embed, view=link_view)
     
     @app_commands.command(name="delete", description="Delete a payout from the queue")
+    @app_commands.describe(message_id="The message id of the payout you want to delete")
     @app_commands.checks.has_permissions(manage_messages=True)
     async def payout_delete(self, interaction: discord.Interaction, message_id: str):
         message_id = int(message_id)
@@ -169,5 +170,52 @@ class Payout(commands.GroupCog, name="payout", description="Payout commands"):
         await self.bot.payout_queue.delete(message_id)
         await interaction.response.send_message("Successfully deleted the payout!", ephemeral=True)
 
+class Dump(commands.GroupCog, name="dump", description="Dump commands"):
+    def __init__(self, bot):
+        self.bot = bot
+
+    @app_commands.command(name="role", description="Dump a role")
+    @app_commands.checks.has_permissions(manage_messages=True)
+    @app_commands.describe(role="The role to dump")
+    async def dump_role(self, interaction: discord.Interaction, role: discord.Role):
+        if len(role.members) <= 30:
+            msg = ""
+            for member in role.members:
+                msg += f"{member.name}#{member.discriminator} ({member.id})\n"
+            await interaction.response.send_message(msg, ephemeral=False)
+        else:
+            await interaction.response.send_message("Too many members in the role! creating a file...", ephemeral=False)
+            msg = ""
+            for member in role.members:
+                msg += f"{member.name}#{member.discriminator} ({member.id})\n"
+            buffer = BytesIO(msg.encode('utf-8'))
+            file = discord.File(buffer, filename=f"{role.name}.txt")
+            buffer.close()
+            await interaction.edit_original_response(content="Here you go!", attachments=[file])
+
+    @app_commands.command(name="invite", description="dump an invite")
+    @app_commands.describe("user", "The user to dump the invites from")
+    @app_commands.checks.has_permissions(manage_messages=True)
+    async def dump_invite(self, interaction: discord.Interaction, user: discord.Member):
+        data = await self.bot.invites.find(user.id)
+        if data is None:
+            return await interaction.response.send_message("User has no invites!", ephemeral=True)
+
+        if len(data['invites']) <= 30:
+            msg = ""
+            for invite in data['invites']:
+                msg += f"{invite}\n"
+            await interaction.response.send_message(msg, ephemeral=False)
+        else:
+            await interaction.response.send_message("Too many invites! creating a file...", ephemeral=False)
+            msg = ""
+            for invite in data['invites']:
+                msg += f"{invite}\n"
+            buffer = BytesIO(msg.encode('utf-8'))
+            file = discord.File(buffer, filename=f"{user.name}.txt")
+            buffer.close()
+            await interaction.edit_original_response(content="Here you go!", attachments=[file])
+
 async def setup(bot):
     await bot.add_cog(Payout(bot))
+    await bot.add_cog(Dump(bot))
