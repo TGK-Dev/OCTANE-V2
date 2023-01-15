@@ -194,7 +194,7 @@ class Dump(commands.GroupCog, name="dump", description="Dump commands"):
             await interaction.edit_original_response(content="Here you go!", attachments=[file])
 
     @app_commands.command(name="invite", description="dump an invite")
-    @app_commands.describe("user", "The user to dump the invites from")
+    @app_commands.describe(user="The user to dump the invites from")
     @app_commands.checks.has_permissions(manage_messages=True)
     async def dump_invite(self, interaction: discord.Interaction, user: discord.Member):
         data = await self.bot.invites.find(user.id)
