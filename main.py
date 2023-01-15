@@ -12,6 +12,7 @@ from dotenv import load_dotenv
 from aiohttp import ClientSession
 from pathlib import Path
 from motor.motor_asyncio import AsyncIOMotorClient
+from utils.db import Document
 
 load_dotenv()
 class Bot_base(commands.Bot):
@@ -50,6 +51,7 @@ async def main():
         async with bot:
             bot.mongo = AsyncIOMotorClient(os.environ.get("MONGO"))
             bot.db = bot.mongo["tgk_database"]
+            bot.config = Document(bot.db, "config")
             await bot.start(os.environ.get("TOKEN"))
 
 bot.start_time = datetime.datetime.now()
