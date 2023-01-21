@@ -7,16 +7,13 @@ time_dict = {"h": 3600, "s": 1, "m": 60, "d": 86400}
 
 class TimeConverter(commands.Converter):
     async def convert(self, ctx, argument):
-        args = argument.lower()
-        matches = re.findall(time_regex, args)
+        matches = time_regex.findall(argument.lower())
         time = 0
-        for key, value in matches:
+        for v, k in matches:
             try:
-                time += time_dict[value] * float(key)
+                time += time_dict[k]*float(v)
             except KeyError:
-                raise commands.BadArgument(
-                    f"{value} is an invalid time key! h|m|s|d are valid arguments"
-                )
+                raise commands.BadArgument("{} is an invalid time-key! h/m/s/d are valid!".format(k))
             except ValueError:
-                raise commands.BadArgument(f"{key} is not a number!")
-        return round(time)
+                raise commands.BadArgument("{} is not a number!".format(v))
+        return time
