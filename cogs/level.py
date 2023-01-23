@@ -1,9 +1,12 @@
 import discord
 import datetime
+import pandas as pd
 from discord import app_commands, Interaction
 from discord.ext import commands, tasks
 from utils.db import Document
 from utils.transformer import MutipleRole, MutipleChannel, MultipleMember
+from PIL import Image, ImageDraw, ImageFont
+from io import BytesIO
 
 
 class level(commands.GroupCog, name="level"):
@@ -211,7 +214,7 @@ class level(commands.GroupCog, name="level"):
             data['xp'] = amount
             await self.bot.ranks.update(data)
             self.bot.rank_cache[user.id] = data
-            description += f"<:dynosuccess:1000349098240647188> | {user.mention} <:join:991733999477203054> set to `{amount}` exp\n"
+            
         
         await interaction.edit_original_response(embed=discord.Embed(description=description,color=0x363940))
 
@@ -236,6 +239,25 @@ class Level_BackEnd(commands.Cog):
         }
     
     
+    async def create_level_card(self, user: discord.Member, rank: int, exp: int):
+        base_image = Image.open('./assets/level_template.png')
+        profile = user.avatar.with_format('png')
+        profile = BytesIO(await profile.read())
+        profile = Image.open(profile)
+        profile = profile.resize((217, 217), Image.Resampling.LANCZOS).convert('RGBA')
+
+        draw = ImageDraw.Draw(base_image)
+        name_font = ImageFont.truetype('arial.ttf', 38)
+        other_font = ImageFont.truetype('arial.ttf', 32)
+        base_image.paste(profile, (33, 32))
+
+        draw.text((290, 46), f"{user.name}", (255, 255, 255), font=name_font)
+        draw.text((528, 122), f"{rank}", (255, 255, 255), font=other_font)
+        draw.text((528, 182), f"{exp}", (255, 255, 255), font=other_font)
+
+        return base_image
+
+
     async def get_rank(self, user_id):
         if user_id in self.bot.rank_cache.keys():
             return self.bot.rank_cache[user_id]
@@ -274,9 +296,12 @@ class Level_BackEnd(commands.Cog):
 
         if message.channel.id in self.bot.level_config_cache[message.guild.id]['blacklist']['channels']: return
 
-        if message.author.bot and message.interaction: self.bot.dispatch("slash_command", message)
-        else: self.bot.dispatch("update_xp", message)
-    
+        if message.author.bot and message.interaction != None: 
+            self.bot.dispatch("slash_command", message)
+        elif not message.author.bot:
+            self.bot.dispatch("update_xp", message)
+        
+
     @commands.Cog.listener()
     async def on_update_xp(self, message):
         if message.author.id in self.bot.rank_in_progress.keys(): return
@@ -313,7 +338,6 @@ class Level_BackEnd(commands.Cog):
             self.bot.rank_in_progress.pop(message.author.id)
         except KeyError:
             pass
-
 
     @commands.Cog.listener()
     async def on_slash_command(self, message):
@@ -356,25 +380,28 @@ class Level_BackEnd(commands.Cog):
     @app_commands.command(name="rank", description="Get your or another users rank")
     @app_commands.describe(user="The user to get the rank of")
     async def rank(self, interaction: Interaction, user: discord.Member = None):
-        if not user: user = interaction.user
+        user = user if user else interaction.user
+        
+        await interaction.response.send_message(embed=discord.Embed(description=f"<a:loading:998834454292344842> | Loading {user}'s rank...", color=0x363940))
 
         ranks = await self.bot.ranks.get_all()
-        ranks = sorted(ranks, key=lambda x: x['xp'], reverse=True)
-        #get the index of the user in the list
-        rank = ranks.index([rank for rank in ranks if rank['_id'] == user.id][0]) + 1
-        data = ranks[rank-1]
+        df = pd.DataFrame(ranks)
+        df = df.sort_values(by="xp",ascending = False)
+        df = df.reset_index(drop=True)
+        rank = df.index[df['_id'] == user.id].tolist()[0] + 1
+        data = df.loc[rank - 1].to_dict()
 
-        embed = discord.Embed()
-        embed.set_author(name=f"{user.name}'s Rank", icon_url=user.avatar.url if user.avatar else user.default_avatar)
-        embed.add_field(name="Experience", value=data['xp'])
-        embed.add_field(name="Rank", value=rank)
-        embed.color = user.color if user.color != discord.Color.default() else 0x363940
-        embed.timestamp = datetime.datetime.utcnow()
-        await interaction.response.send_message(embed=embed)
+        print(data, rank, str(data['xp']))
 
-        
+        image = await self.create_level_card(user, data['xp'], rank)
 
+        with BytesIO() as image_binary:
+            image.save(image_binary, 'PNG')
+            image_binary.seek(0)
+            await interaction.edit_original_response(embed=None, attachments=[discord.File(fp=image_binary, filename=f'{user.id}_rank_card.png')])
 
 async def setup(bot):
     await bot.add_cog(level(bot))
     await bot.add_cog(Level_BackEnd(bot))
+
+
