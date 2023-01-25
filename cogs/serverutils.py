@@ -2,11 +2,11 @@ import discord
 import datetime
 import asyncio
 from discord import app_commands
-from discord.ext import commands
+from discord.ext import commands, tasks
 from utils.db import Document
-from utils.views.payout_config import Config_view
+from utils.views.payout_system import Config_view
 from utils.transformer import MultipleMember
-from utils.views.buttons import Payout_Buttton
+from utils.views.payout_system import Payout_Buttton, Payout_clain
 from io import BytesIO
 
 class Payout(commands.GroupCog, name="payout", description="Payout commands"):
@@ -14,8 +14,47 @@ class Payout(commands.GroupCog, name="payout", description="Payout commands"):
         self.bot = bot
         self.bot.payout_config = Document(self.bot.db, "payout_config")
         self.bot.payout_queue = Document(self.bot.db, "payout_queue")
+        self.bot.payout_pending = Document(self.bot.db, "payout_pending")
+        self.claim_task = self.check_unclaim.start()
     
     config = app_commands.Group(name="config", description="configur the payout system settings")
+
+    def cog_unload(self):
+        self.claim_task.cancel()
+
+    @tasks.loop(seconds=10)
+    async def check_unclaim(self):
+        data = await self.bot.payout_queue.get_all()
+        for payout in data:
+            now = datetime.datetime.now()
+            print(now >= payout['queued_at'] + datetime.timedelta(seconds=15))
+            if now >= payout['queued_at'] + datetime.timedelta(seconds=15) and payout['claimed'] == False:
+
+                print(f"payout expired:\n{payout}")
+                view = discord.ui.View()
+                view.add_item(discord.ui.Button(label="Claim Time Over", style=discord.ButtonStyle.red, disabled=True))
+                payout_config = await self.bot.payout_config.find(payout['guild'])
+                guild = self.bot.get_guild(payout['guild'])
+                channel = guild.get_channel(payout_config['pending_channel'])
+                try:
+                    message = await channel.fetch_message(payout['_id'])
+                except discord.NotFound:
+                    continue
+                await message.edit(view=view, content=f"<@{payout['winner']}> you have not claimed your payout in time.")
+                host = guild.get_member(payout['set_by'])
+                dm_view = discord.ui.View()
+                dm_view.add_item(discord.ui.Button(label="Payout Message Link", style=discord.ButtonStyle.url, url=message.jump_url))
+                try:
+                    await host.send(f"One the payout set by you has expired. please rehost the event/giveaway or reroll the winner.", view=dm_view)
+                except discord.HTTPException:
+                    pass
+                await self.bot.payout_queue.delete(payout['_id'])
+            else:
+                pass
+            
+    @check_unclaim.before_loop
+    async def before_check_unclaim(self):
+        await self.bot.wait_until_ready()
 
     @config.command(name="show", description="configur the payout system settings")
     async def config_show(self, interaction: discord.Interaction):
@@ -25,6 +64,7 @@ class Payout(commands.GroupCog, name="payout", description="Payout commands"):
             data = {
                 '_id': interaction.guild.id,
                 'queue_channel': None,
+                'pending_channel': None,
                 'manager_roles': [],
                 'log_channel': None,
             }
@@ -44,6 +84,7 @@ class Payout(commands.GroupCog, name="payout", description="Payout commands"):
             data = {
                 '_id': interaction.guild.id,
                 'queue_channel': None,
+                'pending_channel': None,
                 'manager_roles': [],
                 'log_channel': None,
             }
@@ -86,16 +127,17 @@ class Payout(commands.GroupCog, name="payout", description="Payout commands"):
             data = {
                 '_id': interaction.guild.id,
                 'queue_channel': None,
+                'pending_channel': None,
                 'manager_roles': [],
                 'log_channel': None,
             }
             await self.bot.payout_config.insert(data)
             return await interaction.followup.send("Please set up the payout config first!", ephemeral=True)
         
-        if data['queue_channel'] is None:
+        if data['pending_channel'] is None:
             return await interaction.followup.send("Please set up the payout config first!", ephemeral=True)
         
-        queue_channel = interaction.guild.get_channel(data['queue_channel'])
+        queue_channel = interaction.guild.get_channel(data['pending_channel'])
         if queue_channel is None:
             return await interaction.followup.send("Please set up the payout config first!", ephemeral=True)
         
@@ -111,7 +153,7 @@ class Payout(commands.GroupCog, name="payout", description="Payout commands"):
                 embed.add_field(name="Payout Status", value="**<:nat_reply_cont:1011501118163013634> Pending**")
                 embed.set_footer(text=f"Message ID: {winner_message.id}", icon_url=interaction.guild.icon.url)
 
-                msg = await queue_channel.send(embed=embed, content=f"{winner.mention}, you will be paid out in the next `24hrs`! \n> If not paid within the deadline claim from <#785901543349551104>.", view=Payout_Buttton())
+                msg = await queue_channel.send(embed=embed, content=f"{winner.mention}, Please click the button below to claim your prize! You have 24 hours to claim your prize", view=Payout_clain())
                 data = {
 					'_id': msg.id,
 					'channel': winner_message.channel.id,
@@ -119,8 +161,10 @@ class Payout(commands.GroupCog, name="payout", description="Payout commands"):
 					'event': event,
 					'winner': winner.id,
 					'prize': prize,
+                    'claimed': False,
 					'set_by': interaction.user.id,
 					'winner_message_id': winner_message.id,
+                    'queued_at': datetime.datetime.now(),
 				}
                 try:
                     await self.bot.payout_queue.insert(data)
@@ -139,36 +183,6 @@ class Payout(commands.GroupCog, name="payout", description="Payout commands"):
         link_view.add_item(discord.ui.Button(label="Go to Payout-Queue", url=msg.jump_url))
         finished_embed.description += f"\n**<:nat_reply_cont:1011501118163013634> Successfully queued {len(winners)}**"
         await interaction.edit_original_response(embed=finished_embed, view=link_view)
-    
-    @app_commands.command(name="delete", description="Delete a payout from the queue")
-    @app_commands.describe(message_id="The message id of the payout you want to delete")
-    @app_commands.checks.has_permissions(manage_messages=True)
-    async def payout_delete(self, interaction: discord.Interaction, message_id: str):
-        message_id = int(message_id)
-        data = await self.bot.payout_queue.find(message_id)
-        config = await self.bot.payout_config.find(interaction.guild.id)
-        if data is None:
-            return await interaction.response.send_message("That payout is not in the queue!", ephemeral=True)
-        if config is None:
-            return await interaction.response.send_message("Please set up the payout config first!", ephemeral=True)
-        if config['queue_channel'] is None:
-            return await interaction.response.send_message("Please set up the payout config first!", ephemeral=True)
-
-        queue_channel = interaction.guild.get_channel(config['queue_channel'])
-        winner_channel = interaction.guild.get_channel(data['channel'])
-        loading_emoji = await self.bot.emoji_server.fetch_emoji(998834454292344842)
-
-
-        try:
-            winner_message = await winner_channel.fetch_message(data['winner_message_id'])
-            queue_message = await queue_channel.fetch_message(message_id)
-            await queue_message.delete()
-            await winner_message.remove_reaction(loading_emoji, self.bot.user)
-        except Exception as e:
-            await interaction.response.send_message(embed = discord.Embed(title="Error", description=f"Failed to fetch the message from the winner channel or the queue channel. \n> {e}", color=discord.Color.red()), ephemeral=True)
-            
-        await self.bot.payout_queue.delete(message_id)
-        await interaction.response.send_message("Successfully deleted the payout!", ephemeral=True)
 
 class Dump(commands.GroupCog, name="dump", description="Dump commands"):
     def __init__(self, bot):
