@@ -328,6 +328,7 @@ class Level_BackEnd(commands.Cog):
         if not message.guild: return
         if message.author.id == self.bot.user.id: return
 
+        if message.guild.id not in self.bot.level_config_cache.keys(): return
         guild_data = self.bot.level_config_cache[message.guild.id]
         if not guild_data:
             guild_data = await self.bot.level_config.find(message.guild.id)
