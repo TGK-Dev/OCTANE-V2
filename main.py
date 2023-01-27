@@ -52,7 +52,6 @@ async def main():
             bot.mongo = AsyncIOMotorClient(os.environ.get("MONGO"))
             bot.db = bot.mongo["tgk_database"]
             bot.config = Document(bot.db, "config")
-            await bot.start(os.environ.get("TOKEN"))
 
 bot.start_time = datetime.datetime.now()
 
@@ -70,4 +69,4 @@ async def ping(interaction):
     await interaction.edit_original_response(content=None, embed=discord.Embed(description=f"Ping {bot.latency*1000.0:.2f}ms"))
 
 if __name__ == "__main__":
-    asyncio.run(main())
+    bot.run(os.environ.get("TOKEN"))
