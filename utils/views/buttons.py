@@ -23,14 +23,17 @@ class Confirm(discord.ui.View):
 		else:
 			await interaction.response.send_message("This is not your confirmation menu.", ephemeral=True)
 			return False
+	
+	async def on_error(self, error, item, interaction):
+		pass
 
-	@discord.ui.button(label='Confirm', style=discord.ButtonStyle.green)
+	@discord.ui.button(label='Yes', style=discord.ButtonStyle.green)
 	async def confirm(self, interaction: discord.Interaction, button: discord.ui.Button):
 		self.interaction = interaction
 		self.value = True
 		self.stop()
 
-	@discord.ui.button(label='Cancel', style=discord.ButtonStyle.grey)
+	@discord.ui.button(label='No', style=discord.ButtonStyle.grey)
 	async def cancel(self, interaction: discord.Interaction, button: discord.ui.Button):
 		self.interaction = interaction
 		self.value = False

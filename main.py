@@ -13,6 +13,7 @@ from aiohttp import ClientSession
 from pathlib import Path
 from motor.motor_asyncio import AsyncIOMotorClient
 from utils.db import Document
+from utils.views.ticket_system import Ticket_controll
 
 load_dotenv()
 class Bot_base(commands.Bot):
@@ -27,9 +28,8 @@ class Bot_base(commands.Bot):
             if file.endswith(".py") and not file.startswith("_"):
                 await self.load_extension(f"cogs.{file[:-3]}")
         
-        await bot.tree.sync()
-        await bot.tree.sync(guild=discord.Object(999551299286732871))
-    
+        # await bot.tree.sync()
+        # await bot.tree.sync(guild=discord.Object(999551299286732871))
 
 bot = Bot_base(help_command=None, application_id=998152864201457754, case_insensitive=True, owner_ids=[488614633670967307], activity=discord.Activity(type=discord.ActivityType.playing, name="with discord API"), stats=discord.Status.idle)
 
@@ -58,9 +58,11 @@ bot.start_time = datetime.datetime.now()
 @bot.event
 async def on_ready():
     bot.emoji_server = bot.get_guild(991711295139233834)
+    bot.add_view(Ticket_controll())
     print(f"Logged in successfully as {bot.user.name} | {bot.user.id}")
     print(f"loadded cogs: {len(bot.extensions)}")
     print(f"Cached Emoji Server: {bot.emoji_server.name} | {bot.emoji_server.id}")
+    print(f"Bot Views: {len(bot.persistent_views)}")
     await bot.change_presence(status=discord.Status.offline)
 
 @bot.tree.command(name="ping", description="Check bots leatency")
