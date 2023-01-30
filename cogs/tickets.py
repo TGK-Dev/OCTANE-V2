@@ -12,6 +12,11 @@ class Ticket_DB:
         self.config: Document = Document(bot.db, "tickets_config")
         self.tickets: Document = Document(bot.db, "tickets")
 
+panel_templates = {
+    "partnership": { 'key': 'partnership', 'support_roles': [], 'color': 'blurple', 'emoji':'<a:Partner:1000335814481416202>', 'ping_role': None, 'created_by': None, 'description': 'Used for heist partnership deals only!\nMake sure to checkout requirements first.' },
+
+}
+
 class Ticket(commands.GroupCog, name="ticket"):
     def __init__(self, bot):
         self.bot = bot
@@ -52,7 +57,7 @@ class Ticket(commands.GroupCog, name="ticket"):
     async def ticket_config(self, interaction: discord.Interaction, option: Literal['show', 'edit']="show"):
         ticket_config = await self.bot.tickets.config.find(interaction.guild.id)
         if ticket_config is None:
-            ticket_config = {'_id': interaction.guild.id,'category': None,'channel': None,'logging': None,'panels': [],'last_panel_message_id': None, 'transcript': None}
+            ticket_config = {'_id': interaction.guild.id,'category': None,'channel': None,'logging': None,'panels': {},'last_panel_message_id': None, 'transcript': None}
             await self.bot.tickets.config.insert(ticket_config)
         
         embed = discord.Embed(title="Ticket Config", color=0x363940, description="")
@@ -71,18 +76,25 @@ class Ticket(commands.GroupCog, name="ticket"):
             view.message = await interaction.original_response()
             await view.wait()
             if view.value:
-                await self.bot.tickets.config.update(interaction.guild.id, view.data)
+                print(view.data)
+                await self.bot.tickets.config.update(view.data)
         
     @panel.command(name="create", description="Create a ticket panel")
     @app_commands.checks.has_permissions(manage_guild=True)
     @app_commands.describe(name="name")
-    async def create_panel(self, interaction: discord.Interaction, name: str):
+    @app_commands.describe(template="Select a template to use")
+    @app_commands.choices(template=[app_commands.Choice(name="Partnership", value="partnership")])
+    async def create_panel(self, interaction: discord.Interaction, name: str, template: app_commands.Choice[str]=None):
         ticket_config = await self.bot.tickets.config.find(interaction.guild.id)
         if ticket_config is None:
             ticket_config = {'_id': interaction.guild.id,'category': None,'channel': None,'logging': None,'panels': {},'last_panel_message_id': None, 'transcript': None}
             await self.bot.tickets.config.insert(ticket_config)
         if name in ticket_config['panels'].keys(): return await interaction.response.send_message("This panel already exists", ephemeral=True, delete_after=5)        
-        panel_data = {'key': name, 'support_roles': [], "ping_role": None, 'created_by': interaction.user.id, 'description': None, 'emoji': None, 'color': None, 'modal': {'type': 'short', 'question': "Please describe your issue"}}
+        
+        if template is None:
+            panel_data = {'key': name, 'support_roles': [], "ping_role": None, 'created_by': interaction.user.id, 'description': None, 'emoji': None, 'color': None, 'modal': {'type': 'short', 'question': "Please describe your issue"}}
+        else:
+            panel_data = panel_templates[template.value]
 
         embed = discord.Embed(title=f"Settings for Panel: {name}", color=0x363940, description="")
         embed.description += f"**Support Roles:** {', '.join([f'<@&{role}>' for role in panel_data['support_roles']]) if len(panel_data['support_roles']) > 0 else '`None`'}\n"
