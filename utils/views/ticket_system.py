@@ -24,7 +24,7 @@ class Config_Edit(View):
         embed.description += f"**Transcript:**" + (f" <#{data['transcript']}>" if data['transcript'] is not None else "`None`") + "\n"
         embed.description += f"**Panel Message:**" + (f"{data['last_panel_message_id']}" if data['last_panel_message_id'] is not None else "`None`") + "\n"
         embed.description += f"**Panels:**" + (f"`{len(data['panels'])}`" if data['panels'] is not None else "`0`") + "\n"
-        return
+        return embed
     
     @button(label="Category", style=discord.ButtonStyle.gray, emoji="<:category:1068484752664973324>", row=0)
     async def category(self, interaction: Interaction, button: Button):
@@ -39,7 +39,7 @@ class Config_Edit(View):
         if view.value is None:
             await interaction.delete_original_message()
         else:
-            await view.select.interaction.response.send_message("Category set!", ephemeral=True, delete_after=5)
+            await view.select.interaction.response.edit_message(view=None, embed=discord.Embed(description="<:octane_yes:1019957051721535618> | Category set!", color=0x363940))
             self.data["category"] = view.select.values[0].id
             embed = self.update_embed(self.data)
             for button in self.children: 
@@ -59,7 +59,7 @@ class Config_Edit(View):
         if view.value is None:
             await interaction.delete_original_message()
         else:
-            await view.select.interaction.response.send_message("Channel set!", ephemeral=True, delete_after=5)
+            await view.select.interaction.response.edit_message(view=None, embed=discord.Embed(description="<:octane_yes:1019957051721535618> | Channel set!", color=0x363940))
             self.data["channel"] = view.select.values[0].id
             embed = self.update_embed(self.data)
             for button in self.children: 
@@ -79,7 +79,7 @@ class Config_Edit(View):
         if view.value is None:
             await interaction.delete_original_message()
         else:
-            await view.select.interaction.response.send_message("Logging channel set!", ephemeral=True, delete_after=5)
+            await view.select.interaction.response.edit_message(view=None, embed=discord.Embed(description="<:octane_yes:1019957051721535618> | Logging channel set!", color=0x363940))
             self.data["logging"] = view.select.values[0].id
             embed = self.update_embed(self.data)
             for button in self.children: 
@@ -99,7 +99,7 @@ class Config_Edit(View):
         if view.value is None:
             await interaction.delete_original_message()
         else:
-            await view.select.interaction.response.send_message("Transcript channel set!", ephemeral=True, delete_after=5)
+            await view.select.interaction.response.edit_message(view=None, embed=discord.Embed(description="<:octane_yes:1019957051721535618> | Transcript channel set!", color=0x363940))
             self.data["transcript"] = view.select.values[0].id
             embed = self.update_embed(self.data)
             for button in self.children: 
@@ -111,6 +111,7 @@ class Config_Edit(View):
         for button in self.children: button.disabled = True
         await interaction.message.edit(view=self)
         await interaction.response.send_message("Saved!", ephemeral=True, delete_after=5)
+        self.value = True
         self.stop()
 
     async def on_timeout(self):
@@ -161,7 +162,7 @@ class Panel_Edit(View):
         if view.value is None:
             await interaction.delete_original_response()
         else:
-            await view.select.interaction.response.send_message("Support roles set!", ephemeral=True, delete_after=5)
+            await view.select.interaction.response.edit_message(view=None, embed=discord.Embed(description="<:octane_yes:1019957051721535618> | Support roles set!", color=0x363940))
             await interaction.delete_original_response()
             self.data["support_roles"] = [role.id for role in view.select.values]
             embed = self.update_embed(self.data)
@@ -182,7 +183,7 @@ class Panel_Edit(View):
         if view.value is None:
             await interaction.delete_original_response()
         else:
-            await view.select.interaction.response.send_message("Ping role set!", ephemeral=True, delete_after=5)
+            await view.select.interaction.response.edit_message(view=None, embed=discord.Embed(description="<:octane_yes:1019957051721535618> | Ping role set!", color=0x363940))
             await interaction.delete_original_response()
             self.data["ping_role"] = view.select.values[0].id
             embed = self.update_embed(self.data)
@@ -205,7 +206,7 @@ class Panel_Edit(View):
             embed = self.update_embed(self.data)
             for button in self.children: 
                 if button.label == "Save": button.disabled = False
-            await modal.interaction.response.send_message("Description set!", ephemeral=True, delete_after=5)
+            await modal.interaction.response.edit_message(view=None, embed=discord.Embed(description="<:octane_yes:1019957051721535618> | Description set!", color=0x363940))
             await interaction.message.edit(embed=embed ,view=self)
 
     @button(label="Emoji", style=discord.ButtonStyle.gray, emoji="<:embed:1017379990289002536>", row=1)
@@ -236,7 +237,7 @@ class Panel_Edit(View):
         await interaction.response.send_message(embed=embed, view=view, ephemeral=True, delete_after=30)
         await view.wait()
         if view.value:
-            await view.select.interaction.response.send_message("Color set to " + view.select.values[0], ephemeral=True, delete_after=5)
+            await view.select.interaction.response.edit_message(view=None, embed=discord.Embed(description="<:octane_yes:1019957051721535618> | Color set!", color=0x363940))
             await interaction.delete_original_response()
             self.data["color"] = view.select.values[0]
             embed = self.update_embed(self.data)
@@ -264,7 +265,7 @@ class Panel_Edit(View):
             embed = self.update_embed(self.data)
             for button in self.children: 
                 if button.label == "Save": button.disabled = False
-            await modal.interaction.response.send_message("Question set!", ephemeral=True, delete_after=5)
+            await modal.interaction.response.edit_message(view=None, embed=discord.Embed(description="<:octane_yes:1019957051721535618> | Questionnaire set!", color=0x363940))
             await interaction.message.edit(embed=embed ,view=self)
 
     @button(label="Save", style=discord.ButtonStyle.green, emoji="<:save:1068611610568040539>", disabled=True, row=3)
