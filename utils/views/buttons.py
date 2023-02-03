@@ -2,8 +2,9 @@ import discord
 from discord.ext import commands
 from typing import Union
 from discord import Interaction
+from discord.ui import View
 # Define a simple View that gives us a confirmation menu
-class Confirm(discord.ui.View):
+class Confirm(View):
 	def __init__(self, user: Union[discord.Member, discord.User],timeout: int = 30, message:discord.Message = None):
 		super().__init__(timeout=timeout)
 		self.value = None
@@ -38,3 +39,8 @@ class Confirm(discord.ui.View):
 		self.interaction = interaction
 		self.value = False
 		self.stop()
+
+class Link_view(View):
+	def __init__(self, label, url):
+		super().__init__(timeout=None)
+		self.add_item(discord.ui.Button(label=label, url=url, style=discord.ButtonStyle.url))
