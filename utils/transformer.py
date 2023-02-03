@@ -8,12 +8,12 @@ time_dict = {"h": 3600, "s": 1, "m": 60, "d": 86400}
 
 class TimeConverter(app_commands.Transformer):
     async def transform(self, interaction: discord.Interaction, argument: str) -> int:
-        if time_dict.keys not in argument.lower():
+        matches = time_regex.findall(argument.lower())
+        if len(matches) == 0:
             try:
                 return int(argument)
             except Exception as e:
                 raise e
-        matches = time_regex.findall(argument.lower())
         time = 0
         for v, k in matches:
             try:
