@@ -1,6 +1,7 @@
 import discord
 import aiohttp
 import json
+import datetime
 from discord.ext import commands, tasks
 from discord import Interaction, app_commands
 from utils.db import Document
@@ -25,7 +26,7 @@ class Link_Backend:
     async def verify(self, user: discord.Member, key: str, value):
         user_data = await self.auth.find(user.id)
         if not user_data:
-            user_data = {"_id": user.id, 'access_token': None, 'refresh_token': None, 'metadata': {'platform_name': None, 'platform_username': None, 'metadata': {key: value}},'expires_at': None, 'scope': None, 'token_type': None, 'username': user.name, 'discriminator': user.discriminator}
+            user_data = {"_id": user.id, 'access_token': None, 'refresh_token': None, 'metadata': {'platform_name': None, 'platform_username': None, 'metadata': {key: value}},'expires_at': None, 'expires_in': None,'scope': None,'token_type': None, 'username': user.name, 'discriminator': user.discriminator}
             await self.auth.insert(user_data)
             return False
 
@@ -77,20 +78,23 @@ class Linked_Roles(commands.GroupCog, name="linkedroles"):
     @tasks.loop(seconds=10)
     async def refresh(self):
         data = await self.bot.linked_roles.auth.get_all()
+        now = datetime.datetime.utcnow()
         for user_data in data:
-            if user_data['access_token'] != None: continue
-            response = await self.bot.linked_roles.refresh(user_data['_id'], user_data)
-            if response.status != 200:
-                print(response.text)
-                continue
-            user_data['access_token'] = response['access_token']
-            user_data['refresh_token'] = response['refresh_token']
-            user_data['expires_at'] = response['expires_at']
-            user_data['scope'] = response['scope']
-            user_data['token_type'] = response['token_type']
-            user_data['username'] = response['username']
-            user_data['discriminator'] = response['discriminator']
-            await self.bot.linked_roles.auth.update(user_data)
+            if user_data['expires_at'] == None: continue
+            if user_data['access_token'] == None: continue
+            if user_data['refresh_token'] == None: continue
+
+            if now >= user_data['expires_at']:
+                response = await self.bot.linked_roles.refresh(user_data['_id'], user_data)
+                if response.status != 200: continue
+                response = await response.json()
+                user_data['access_token'] = response['access_token']
+                user_data['refresh_token'] = response['refresh_token']
+                user_data['expires_at'] = datetime.datetime.utcnow() + datetime.timedelta(seconds=response['expires_in'])
+                user_data['expires_in'] = response['expires_in']
+                user_data['scope'] = response['scope']
+                user_data['token_type'] = response['token_type']
+                await self.bot.linked_roles.auth.update(user_data)
     
     @refresh.before_loop
     async def before_refresh(self):
