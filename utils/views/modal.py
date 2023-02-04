@@ -17,7 +17,6 @@ class Question_Modal(Modal):
         self.interaction = interaction
         self.stop()
         
-
 class Panel_Description_Modal(Modal):
     def __init__(self, data, interaction: Interaction=None):
         self.interaction = interaction
@@ -64,6 +63,17 @@ class Panel_Partnership(Modal):
 
     async def on_submit(self, interaction: Interaction):
         self.data["partnership"] = self.children[0]
+        self.value = True
+        self.interaction = interaction
+        self.stop()
+
+class General_Modal(Modal):
+    def __init__(self, title: str, interaction: Interaction=None, **kwargs):
+        super().__init__(timeout=120, title=title, **kwargs)
+        self.interaction = interaction
+        self.value = None
+
+    async def on_submit(self, interaction: Interaction):
         self.value = True
         self.interaction = interaction
         self.stop()

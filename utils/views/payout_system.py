@@ -1,14 +1,45 @@
 import discord
+import humanfriendly
 from .selects import Channel_select, Role_select
+from .modal import General_Modal
 from discord import Interaction
-
-class Config_view(discord.ui.View):
-    def __init__(self, data: dict, message: discord.Message=None):
+from utils.converters import TimeConverter
+class Payout_Config_Edit(discord.ui.View):
+    def __init__(self, data: dict, message: discord.Message=None, interaction: Interaction=None):
         self.data = data
         self.message = message
+        self.interaction = interaction
         super().__init__(timeout=120)
     
-    @discord.ui.button(label="Queue Channel", style=discord.ButtonStyle.gray, emoji="<:channel:1017378607863181322>")
+    async def on_timeout(self):
+        for child in self.children: child.disabled = True
+        await self.message.edit(view=self)
+    
+    async def on_error(self, error, item, interaction):
+        try:
+            await interaction.response.send_message(f"An error occured: {error}", ephemeral=True)
+        except:
+            await interaction.edit_original_response(f"An error occured: {error}")
+    
+    async def interaction_check(self, interaction: Interaction):
+        if interaction.user.id == interaction.message.author.id:
+            return True
+        else:
+            await interaction.response.send_message("you can't use this view", ephemeral=True)
+            return False
+
+    def update_embed(self, data:dict, interaction: Interaction):
+        
+        embed = discord.Embed(title="Payout Config", description="", color=0x363940)
+        embed.description += f"**Queue Channel:** {interaction.guild.get_channel(data['queue_channel']).mention if data['queue_channel'] else '`Not Set`'}\n"
+        embed.description += f"**Pending Channel:** {interaction.guild.get_channel(data['pending_channel']).mention if data['pending_channel'] else '`Not Set`'}\n"
+        embed.description += f"**Log Channel:** {interaction.guild.get_channel(data['log_channel']).mention if data['log_channel'] else '`Not Set`'}\n"
+        embed.description += f"**Manager Roles:** {', '.join([f'<@&{role}>' for role in data['manager_roles']]) if data['manager_roles'] else '`Not Set`'}\n"
+        embed.description += f"**Default Claim Time:** {humanfriendly.format_timespan(data['default_claim_time'])}\n"
+
+        return embed
+    
+    @discord.ui.button(label="Queue Channel", style=discord.ButtonStyle.gray, emoji="<:channel:1017378607863181322>", row=0)
     async def queue_channel(self, interaction: discord.Interaction, button: discord.ui.Button):
 
         view = discord.ui.View()
@@ -23,14 +54,13 @@ class Config_view(discord.ui.View):
 
             self.data["queue_channel"] = view.select.values[0].id
             await view.select.interaction.response.edit_message(content="Suscessfully updated queue channel", view=None)
-            embed = interaction.message.embeds[0]
-            embed.set_field_at(0, name="Queue Channel", value=view.select.values[0].mention)
-            await interaction.message.edit(embed=embed)
+            embed = self.update_embed(self.data, interaction)
             await interaction.client.payout_config.update(self.data)
+            await interaction.message.edit(embed=embed)
         else:
             await interaction.edit_original_response(content="No channel selected", view=None)
     
-    @discord.ui.button(label="Clain Channel", style=discord.ButtonStyle.gray, emoji="<:channel:1017378607863181322>")
+    @discord.ui.button(label="Clain Channel", style=discord.ButtonStyle.gray, emoji="<:channel:1017378607863181322>", row=0)
     async def claim_channel(self, interaction: discord.Interaction, button: discord.ui.Button):
 
         view = discord.ui.View()
@@ -45,15 +75,14 @@ class Config_view(discord.ui.View):
                 
             self.data["pending_channel"] = view.select.values[0].id
             await view.select.interaction.response.edit_message(content="Suscessfully updated claim channel", view=None)
-            embed = interaction.message.embeds[0]
-            embed.set_field_at(1, name="Claim Channel", value=view.select.values[0].mention)
-            await interaction.message.edit(embed=embed)
+            embed = self.update_embed(self.data, interaction)
             await interaction.client.payout_config.update(self.data)
+            await interaction.message.edit(embed=embed)
         else:
             await interaction.edit_original_response(content="No channel selected", view=None)
             
     
-    @discord.ui.button(label="Log Channel", style=discord.ButtonStyle.gray, emoji="<:channel:1017378607863181322>")
+    @discord.ui.button(label="Log Channel", style=discord.ButtonStyle.gray, emoji="<:channel:1017378607863181322>", row=1)
     async def log_channel(self, interaction: discord.Interaction, button: discord.ui.Button):
             
             view = discord.ui.View()
@@ -68,14 +97,13 @@ class Config_view(discord.ui.View):
     
                 self.data["log_channel"] = view.select.values[0].id
                 await view.select.interaction.response.edit_message(content="Suscessfully updated log channel", view=None)
-                embed = interaction.message.embeds[0]
-                embed.set_field_at(1, name="Log Channel", value=view.select.values[0].mention)
+                embed = self.update_embed(self.data, interaction)
                 await interaction.message.edit(embed=embed)
                 await interaction.client.payout_config.update(self.data)
             else:
                 await interaction.edit_original_response(content="No channel selected", view=None)
     
-    @discord.ui.button(label="Manager Role", style=discord.ButtonStyle.gray, emoji="<:role:1017378607863181322>", row=1)
+    @discord.ui.button(label="Manager Role", style=discord.ButtonStyle.gray, emoji="<:role_mention:1063755251632582656>", row=1)
     async def manager_role(self, interaction: discord.Interaction, button: discord.ui.Button):
         view = discord.ui.View()
         view.value = False
@@ -97,19 +125,35 @@ class Config_view(discord.ui.View):
                         removed.append(ids.mention)
                 await view.select.interaction.response.edit_message(content=f"Suscessfully updated manager roles\nAdded: {', '.join(added)}\nRemoved: {', '.join(removed)}", view=None)
 
-                embed = interaction.message.embeds[0]
-                embed.set_field_at(2, name="Manager Roles", value=", ".join([interaction.guild.get_role(ids).mention for ids in self.data["manager_roles"]]))
+                embed = self.update_embed(self.data, interaction)
                 await interaction.message.edit(embed=embed)
                 await interaction.client.payout_config.update(self.data)
         else:
             await interaction.edit_original_response(content="No role selected", view=None)
 
+    @discord.ui.button(label="Claim Time", style=discord.ButtonStyle.gray, emoji="<:octane_claim_time:1071517327813775470>", row=2)
+    async def claim_time(self, interaction: discord.Interaction, button: discord.ui.Button):
+        modal = General_Modal("Claim Time Modal", interaction=interaction)
+        modal.question = discord.ui.TextInput(label="Enter New Claim Time", placeholder="Enter New Claim Time exp: 1h45m", min_length=1, max_length=10)    
+        modal.value = None
+        modal.add_item(modal.question)
+        await interaction.response.send_modal(modal)
+
+        await modal.wait()
+        if modal.value:
+            time = await TimeConverter().convert(modal.interaction, modal.question.value)
+            print(time)
+            if time < 3600: await modal.interaction.response.send_message("Claim time must be at least 1 hour", ephemeral=True)
+            self.data['default_claim_time'] = time
+            await interaction.client.payout_config.update(self.data)
+            embed = self.update_embed(self.data, modal.interaction)
+            await modal.interaction.response.edit_message(embed=embed, view=self)
 
 class Payout_clain(discord.ui.View):
     def __init__(self):
         super().__init__(timeout=None)
     
-    @discord.ui.button(label="claim", style=discord.ButtonStyle.blurple, custom_id="payout:claim")
+    @discord.ui.button(label="Claim", style=discord.ButtonStyle.green, custom_id="payout:claim")
     async def payout_claim(self, interaction: discord.Interaction, button: discord.ui.Button):
         loading_embed = discord.Embed(description="<a:loading:998834454292344842> | Processing claim...", color=discord.Color.yellow())
         await interaction.response.send_message(embed=loading_embed, ephemeral=True)
@@ -129,7 +173,7 @@ class Payout_clain(discord.ui.View):
         queue_channel = interaction.guild.get_channel(payout_config['queue_channel'])
 
         embed = interaction.message.embeds[0]
-
+        embed.set_field_at(6, name="Payout Status", value="<:nat_reply_cont:1011501118163013634>**Claimed**", inline=False)
         msg = await queue_channel.send(f"<@{data['winner']}> you will be paid out in the next 24hrs!\n> If not paid within the deadline claim from support chanel", embed=embed, view=Payout_Buttton())
         pending_data = data
         pending_data['_id'] = msg.id
@@ -137,8 +181,11 @@ class Payout_clain(discord.ui.View):
         await interaction.client.payout_queue.delete(interaction.message.id)
         button.label = "Claimed Successfully"
         button.style = discord.ButtonStyle.green
+        button.emoji = "<:octane_claim:1071527360656068788>"
         button.disabled = True
-        await interaction.message.edit(view=self)
+        embed = interaction.message.embeds[0]
+        
+        await interaction.message.edit(view=self, embed=embed, content=None)
 
     async def on_error(self, interaction: Interaction, error: Exception, item: discord.ui.Item):
         try:
