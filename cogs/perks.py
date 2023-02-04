@@ -31,9 +31,9 @@ class Perks_DB:
             case "channel":
                 return await self.channel.find_by_custom({'guild_id': guild_id, 'user_id': user_id})
             case "react":
-                return await self.react.find_by_custom({'guild_id': guild_id, 'user_id': user_id, 'last_react': None})
+                return await self.react.find_by_custom({'guild_id': guild_id, 'user_id': user_id})
             case "highlight":
-                return await self.highlight.find_by_custom({'guild_id': guild_id, 'user_id': user_id, 'last_trigger': None})
+                return await self.highlight.find_by_custom({'guild_id': guild_id, 'user_id': user_id})
             case 'config':
                 return await self.config.find(guild_id)
             case 'all':
@@ -102,6 +102,7 @@ class Perks_DB:
                 raise Exception("Invalid perk type")
     
     async def create_cach(self):
+        self.cach = {'react': {}, 'highlight': {}}
         for data in await self.react.get_all():
             if 'guild_id' not in self.cach['react'].keys():
                 self.cach['react'][data['guild_id']] = {}
@@ -115,8 +116,6 @@ class Perks_DB:
             
             if 'user_id' not in self.cach['highlight'][data['guild_id']].keys():
                 self.cach['highlight'][data['guild_id']][data['user_id']] = data
-        
-        print(self.cach['highlight'])
     
     async def update_cache(self, perk:str,user_id: int, guild_id: int, data):
         match perk:
@@ -142,7 +141,6 @@ class Perks(commands.GroupCog, name="perks", description="manage your custom per
         self.bot.perk: Perks_DB = Perks_DB(bot, Document)
     
     edit = Group(name="edit", description="edit your perks")
-    create = Group(name="create", description="create your perks")
     highlight = Group(name="highlight", description="manage your highlight perks")
     friend = Group(name="friend", description="give/revoke your custom role/channel access from your friends")
     delete = Group(name="delete", description="delete your perks temporarily")
@@ -170,176 +168,228 @@ class Perks(commands.GroupCog, name="perks", description="manage your custom per
             pages.append(embed)
 
         await Paginator(interaction=interaction, pages=pages).start(embeded=True, quick_navigation=False)
-
-    @friend.command(name="add", description="add a friend to your perks")
-    @app_commands.describe(member="your friend", perk="the perk you want to give to your friend")
-    @app_commands.choices(perk=[app_commands.Choice(name="Custom Role", value="roles"), app_commands.Choice(name="Custom Channel", value="channels")])
-    async def _add(self, interaction: Interaction, member: discord.Member, perk: app_commands.Choice[str]):
-        user_data = await self.bot.perk.get_data(perk.value, interaction.guild.id, interaction.user.id)
-        if not user_data: return await interaction.response.send_message("You don't have any perks.", ephemeral=True)
-        if member.id in user_data['friend_list']: return await interaction.response.send_message("This user is already in your friend list.", ephemeral=True)
-        if len(user_data['friend_list']) >= user_data['friend_limit']: return await interaction.response.send_message("You have reached your friend limit.", ephemeral=True)
-        user_data['friend_list'].append(member.id)
-        await self.bot.perk.update(perk.value, user_data)
-        role = discord.utils.get(interaction.guild.roles, id=user_data['role_id'])
-        await member.add_roles(role)
-        await interaction.response.send_message(embed=discord.Embed(description=f"Added {member.mention} to your friend list.", color=0x363940))
     
-    @friend.command(name="remove", description="remove a friend from your perks")
-    @app_commands.describe(member="your friend", perk="the perk you want to remove from your friend")
-    @app_commands.choices(perk=[app_commands.Choice(name="Custom Role", value="roles"), app_commands.Choice(name="Custom Channel", value="channels")])
-    async def _remove(self, interaction: Interaction, member: discord.Member, perk: app_commands.Choice[str]):
+    @app_commands.command(name="claim", description="claim your perks")
+    @app_commands.describe(perk="the perk you want to claim", name="the name of your custom role", color="the color of your custom role", icon="the icon of your custom role", emoji="the emoji of your reaction")
+    @app_commands.choices(perk=[app_commands.Choice(name="Custom Role", value="roles"),app_commands.Choice(name="Custom Channel", value="channel"),app_commands.Choice(name="Custom Reaction (ar)", value="react")])
+    async def _claim(self, interaction: Interaction, perk: app_commands.Choice[str], name:str=None, color:str=None, icon: discord.Attachment=None, emoji:str=None):
+        user_data = await self.bot.perk.get_data(perk.value, interaction.guild.id, interaction.user.id)
+        print("user_data", user_data)
+        if not user_data: return await interaction.response.send_message(f"You don't have any `{perk.value}` perks.", ephemeral=True)
+
+        match perk.value:
+            case "roles":
+                if user_data['role_id'] != None: return await interaction.response.send_message("you already have created a custom role.", ephemeral=True)
+                perks_config = await self.bot.perk.config.find(interaction.guild.id)
+                if not perks_config: return await interaction.response.send_message("This server doesn't have any perks.", ephemeral=True)
+
+                await interaction.response.send_message(embed=discord.Embed(description="Creating your custom role...", color=0x363940))
+                if icon:
+                    if not icon.filename.endswith(('png', 'jpg')):
+                        return await interaction.edit_original_response(embed=discord.Embed(description="Invalid icon file type.", color=0x363940))
+                    async with aiohttp.ClientSession() as session:
+                        async with session.get(icon.url) as resp:
+                            if resp.status != 200:
+                                return await interaction.edit_original_response(embed=discord.Embed(description="Invalid icon url.", color=0x363940))
+                            icon = await resp.read()
+                if color: color = color.replace("#", "")
+                role = await interaction.guild.create_role(name=name, color=discord.Color(int(color, 16)), reason=f"Custom role perk for {interaction.user}", display_icon=icon)
+                await role.edit(position=perks_config['custom_roles_position'])
+                await interaction.user.add_roles(role, reason=f"Custom role perk for {interaction.user}")
+                await interaction.edit_original_response(embed=discord.Embed(description="Your custom role has been created.", color=0x363940))
+                user_data['role_id'] = role.id
+                await self.bot.perk.update(perk.value, user_data)
+            
+            case "channel":
+                if user_data['channel_id'] != None: return await interaction.response.send_message("You already have a channel perk.", ephemeral=True)
+                perks_config = await self.bot.perk.config.find(interaction.guild.id)
+                if not perks_config: return await interaction.response.send_message("This server doesn't have any perks.", ephemeral=True)
+
+                await interaction.response.send_message(embed=discord.Embed(description="Creating your custom channel...", color=0x363940))
+                overwrites = {
+                    interaction.guild.default_role: discord.PermissionOverwrite(view_channel=False, send_messages=True, use_external_emojis=True, use_application_commands=True, attach_files=True),
+                    interaction.user: discord.PermissionOverwrite(view_channel=True),
+                    interaction.guild.me: discord.PermissionOverwrite(read_messages=True, manage_channels=True, manage_permissions=True, manage_webhooks=True, manage_messages=True, manage_roles=True)
+                }
+                channel = await interaction.guild.create_text_channel(name=name, overwrites=overwrites, reason=f"Custom channel perk for {interaction.user}", category=interaction.guild.get_channel(perks_config['custom_category'] if perks_config['custom_category'] else None))
+                await interaction.edit_original_response(embed=discord.Embed(description="Your custom channel has been created.", color=0x363940))
+                await channel.send(f"Welcome to your custom channel, {interaction.user.mention}!")
+                user_data['channel_id'] = channel.id
+                await self.bot.perk.update(perk.value, user_data)
+            
+            case "react":
+                if not emoji: return await interaction.response.send_message("You need to provide an emoji.", ephemeral=True)
+                await interaction.response.send_message(embed=discord.Embed(description="Checking your emoji validity...", color=0x363940))
+                message = await interaction.original_response()
+                try:
+                    await message.add_reaction(emoji)
+                except:
+                    return await interaction.edit_original_response(embed=discord.Embed(description="Invalid emoji.", color=0x363940))
+                user_data['emoji'] = emoji
+                await message.remove_reaction(emoji, self.bot.user)
+                await self.bot.perk.update(perk.value, user_data)
+                await self.bot.perk.update_cache(perk.value, interaction.user.id , interaction.guild.id, user_data)
+                await interaction.edit_original_response(embed=discord.Embed(description="Your reaction role has been created.", color=0x363940))
+
+    @app_commands.command(name="friend", description="manage your friends list")
+    @app_commands.describe(perk="The perk you want to manage", option="The option you want to use", traget="The user you want to add/remove from your friends list")
+    @app_commands.choices(option=[app_commands.Choice(name="Add", value="add"), app_commands.Choice(name="Remove", value="remove"), app_commands.Choice(name="List", value="list"), app_commands.Choice(name="Clear", value="clear"), app_commands.Choice(name="fix", value="fix")],perk=[app_commands.Choice(name="Custom Role", value="role"), app_commands.Choice(name="Custom Channel", value="channel")])
+    async def _friend(self, interaction: Interaction, perk: app_commands.Choice[str],option: app_commands.Choice[str], traget: discord.Member=None):
         user_data = await self.bot.perk.get_data(perk.value, interaction.guild.id, interaction.user.id)
         if not user_data: return await interaction.response.send_message("You don't have any perks.", ephemeral=True)
-        if member.id not in user_data['friend_list']: return await interaction.response.send_message("This user is not in your friend list.", ephemeral=True)
-        user_data['friend_list'].remove(member.id)
-        await self.bot.perk.update(perk.value, user_data)
-        role = discord.utils.get(interaction.guild.roles, id=user_data['role_id'])
-        await member.remove_roles(role)
-        await interaction.response.send_message(embed=discord.Embed(description=f"Removed {member.mention} from your friend list.", color=0x363940))
+        perk_config = await self.bot.perk.config.find(interaction.guild.id)
 
-    @friend.command(name="list", description="list your friends")
-    @app_commands.describe(perk="the perk you want to list your friends")
-    @app_commands.choices(perk=[app_commands.Choice(name="Custom Role", value="roles"), app_commands.Choice(name="Custom Channel", value="channels")])
-    async def _list(self, interaction: Interaction, perk: Literal['Custom Role', 'Custom Channel']):
-        user_data = await self.bot.perk.get_data(perk.lower(), interaction.guild.id, interaction.user.id)
-        if not user_data: return await interaction.response.send_message("You don't have any perks.", ephemeral=True)
-        if len(user_data['friend_list']) == 0: return await interaction.response.send_message("You don't have any friends. sed", ephemeral=True)
-        embed = discord.Embed(description=f"Your friends: {', '.join([f'<@{user}>' for user in user_data['friend_list']])}", color=0x363940)
-        await interaction.response.send_message(embed=embed)
+        match perk.value:
 
-    @friend.command(name="fix", description="fix your custom role friend list")
-    async def _fix(self, interaction: Interaction):
-        user_data = await self.bot.perk.get_data('roles', interaction.guild.id, interaction.user.id)
-        if not user_data: return await interaction.response.send_message("You don't have any custom role. perk.", ephemeral=True)
+            case "role":
+
+                if not user_data['role_id']: return await interaction.response.send_message("You haven't created a custom role yet.", ephemeral=True)
+                role = interaction.guild.get_role(user_data['role_id'])
+                if not role: return await interaction.response.send_message("Your custom role has been deleted/missing.", ephemeral=True)
+
+                if option.value == "add":
+                    if len(user_data['friend_list']) >= user_data['friend_limit']: return await interaction.response.send_message(f"You have reached your friend limit ({user_data['friend_limit']}).", ephemeral=True)
+                    if traget is None: return await interaction.response.send_message("You need to provide a member.", ephemeral=True)
+                    if traget.id in user_data['friend_list']: return await interaction.response.send_message("This user is already in your friend list.", ephemeral=True)
+                    else:
+                        user_data['friend_list'].append(traget.id)
+                        traget.add_roles(role, reason=f"Custom role perk for {interaction.user}")
+                        await interaction.response.send_message(embed=discord.Embed(description=f"{traget.mention} has been added to your friend list.", color=0x363940))
+                elif option.value == "remove":
+                    if traget is None: return await interaction.response.send_message("You need to provide a member.", ephemeral=True)
+                    if traget.id not in user_data['friend_list']: return await interaction.response.send_message("This user is not in your friend list.", ephemeral=True)
+                    else:
+                        user_data['friend_list'].remove(traget.id)
+                        traget.remove_roles(role, reason=f"Custom role perk for {interaction.user}")
+                        await self.bot.perk.update(perk.value, user_data)
+                        await interaction.response.send_message(embed=discord.Embed(description=f"{traget.mention} has been removed from your friend list.", color=0x363940))
+                elif option.value == "list":
+                    embed = discord.Embed(title="Your friend list for your custom role", color=0x363940, description="")
+                    if len(user_data['friend_list']) == 0: embed.description = "you don't have any friends in your friend list. **;-;**"
+                    else:
+                        for friend in user_data['friend_list']:
+                            embed.description += f"<@{friend}>\n"
+                    await interaction.response.send_message(embed=embed)
+                elif option.value == "clear":
+                    for friend in role.members:
+                        if friend.id != interaction.user.id:
+                            friend.remove_roles(role, reason=f"Custom role perk for {interaction.user}")
+                    user_data['friend_list'] = []
+                    await self.bot.perk.update(perk.value, user_data)
+                    await interaction.response.send_message(embed=discord.Embed(description="Your friend list has been cleared.", color=0x363940))
+                elif option.value == "fix":
+                    for friend in role.members:
+                        if friend.id not in user_data['friend_list']:
+                            user_data['friend_list'].append(friend.id)
+                        await self.bot.perk.update(perk.value, user_data)
+                    await interaction.response.send_message(embed=discord.Embed(description="Your friend list has been fixed.", color=0x363940))
         
+            case "channel":
+                if not user_data['channel_id']: return await interaction.response.send_message("You haven't created a custom channel yet.", ephemeral=True)
+                channel = interaction.guild.get_channel(user_data['channel_id'])
+                if not channel: return await interaction.response.send_message("Your custom channel has been deleted/missing.", ephemeral=True)
+                
+                if option.value == "add":
+                    if len(user_data['friend_list']) >= user_data['friend_limit']: return await interaction.response.send_message(f"You have reached your friend limit ({user_data['friend_limit']}).", ephemeral=True)
+                    if traget.id in user_data['friend_list']: return await interaction.response.send_message("This user is already in your friend list.", ephemeral=True)
+                    await channel.set_permissions(traget, view_channel=True, reason=f"Custom channel perk for {interaction.user}")
+                    user_data['friend_list'].append(traget.id)
+                    await self.bot.perk.update(perk.value,user_data)
+                    await interaction.response.send_message(embed=discord.Embed(description=f"{traget.mention} has been added to your friend list.", color=0x363940))
+                    await channel.send(f"{traget.mention} you have been added to {interaction.user.mention}'s custom channel friend list.")
+                elif option.value == "remove":
+                    if traget.id not in user_data['friend_list']: return await interaction.response.send_message("This user is not in your friend list.", ephemeral=True)
+                    await channel.set_permissions(traget, overwrite=None, reason=f"Custom channel perk for {interaction.user}")
+                    user_data['friend_list'].remove(traget.id)
+                    await self.bot.perk.update(perk.value,user_data)
+                    await interaction.response.send_message(embed=discord.Embed(description=f"{traget.mention} has been removed from your friend list.", color=0x363940))
+                elif option.value == "list":
+                    embed = discord.Embed(title="Your friend list for your custom channel", color=0x363940, description="")
+                    if len(user_data['friend_list']) == 0: embed.description = "you don't have any friends in your friend list. **;-;**"
+                    else:
+                        for friend in user_data['friend_list']:
+                            embed.description += f"<@{friend}>\n"
+                    await interaction.response.send_message(embed=embed)
+                elif option.value == "clear":
+                    for friend in channel.overwrites:
+                        if friend.id != interaction.user.id:
+                            await channel.set_permissions(friend, overwrite=None, reason=f"Custom channel perk for {interaction.user}")
+                    user_data['friend_list'] = []
+                    await self.bot.perk.update(perk.value,user_data)
+                    await interaction.response.send_message(embed=discord.Embed(description="Your friend list has been cleared.", color=0x363940))
+                elif option.value == "fix":
+                    for user in user_data['friend_list']:
+                        user = interaction.guild.get_member(user)
+                        if not user: user_data['friend_list'].remove(user.id)
+                        else: await channel.set_permissions(user, view_channel=True, reason=f"Custom channel perk for {interaction.user}")
+                    await self.bot.perk.update(perk.value, user_data)
+                    await interaction.response.send_message(embed=discord.Embed(description="Your friend list has been fixed.", color=0x363940))
+    
+    @app_commands.command(name="delete", description="delete your custom channel or role")
+    @app_commands.describe(perk="the perk you want to delete")
+    @app_commands.choices(perk=[app_commands.Choice(name="Custom Channel", value="channel"), app_commands.Choice(name="Custom Role", value="role")])
+    async def _delete(self, interaction: Interaction, perk: app_commands.Choice[str]):
+        user_data = await self.bot.perk.get_data(perk.value, interaction.guild.id, interaction.user.id)
+        if not user_data: return await interaction.response.send_message("You don't have any custom channel or role. perk.", ephemeral=True)
+
         view = Confirm(interaction.user, 30)
-        await interaction.response.send_message(embed=discord.Embed(description="Are you sure you want to fix your custom role friend list?\nThis will remove all your friends from your custom role.", color=0x363940), view=view)
-        await view.wait()
-        if view.value:
-            await view.interaction.response.edit_message(embed=discord.Embed(description="Fixing your custom role friend list...", color=0x363940), view=None)
-            role = discord.utils.get(interaction.guild.roles, id=user_data['role_id'])
-            for member in role.members: 
-                if member.id != interaction.user.id: await member.remove_roles(role)
-            user_data['friend_list'] = []
-            await self.bot.perk.update_data('roles', interaction.guild.id, interaction.user.id, user_data)
-            await view.interaction.edit_original_response(embed=discord.Embed(description="Fixed your custom role friend list.", color=0x363940), view=None)            
-
-    @create.command(name="role", description="create a custom role")
-    @app_commands.describe(name="name of the role", color="Hex color of the role", icon="Icon of the role")
-    async def _role(self, interaction: Interaction, name: str, color: str, icon:discord.Attachment=None):
-        user_data = await self.bot.perk.get_data('roles', interaction.guild.id, interaction.user.id)
-        if not user_data: return await interaction.response.send_message("You don't have any custom role. perk.", ephemeral=True)
-        if user_data['role_id'] != None: return await interaction.response.send_message("You already have a custom role.", ephemeral=True)
-        perks_config = await self.bot.perk.config.find(interaction.guild.id)
-        if not perks_config: return await interaction.response.send_message("This server doesn't have any perks config.", ephemeral=True)
-        await interaction.response.send_message(embed=discord.Embed(description="Creating your custom role...", color=0x363940))
-        if icon:
-            if not icon.filename.endswith(('png', 'jpg')): return await interaction.edit_original_response(embed=discord.Embed(description="Invalid icon file type.", color=0x363940))
-            async with aiohttp.ClientSession() as session:
-                async with session.get(icon.url) as resp:
-                    if resp.status != 200: return await interaction.edit_original_response(embed=discord.Embed(description="Invalid icon file type.", color=0x363940))
-                    image = await resp.read()
-        
-        role = await interaction.guild.create_role(name=name, color=discord.Color(int(color.replace('#', ''), 16)), reason=f"Custom role for {interaction.user.display_name}", display_icon=icon)
-        await role.edit(position=perks_config['custom_roles_position'])
-        await interaction.user.add_roles(role, reason=f"Custom role for {interaction.user.display_name}")
-        user_data['role_id'] = role.id
-        await self.bot.perk.update('roles', user_data)
-        await interaction.edit_original_response(embed=discord.Embed(description="Your custom role has been created.", color=0x363940))
-    
-    @create.command(name="channel", description="create a custom channel")
-    @app_commands.describe(name="name of the channel")
-    async def _channel(self, interaction: Interaction, name: str):
-        user_data = await self.bot.perk.get_data('channel', interaction.guild.id, interaction.user.id)
-        if not user_data: return await interaction.response.send_message("You don't have any custom channel. perk.", ephemeral=True)
-        if user_data['channel_id'] != None: return await interaction.response.send_message("You already have a custom channel.", ephemeral=True)
-        perks_config = await self.bot.perk.config.find(interaction.guild.id)
-        if not perks_config: return await interaction.response.send_message("This server doesn't have any perks config.", ephemeral=True)
-        await interaction.response.send_message(embed=discord.Embed(description="Creating your custom channel...", color=0x363940))
-        overwrites = {
-            interaction.guild.default_role: discord.PermissionOverwrite(read_messages=False),
-            interaction.user: discord.PermissionOverwrite(read_messages=True)
-        }
-        if perks_config['custom_category'] == None: return await interaction.edit_original_response(embed=discord.Embed(description="This server doesn't have a custom channel category.", color=0x363940))
-        channel = await interaction.guild.create_text_channel(name=name, overwrites=overwrites, reason=f"Custom channel for {interaction.user.display_name}", category=interaction.guild.get_channel(perks_config['custom_category']))
-        user_data['channel_id'] = channel.id
-        await self.bot.perk.update('channel', user_data)
-        await interaction.edit_original_response(embed=discord.Embed(description="Your custom channel has been created.", color=0x363940))
-        await channel.send(f"Welcome to your custom channel, {interaction.user.mention}!")
-    
-    @delete.command(name="role", description="delete your custom role")
-    async def _role(self, interaction: Interaction):
-        user_data = await self.bot.perk.get_data('roles', interaction.guild.id, interaction.user.id)
-        if not user_data: return await interaction.response.send_message("You don't have any custom role. perk.", ephemeral=True)
-        if user_data['role_id'] == None: return await interaction.response.send_message("You havent created a custom role yet.", ephemeral=True)
-        view = Confirm(interaction.user, 30) 
-        await interaction.response.send_message(embed=discord.Embed(description="Are you sure you want to delete your custom role?", color=0x363940), view=view)
+        await interaction.response.send_message(embed=discord.Embed(description=f"Are you sure you want to delete your custom {perk.name.lower()}?", color=0x363940), view=view)
         view.message = await interaction.original_response()
         await view.wait()
         if view.value:
-            role = interaction.guild.get_role(user_data['role_id'])
-            if not role: return await interaction.edit_original_response(embed=discord.Embed(description="Your custom role is invalid/missing.", color=0x363940))
-            total_seconds = (datetime.datetime.utcnow() - datetime.datetime(role.created_at.year, role.created_at.month, role.created_at.day, role.created_at.hour, role.created_at.minute, role.created_at.second)).total_seconds()            
-            await role.delete(reason=f"Custom role deleted with request from role owner {interaction.user.display_name}")
-            user_data['duration'] = round(user_data['duration'] - total_seconds)
-            user_data['role_id'] = None
-            await self.bot.perk.update('roles', user_data)
-            await view.interaction.response.send_message(embed=discord.Embed(description="Your custom role has been deleted.", color=0x363940))
-        else:
-            for child in view.children:child.disabled = True
-            await interaction.edit_original_response(embed=discord.Embed(description="Cancelled.", color=0x363940), view=view)
-    
-    @delete.command(name="channel", description="delete your custom channel")
-    async def _channel(self, interaction: Interaction):
-        user_data = await self.bot.perk.get_data('channel', interaction.guild.id, interaction.user.id)
-        if not user_data: return await interaction.response.send_message("You don't have any custom channel. perk.", ephemeral=True)
-        if user_data['channel_id'] == None: return await interaction.response.send_message("You havent created a custom channel yet.", ephemeral=True)
-        view = Confirm(interaction.user, 30) 
-        await interaction.response.send_message(embed=discord.Embed(description="Are you sure you want to delete your custom channel?", color=0x363940), view=view)
-        view.message = await interaction.original_response()
-        await view.wait()
-        if view.value:
-            channel = interaction.guild.get_channel(user_data['channel_id'])
-            if not channel: return await interaction.edit_original_response(embed=discord.Embed(description="Your custom channel is invalid/missing.", color=0x363940))
-            total_seconds = (datetime.datetime.utcnow() - datetime.datetime(channel.created_at.year, channel.created_at.month, channel.created_at.day, channel.created_at.hour, channel.created_at.minute, channel.created_at.second)).total_seconds()
-            await channel.delete(reason=f"Custom channel deleted with request from channel owner {interaction.user.display_name}")
-            user_data['duration'] = round(user_data['duration'] - total_seconds)
-            user_data['channel_id'] = None
-            await self.bot.perk.update('channel', user_data)
-            await view.interaction.response.edit_message(embed=discord.Embed(description="Your custom channel has been deleted.", color=0x363940), view=None)
-        else:
-            for child in view.children:child.disabled = True
-            await interaction.edit_original_response(embed=discord.Embed(description="Cancelled.", color=0x363940), view=view)
+            match perk.value:
+                case "channel":
+                    channel = interaction.guild.get_channel(user_data['channel_id'])
+                    if not channel: return await interaction.response.send_message("Your custom channel has been deleted/missing.", ephemeral=True)
 
-    @edit.command(name="role", description="edit your role perk")
-    async def edit_role(self, interaction: Interaction, name: str=None, color:str=None, icon: discord.Attachment=None):
-        perk_data = await self.bot.perk.get_data('roles', interaction.guild.id, interaction.user.id)
-        if not perk_data: return await interaction.response.send_message("You don't have any role perks yet.", ephemeral=True)
-        role = interaction.guild.get_role(perk_data['role_id'])
-        if not role: return await interaction.response.send_message("Your role perk is invalid/missing.", ephemeral=True)
-        await interaction.response.send_message(embed=discord.Embed(description="Please wait while we edit your role perk", color=0x363940))
-        if icon:
-            if not icon.filename.url.endswith(('png', 'jpg')): return await interaction.edit_original_response(embed=discord.Embed(description="Invalid image type.", color=0x363940))
-            async with aiohttp.ClientSession() as session:
-                async with session.get(icon.url) as resp:
-                    if resp.status != 200: return await interaction.edit_original_response(embed=discord.Embed(description="Invalid image url.", color=0x363940))
-                    image = await resp.read()
-                    
-        await role.edit(name=name, color=int(color.replace("#", ""), 16) if color else None, icon=image if icon else None)
-        await interaction.edit_original_response(embed=discord.Embed(description="Your Custom Role as been edited.", color=0x363940))
+                    total_seconds = (datetime.datetime.utcnow() - datetime.datetime(channel.created_at.year, channel.created_at.month, channel.created_at.day, channel.created_at.hour, channel.created_at.minute, channel.created_at.second)).total_seconds()
+                    await channel.delete(reason=f"Custom channel perk for {interaction.user}")
+                    user_data['channel_id'] = None
+                    if user_data['duration'] != 'permanent': user_data['duration'] = round(user_data['duration'] - total_seconds)
+                    await self.bot.perk.update(perk.value, user_data)
+                    await view.interaction.response.edit_message(embed=discord.Embed(description="Your custom channel has been deleted.", color=0x363940), view=None)
+
+                case "role":
+                    role = interaction.guild.get_role(user_data['role_id'])
+                    if not role: return await view.interaction.response.send_message("Your custom role has been deleted/missing.", ephemeral=True)
+                    total_seconds = (datetime.datetime.utcnow() - datetime.datetime(role.created_at.year, role.created_at.month, role.created_at.day, role.created_at.hour, role.created_at.minute, role.created_at.second)).total_seconds()
+                    await role.delete(reason=f"Custom role perk for {interaction.user}")
+                    user_data['role_id'] = None
+                    if user_data['duration'] != 'permanent': user_data['duration'] = round(user_data['duration'] - total_seconds)
+                    await self.bot.perk.update(perk.valueuser_data)
+                    await view.interaction.response.edit_message(embed=discord.Embed(description="Your custom role has been deleted.", color=0x363940), view=None)
+
+    @app_commands.command(name="edit", description="edit your custom channel or role")
+    @app_commands.describe(perk="the perk you want to edit", name="the name of your custom channel or role", color="the color of your custom role", icon="the icon of your custom role")
+    @app_commands.choices(perk=[app_commands.Choice(name="Custom Channel", value="channels"), app_commands.Choice(name="Custom Role", value="roles")])
+    async def edit(self, interaction: Interaction, perk: app_commands.Choice[str], name: str=None, color:str=None, icon: discord.Attachment=None):
+        perk_data = await self.bot.perk.get_data(perk.value, interaction.guild.id, interaction.user.id)
+        if not perk_data: return await interaction.response.send_message(f"You don't have any {perk.name.lower()} perks yet.", ephemeral=True)
+        perk_config = await self.bot.perk.get_config(perk.value, interaction.guild.id)
+
+        match perk.value:
+            case "channels":
+                channel = interaction.guild.get_channel(perk_data['channel_id'])
+                if not channel: return await interaction.response.send_message("Your channel perk is invalid/missing.", ephemeral=True)
+                await interaction.response.send_message(embed=discord.Embed(description="Please wait while we edit your channel perk", color=0x363940))
+                if not name: await interaction.send_message(embed=discord.Embed(description="Please provide a name for your channel.", color=0x363940))
+                await channel.edit(name=name, reason=f"Custom channel perk for {interaction.user}")
+                await interaction.response.send_message(embed=discord.Embed(description="Your channel has been edited.", color=0x363940))
+            case "roles":
+                role = interaction.guild.get_role(perk_data['role_id'])
+                if not role: return await interaction.response.send_message("Your role perk is invalid/missing.", ephemeral=True)
+                await interaction.response.send_message(embed=discord.Embed(description="Please wait while we edit your role perk", color=0x363940))
+                if icon: 
+                    if not icon.filename.url.endswith(('png', 'jpg')): return await interaction.send_message(embed=discord.Embed(description="Please provide a valid image for your role icon.", color=0x363940))
+                    async with self.bot.session.get(icon.filename.url) as resp:
+                        if resp.status != 200: return await interaction.send_message(embed=discord.Embed(description="Please provide a valid image for your role icon.", color=0x363940))
+                        icon = await resp.read()
+                color = color.replace("#", "") if color else None
+                await role.edit(name=name, color=discord.Color(int(color, 16)) if color else role.color, reason=f"Custom role perk for {interaction.user}", display_icon=icon)
+                await interaction.edit_original_response(embed=discord.Embed(description="Your role has been edited.", color=0x363940))
     
-    @edit.command(name="channel", description="edit your channel perk")
-    async def edit_channel(self, interaction: Interaction, name: str=None, topic: str=None):
-        perk_data = await self.bot.perk.get_data('channel', interaction.guild.id, interaction.user.id)
-        if not perk_data: return await interaction.response.send_message("You don't have any channel perks yet.", ephemeral=True)
-        channel = interaction.guild.get_channel(perk_data['channel_id'])
-        if not channel: return await interaction.response.send_message("Your channel perk is invalid/missing.", ephemeral=True)
-        await interaction.response.send_message(embed=discord.Embed(description="Please wait while we edit your channel perk", color=0x363940))
-        await channel.edit(name=name, topic=topic)
-        await interaction.edit_original_response(embed=discord.Embed(description="Your Custom Channel as been edited.", color=0x363940))
-    
-    @edit.command(name="react", description="edit your react perk")
+    @app_commands.command(name="react", description="edit your react perk")
+    @app_commands.describe(emoji="the emoji you want to react with")
     async def edit_react(self, interaction: Interaction, emoji: str):
         perk_data = await self.bot.perk.get_data('react', interaction.guild.id, interaction.user.id)
         if not perk_data: return await interaction.response.send_message("You don't have any react perks yet.", ephemeral=True)
@@ -355,27 +405,27 @@ class Perks(commands.GroupCog, name="perks", description="manage your custom per
         await interaction.edit_original_response(embed=discord.Embed(description=f"Your Custom React as been set to {emoji}", color=0x363940))
         await self.bot.perk.update_cache('react', interaction.user.id, interaction.guild.id, perk_data)
 
-    @highlight.command(name="add", description="add a highlight")
+    @highlight.command(name="trigger", description="manage your highlight triggers")
     @app_commands.describe(trigger="The trigger for the highlight")
-    async def highlight_add(self, interaction: Interaction, trigger: str):
-        perk_data = await self.bot.perk.get_data('highlight', interaction.guild.id, interaction.user.id)
-        if not perk_data: return await interaction.response.send_message("You don't have any highlight perks yet.", ephemeral=True)
-        await interaction.response.send_message(embed=discord.Embed(description="Please wait while we add your highlight", color=0x363940))
-        perk_data['triggers'].append(trigger)
-        await self.bot.perk.update('highlight', perk_data)
-        await interaction.edit_original_response(embed=discord.Embed(description=f"`{trigger} has been added to your highlights.", color=0x363940))
-        await self.bot.perk.update_cache('highlight', interaction.user.id, interaction.guild.id, perk_data)
-    
-    @highlight.command(name="remove", description="remove a highlight")
-    @app_commands.describe(trigger="The trigger for the highlight")
-    async def highlight_remove(self, interaction: Interaction, trigger: str):
-        perk_data = await self.bot.perk.get_data('highlight', interaction.guild.id, interaction.user.id)
-        if not perk_data: return await interaction.response.send_message("You don't have any highlight perks yet.", ephemeral=True)
-        if trigger not in perk_data['triggers']: return await interaction.response.send_message("That trigger doesn't exist.", ephemeral=True)
-        perk_data['triggers'].remove(trigger)
-        await self.bot.perk.update('highlight', perk_data)
-        await interaction.response.send_message("Your Highlight as been removed.", ephemeral=True)
-        await self.bot.perk.update_cache('highlight', interaction.user.id, interaction.guild.id, perk_data)
+    @app_commands.choices(option=[app_commands.Choice(name="Add", value="add"), app_commands.Choice(name="Remove", value="remove"), app_commands.Choice(name="List", value="list")])
+    async def highlight_trigger(self, interaction: Interaction, option: app_commands.Choice[str], trigger: str):
+        user_data = await self.bot.perk.get_data('highlight', interaction.guild.id, interaction.user.id)
+        if not user_data: return await interaction.response.send_message("You don't have any highlight perks yet.", ephemeral=True)
+        if option.value == "add":
+            if trigger in user_data['triggers']: return await interaction.response.send_message("This trigger already exists.", ephemeral=True)
+            user_data['triggers'].append(trigger)
+            await self.bot.perk.update('highlight', user_data)
+            await interaction.response.send_message(embed=discord.Embed(description=f"`{trigger}` has been added to your highlight triggers.", color=0x363940))
+        elif option.value == "remove":
+            if trigger not in user_data['triggers']: return await interaction.response.send_message("This trigger doesn't exist.", ephemeral=True)
+            user_data['triggers'].remove(trigger)
+            await self.bot.perk.update('highlight', user_data)
+            await interaction.response.send_message(embed=discord.Embed(description=f"`{trigger}` has been removed from your highlight triggers.", color=0x363940))
+        elif option.value == "list":
+            if not user_data['triggers']: return await interaction.response.send_message("You don't have any highlight triggers yet.", ephemeral=True)
+            await interaction.response.send_message(embed=discord.Embed(description=f"Your highlight triggers are: `{', '.join(user_data['triggers'])}`", color=0x363940))
+        
+        await self.bot.perk.update_cache('highlight', interaction.user.id, interaction.guild.id, user_data)
     
     @highlight.command(name="channel", description="manage your ignore/unignore channels")
     async def highlight_channel(self, interaction: Interaction, option: Literal['ignore', 'unignore'], channel: app_commands.Transform[discord.TextChannel, MutipleChannel]):
@@ -402,13 +452,14 @@ class Perk_BackEND(commands.Cog):
         self.bot = bot
         self.role_perk_task_role = self.check_perk_expire_role.start()
         self.react_perk_channel = self.check_perk_expire_channel.start()
+        self.update_cheche = self.update_perk_cache_task.start()
         self.role_task_in_progress = False
         self.channel_task_in_progress = False
     
     def cog_unload(self):
         self.role_perk_task_role.cancel()
         self.react_perk_channel.cancel()
-
+        self.update_cheche.cancel()
     
     async def autoreact(self, message):
         if message.author.bot: return
@@ -442,6 +493,7 @@ class Perk_BackEND(commands.Cog):
 
                 for trigger in message_content:
                     if trigger in user_data['triggers']:
+                        print(user_data['last_trigger'])
                         if user_data['last_trigger'] is None or (datetime.datetime.utcnow() - user_data['last_trigger']).total_seconds() > 300:
                             self.bot.dispatch('highlight', message, user_id, user_data)
                             user_data['last_trigger'] = datetime.datetime.utcnow()
@@ -450,6 +502,10 @@ class Perk_BackEND(commands.Cog):
     
     @commands.Cog.listener()
     async def on_ready(self):
+        await self.bot.perk.create_cach()
+
+    @tasks.loop(minutes=60)
+    async def update_perk_cache_task(self):
         await self.bot.perk.create_cach()
     
     @tasks.loop(seconds=10)
@@ -513,13 +569,17 @@ class Perk_BackEND(commands.Cog):
     @check_perk_expire_role.before_loop
     async def before_check_perk_expire_role(self):
         await self.bot.wait_until_ready()
+    
+    @update_perk_cache_task.before_loop
+    async def before_update_perk_cache(self):
+        await self.bot.wait_until_ready()
 
     @commands.Cog.listener()
     async def on_highlight(self, message: discord.Message, user_id: int,user_data: dict):
         messages = []
         async for msg in message.channel.history(limit=20, before=message):
             if msg.author.id == user_id:
-                if not (msg.created_at - message.created_at).total_seconds() > 300:
+                if not (datetime.datetime.utcnow() - datetime.datetime(msg.created_at.year, msg.created_at.month, msg.created_at.day, msg.created_at.hour, msg.created_at.minute, msg.created_at.second)).total_seconds() > 300:
                     return
             messages.append(msg)
 
@@ -547,48 +607,46 @@ class Perk_BackEND(commands.Cog):
         if len(message.mentions) > 0: await self.autoreact(message)
         await self.highlight(message)
 
-@app_commands.guild_only()
-@app_commands.default_permissions(administrator=True)
-class Perk_Config(commands.GroupCog, name="perk", description="Configure your perks"):
+class Perk_Config(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
-    
-    config = Group(name="config", description="Configure your perks")
 
-    @config.command(name="channel-category", description="Set the category for your custom channels")
-    @app_commands.describe(category="The category you want to set")
-    async def channel_category(self, interaction: Interaction, category: discord.CategoryChannel):
+    @app_commands.command(name="perk-config", description="Configure your perks")
+    @app_commands.describe(category="The category you want to set", position="The position you want to set", options="The option you want to set")
+    @app_commands.choices(options=[
+        app_commands.Choice(name="Show", value="show"),
+        app_commands.Choice(name="Custom Channel Category", value="channel_category"),
+        app_commands.Choice(name="Custom Role Position", value="role_position")        
+    ])
+    async def channel_category(self, interaction: Interaction, options: app_commands.Choice[str], category: discord.CategoryChannel = None, position: int = None):
         perk_data = await self.bot.perk.get_data('config', interaction.guild.id, interaction.user.id)
-        if perk_data is None: 
+        if perk_data is None:
             perk_data = {'_id': interaction.guild.id, 'custom_category': None, 'custom_roles_position': 0}
             await self.bot.perk.config.insert(perk_data)
-        perk_data['custom_category'] = category.id
-        await self.bot.perk.update('config', perk_data)
-        await interaction.response.send_message(embed=discord.Embed(description=f"Your custom channel category has been set to {category.mention}", color=0x363940))
+        if options == "show":
+            embed = discord.Embed(description="")
+            embed.description += f"**Custom Channel Category:** {perk_data['custom_category'] if perk_data['custom_category'] is not None else '`None`'}\n"
+            embed.description += f"**Custom Role Position:** {perk_data['custom_roles_position'] if perk_data['custom_roles_position'] is not None else '`None`'}\n"
+            await interaction.response.send_message(embed=embed)
+        elif options == "channel_category":
+            if category is None:
+                await interaction.response.send_message(embed=discord.Embed(description="You need to provide a category", color=0x363940), ephemeral=True)
+                return
+            perk_data['custom_category'] = category.id
+            await self.bot.perk.update('config', perk_data)
+            await interaction.response.send_message(embed=discord.Embed(description=f"Your custom channel category has been set to {category.mention}", color=0x363940))
+        elif options == "role_position":
+            if position is None:
+                await interaction.response.send_message(embed=discord.Embed(description="You need to provide a position", color=0x363940), ephemeral=True)
+                return
+            if position >= interaction.guild.me.top_role.position:
+                await interaction.response.send_message(embed=discord.Embed(description="You cannot set a position higher/equal to my top role", color=0x363940), ephemeral=True)
+                return
+            perk_data['custom_roles_position'] = position
+            await self.bot.perk.update('config', perk_data)
+            await interaction.response.send_message(embed=discord.Embed(description=f"Your custom role position has been set to {position}", color=0x363940))
     
-    @config.command(name="role-position", description="Set the position for your custom roles")
-    @app_commands.describe(position="The position you want to set")
-    async def role_position(self, interaction: Interaction, position: int):
-        perk_data = await self.bot.perk.get_data('config', interaction.guild.id, interaction.user.id)
-        if perk_data is None: 
-            perk_data = {'_id': interaction.guild.id, 'custom_category': None, 'custom_roles_position': 0}
-            await self.bot.perk.config.insert(perk_data)
-        perk_data['custom_roles_position'] = position
-        await self.bot.perk.update('config', perk_data)
-        await interaction.response.send_message(embed=discord.Embed(description=f"Your custom role position has been set to {position}", color=0x363940))
-    
-    @config.command(name="show", description="Show your perk config")
-    async def show(self, interaction: Interaction):
-        perk_data = await self.bot.perk.get_data('config', interaction.guild.id, interaction.user.id)
-        if perk_data is None: 
-            perk_data = {'_id': interaction.guild.id, 'custom_category': None, 'custom_roles_position': 0}
-            await self.bot.perk.config.insert(perk_data)
-        embed = discord.Embed(color=0x363940, description="")
-        embed.description += f"**Custom Channel Category:** {interaction.guild.get_channel(perk_data['custom_category']).mention if interaction.guild.get_channel(perk_data['custom_category']) is not None else 'None'}\n"
-        embed.description += f"**Custom Role Position:** {perk_data['custom_roles_position'] if perk_data['custom_roles_position'] is not None else 'None'}\n"
-        await interaction.response.send_message(embed=embed)
-    
-    @app_commands.command(name="remove", description="Remove perks from your server members")
+    @app_commands.command(name="perk-remove", description="Remove perks from your server members")
     @app_commands.describe(perk="The perk you want to remove", member="The member you want to remove the perk from")
     @app_commands.choices(perk=[app_commands.Choice(name="Custom Channel", value="channel"), app_commands.Choice(name="Custom Role", value="roles"), app_commands.Choice(name="Custom React", value="react"), app_commands.Choice(name="Highlight", value="highlight")])
     async def perk(self, interaction: Interaction, perk: app_commands.Choice[str], member: discord.Member):
@@ -618,9 +676,8 @@ class Perk_Config(commands.GroupCog, name="perk", description="Configure your pe
                 await self.bot.perk.delete(user_data)
                 try:await self.bot.perk.cache['highlight'].pop(user_data['user_id'])
                 except KeyError:pass
-        
-    
-    @app_commands.command(name="give", description="Give perks to your server members")
+
+    @app_commands.command(name="perk-give", description="Give perks to your server members")
     @app_commands.describe(perk="The perk you want to give", member="The member you want to give the perk to")
     @app_commands.choices(perk=[app_commands.Choice(name="Custom Channel", value="channel"), app_commands.Choice(name="Custom Role", value="roles"), app_commands.Choice(name="Custom React", value="react"), app_commands.Choice(name="Highlight", value="highlight")])
     async def perk(self, interaction: Interaction, perk: app_commands.Choice[str], member: discord.Member, duration: app_commands.Transform[int, TimeConverter]="permanent", friend_limit: app_commands.Range[int, 1, 10]=5):
