@@ -8,7 +8,6 @@ from utils.db import Document
 from utils.views.payout_system import Payout_Config_Edit
 from utils.transformer import MultipleMember
 from utils.views.payout_system import Payout_Buttton, Payout_clain
-from utils.views.member_view import Member_view
 from utils.transformer import TimeConverter
 from typing import Literal
 from io import BytesIO
@@ -213,7 +212,7 @@ class Dump(commands.GroupCog, name="dump", description="Dump commands"):
             file = discord.File(buffer, filename=f"{user.name}.txt")
             buffer.close()
             await interaction.edit_original_response(content="Here you go!", attachments=[file])
-            
+
 async def setup(bot):
     await bot.add_cog(Payout(bot))
     await bot.add_cog(Dump(bot))
