@@ -196,7 +196,7 @@ class Panel_Edit(View):
     async def description(self, interaction: Interaction, button: Button):
         modal = Panel_Description_Modal(self.data)
         qestion = TextInput(label="Set the description for the panel", max_length=300, style=TextStyle.long)
-        if self.data["description"] is not None:qestion.value = self.data["description"]
+        if self.data["description"] is not None:qestion.default = self.data["description"]
         else: qestion.placeholder = "Enter a description"
         modal.add_item(qestion)
         await interaction.response.send_modal(modal)
