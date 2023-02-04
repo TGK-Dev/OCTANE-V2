@@ -240,10 +240,10 @@ class level(commands.GroupCog, name="level"):
         with BytesIO() as image_binary:
             image.save(image_binary, 'PNG')
             image_binary.seek(0)
-            #for i in await self.bot.ranks.get_all(): await self.bot.ranks.delete(i['_id'])
             await interaction.followup.send(file=discord.File(fp=image_binary, filename=f'{interaction.guild.id}_weekly_winner_card.png'))
             image_binary.close()
-
+        
+        self.bot.dispatch("weekly_leaderboard_reset", interaction.channel)
 class Level_BackEnd(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
