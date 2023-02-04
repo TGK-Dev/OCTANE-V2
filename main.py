@@ -24,6 +24,7 @@ class Bot_base(commands.Bot):
     async def setup_hook(self) -> None:
         self.mongo = AsyncIOMotorClient(os.environ.get("MONGO"))
         self.db = self.mongo["tgk_database_test"]
+        
         for file in os.listdir("./cogs"):
             if file.endswith(".py") and not file.startswith("_"):
                 await self.load_extension(f"cogs.{file[:-3]}")
@@ -34,26 +35,16 @@ class Bot_base(commands.Bot):
 bot = Bot_base(help_command=None, application_id=998152864201457754, case_insensitive=True, owner_ids=[488614633670967307], activity=discord.Activity(type=discord.ActivityType.playing, name="with discord API"), stats=discord.Status.idle)
 
 async def main():
-
-    logger = logging.getLogger("discord")
-    logger.setLevel(logging.INFO)
-    handler = logging.handlers.RotatingFileHandler(
-        filename="bot.log",
-        encoding="utf-8",
-        maxBytes=32*1024*1024,
-        backupCount=5
-    )
-    formatter = logging.Formatter('[{asctime}] [{levelname:<8}] {name}: {message}', style="{")
-    handler.setFormatter(formatter)
-    logger.addHandler(handler)
-
     async with ClientSession():
         async with bot:
             bot.mongo = AsyncIOMotorClient(os.environ.get("MONGO"))
             bot.db = bot.mongo["tgk_database"]
             bot.config = Document(bot.db, "config")
+            discord.utils.setup_logging()
 
 bot.start_time = datetime.datetime.now()
+bot.secret = os.environ.get("SECRET")
+bot.token = os.environ.get("TOKEN")
 
 @bot.event
 async def on_ready():
@@ -71,4 +62,4 @@ async def ping(interaction):
     await interaction.edit_original_response(content=None, embed=discord.Embed(description=f"Ping {bot.latency*1000.0:.2f}ms"))
 
 if __name__ == "__main__":
-    bot.run(os.environ.get("TOKEN"))
+    bot.run(bot.token)

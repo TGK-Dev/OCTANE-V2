@@ -15,7 +15,5 @@ def is_admin(interaction: Interaction) -> bool:
 def can_ban(interaction: Interaction) -> bool:
     return interaction.user.guild_permissions.ban_members
 
-def is_dev():
-    def is_developer(ctx):
-        return ctx.author.id in ctx.bot.owner_ids
-    return commands.check(is_developer)
+def is_dev(interaction: Interaction) -> bool:
+    return interaction.user.id in interaction.client.owner_ids
