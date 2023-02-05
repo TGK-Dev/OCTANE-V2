@@ -5,12 +5,20 @@ from discord import app_commands, Interaction
 import datetime
 import psutil
 from typing import Literal
+from utils.db import Document
 
 class Basic(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
         self.bot.snipes = {}
         self.bot.esnipes = {}
+        self.bot.afk = Document(bot.db, "afk")
+        self.bot.current_afk = {}
+    
+    @commands.Cog.listener()
+    async def on_ready(self):
+        current_afks = await self.bot.afk.get_all()
+        for afk in current_afks: self.bot.current_afk[afk["_id"]] = afk
     
     @app_commands.command(name="stats")
     async def stats(self, interaction: Interaction):
@@ -102,6 +110,74 @@ class Basic(commands.Cog):
             "before": before.content,
             "after": after.content
         })
+    
+    @commands.Cog.listener()
+    async def on_message(self, message):
+        if message.author.bot or message.guild is None or message.content is None: return
+        if message.author.id in self.bot.current_afk.keys():
+            self.bot.dispatch("afk_return", message)
+        if len(message.mentions) > 0:
+            for user in message.mentions:
+                if user.id in self.bot.current_afk.keys():
+                   return self.bot.dispatch("afk_ping", message, user)
+        if message.reference is not None:
+            try:
+                reference_message = await message.channel.fetch_message(message.reference.message_id)
+            except discord.NotFound:
+                return
+            if reference_message.author.id in self.bot.current_afk.keys():
+                self.bot.dispatch("afk_ping", message, reference_message.author)
+    
+    @commands.Cog.listener()
+    async def on_afk_return(self, message):
+        user_data = await self.bot.afk.find(message.author.id)
+        embed = discord.Embed(description="**This is the list of the pepole that pinged you while you were afk**\n", color=0x363940)
+        if len(user_data['pings']) == 0:
+            embed.description = "No one pinged you while you were afk"
+        else:
+            for user in user_data['pings']:
+                embed.description += f"**{user['name']}:** {user['message']} | [Jump To Message]({user['jump_url']})\n"
+        try:
+            await message.author.send(embed=embed)
+        except discord.Forbidden:
+            pass
+        await message.reply(f"Welcome back {message.author.mention}!", delete_after=10)
+        try:
+            await message.author.edit(nick=user_data['last_nick'])
+        except discord.Forbidden:
+            pass
+        await self.bot.afk.delete(message.author.id)
+        try:
+            self.bot.current_afk.pop(message.author.id)
+        except KeyError:
+            pass
+    
+    @commands.Cog.listener()
+    async def on_afk_ping(self, message:discord.Message, user:discord.Member):
+        user_data = await self.bot.afk.find(user.id)
+        user_data['pings'].append({"name": message.author.display_name,"message": message.content,"jump_url": message.jump_url})
+        await self.bot.afk.update(user_data)
+        if len(user_data['pings']) == 10:
+            user_data['pings'].pop(len(user_data['pings']) - 1)
+        else:
+            content = message.content if len(message.content) <= 100 else f"{message.content[:100]}..."
+            user_data['pings'].append({"name": message.author.display_name,"message": content,"jump_url": message.jump_url})
+        await message.reply(f"`{user_data['last_nick']}` is afk: {user_data['reason']}", delete_after=10)
+
+    @app_commands.command(name="afk", description="Set your afk status")
+    @app_commands.describe(reason="The reason for your afk status")
+    async def afk(self, interaction: Interaction, reason: str=None):
+        user_data = await self.bot.afk.find(interaction.user.id)
+        if user_data is not None: return await interaction.response.send_message(embed=discord.Embed(description="You are already afk", color=0x363940), ephemeral=True)
+        user_data = {'_id': interaction.user.id,'guild_id': interaction.guild.id,'reason': reason,'last_nick': interaction.user.display_name,'pings': []}
+        await self.bot.afk.insert(user_data)
+        await interaction.response.send_message(f"`{interaction.user.display_name}` I set your status to {reason if reason else 'afk'}", ephemeral=True)
+        try:
+            await interaction.user.edit(nick=f"[AFK] {interaction.user.display_name}")
+        except discord.Forbidden:
+            pass
+        self.bot.current_afk[interaction.user.id] = user_data
+
 
 async def setup(bot):
     await bot.add_cog(Basic(bot))
