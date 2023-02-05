@@ -30,7 +30,7 @@ class Payout(commands.GroupCog, name="payout", description="Payout commands"):
             now = datetime.datetime.utcnow()
             if now > payout['queued_at'] + datetime.timedelta(seconds=payout['claim_time']):
                 view = discord.ui.View()
-                view.add_item(discord.ui.Button(label="Claim period expired!", style=discord.ButtonStyle.red, disabled=True, emoji="<a:nat_cross:1010969491347357717>"))
+                view.add_item(discord.ui.Button(label="Claim period expired!", style=discord.ButtonStyle.gray, disabled=True, emoji="<a:nat_cross:1010969491347357717>"))
                 payout_config = await self.bot.payout_config.find(payout['guild'])
                 guild = self.bot.get_guild(payout['guild'])
                 channel = guild.get_channel(payout_config['pending_channel'])
@@ -132,7 +132,7 @@ class Payout(commands.GroupCog, name="payout", description="Payout commands"):
                 embed.add_field(name="Channel", value=f"**<:nat_reply_cont:1011501118163013634> {winner_message.channel.mention}**")
                 embed.add_field(name="Message Link", value=f"**<:nat_reply_cont:1011501118163013634> [Click Here]({winner_message.jump_url})**")
                 embed.add_field(name="Set By", value=f"**<:nat_reply_cont:1011501118163013634> {interaction.user.mention}**")
-                embed.add_field(name="Payout Status", value="**<:nat_reply_cont:1011501118163013634> Pending**")
+                embed.add_field(name="Status", value="**<:nat_reply_cont:1011501118163013634> Pending**")
                 embed.set_footer(text=f"Message ID: {winner_message.id}", icon_url=interaction.guild.icon.url)
 
                 msg = await queue_channel.send(embed=embed, content=f"{winner.mention}, please claim your prize within the next {claim_timestamp}!\n> If not claimed within the deadline, you are liable to be rerolled/rehosted.", view=Payout_clain())

@@ -4,6 +4,7 @@ from .selects import Channel_select, Role_select
 from .modal import General_Modal
 from discord import Interaction
 from utils.converters import TimeConverter
+from .buttons import Confirm
 class Payout_Config_Edit(discord.ui.View):
     def __init__(self, data: dict, message: discord.Message=None, interaction: Interaction=None):
         self.data = data
@@ -173,18 +174,19 @@ class Payout_clain(discord.ui.View):
         queue_channel = interaction.guild.get_channel(payout_config['queue_channel'])
 
         embed = interaction.message.embeds[0]
-        embed.set_field_at(6, name="Payout Status", value="<:nat_reply_cont:1011501118163013634>**Claimed**", inline=False)
+        embed.set_field_at(6, name="Awaiting Payout", value="<:nat_reply_cont:1011501118163013634>**Claimed**", inline=False)
+        embed.color = discord.Color.green()
         msg = await queue_channel.send(f"<@{data['winner']}> you will be paid out in the next 24hrs!\n> If not paid within the deadline claim from support chanel", embed=embed, view=Payout_Buttton())
         pending_data = data
         pending_data['_id'] = msg.id
         await interaction.client.payout_pending.insert(pending_data)
         await interaction.client.payout_queue.delete(interaction.message.id)
         button.label = "Claimed Successfully"
-        button.style = discord.ButtonStyle.green
-        button.emoji = "<:octane_claim:1071527360656068788>"
+        button.style = discord.ButtonStyle.gray
+        button.emoji = "<a:nat_check:1010969401379536958>"
         button.disabled = True
         embed = interaction.message.embeds[0]
-        
+        embed.set_field_at(6, name="Claimed", value="<:nat_reply_cont:1011501118163013634>**Claimed**", inline=False)
         await interaction.message.edit(view=self, embed=embed, content=None)
 
     async def on_error(self, interaction: Interaction, error: Exception, item: discord.ui.Item):
@@ -197,7 +199,7 @@ class Payout_Buttton(discord.ui.View):
     def __init__(self):
         super().__init__(timeout=None)
     
-    @discord.ui.button(label="Payout", style=discord.ButtonStyle.green, custom_id="payout")
+    @discord.ui.button(label="Payout", style=discord.ButtonStyle.gray, emoji="<a:nat_check:1010969401379536958>", custom_id="payout")
     async def payout(self, interaction: discord.Interaction, button: discord.ui.Button):
         loadin_embed = discord.Embed(description="<a:loading:998834454292344842> | Marking payout...", color=discord.Color.blue())
         await interaction.response.send_message(embed=loadin_embed, ephemeral=True)
@@ -207,14 +209,13 @@ class Payout_Buttton(discord.ui.View):
 
         embed = interaction.message.embeds[0]
         embed.remove_field(len(embed.fields)-1)
-        embed.add_field(name="Payout Status", value="**<:nat_reply_cont:1011501118163013634> Done**")
-        embed.title = "Successfull Payment!"
+        embed.add_field(name="Status", value="**<:nat_reply_cont:1011501118163013634> Successfully Paid!**")
+        embed.title = "Successfully Paid!"
         embed.color = discord.Color.green()
         embed.add_field(name="Santioned By", value=f"**<:nat_reply_cont:1011501118163013634> {interaction.user.mention}**")
-        button.disabled = True
-        button.label = "Payout Successfully!"
+        edit_view = discord.ui.View()
+        edit_view.add_item(discord.ui.Button(label=f'Successfully Paid', style=discord.ButtonStyle.gray, disabled=True, emoji="<:paid:1071752278794575932>"))
 
-        
         winner_channel = interaction.client.get_channel(data['channel'])
         winner_message = await winner_channel.fetch_message(data['winner_message_id'])
         
@@ -222,8 +223,8 @@ class Payout_Buttton(discord.ui.View):
         view.add_item(discord.ui.Button(label=f'Winner Message', url=f"{winner_message.jump_url}"))
         view.add_item(discord.ui.Button(label=f'Payout Queue Message', url=f"{interaction.message.jump_url}"))
         success_embed = discord.Embed(description="<:octane_yes:1019957051721535618> | Payout Marked Successfully!", color=discord.Color.green())
-        await interaction.edit_original_response(embed=success_embed, view=view)
-        await interaction.message.edit(view=self, embed=embed, content=None)
+        await interaction.edit_original_response(embed=success_embed)
+        await interaction.message.edit(view=edit_view, embed=embed, content=None)
         await interaction.client.payout_pending.delete(data['_id'])
         
         is_more_payout_pending = await interaction.client.payout_pending.find_many_by_custom({'winner_message_id': data['winner_message_id']})
@@ -237,6 +238,32 @@ class Payout_Buttton(discord.ui.View):
                 await winner_message.add_reaction(paid_emoji)
             except Exception as e:
                 pass
+    
+    @discord.ui.button(label="Reject", style=discord.ButtonStyle.gray, emoji="<a:nat_cross:1010969491347357717>", custom_id="reject")
+    async def reject(self, interaction: discord.Interaction, button: discord.ui.Button):
+        view = Confirm(interaction.user, 30)
+        await interaction.response.send_message("Are you sure you want to reject this payout?", view=view, ephemeral=True)
+        await view.wait()
+        if not view.value: return await interaction.delete_original_response()
+        data = await interaction.client.payout_pending.find(interaction.message.id)
+        if not data: await view.interaction.response.edit_message(embed=discord.Embed(description="<:dynoError:1000351802702692442> | Payout not found in Database", color=discord.Color.red()))
+
+        embed = interaction.message.embeds[0]
+        embed.remove_field(len(embed.fields)-1)
+        embed.add_field(name="Status", value="**<:nat_reply_cont:1011501118163013634> Rejected**")
+        embed.title = "Payout Denied!"
+        embed.color = discord.Color.red()
+        embed.add_field(name="Rejected By", value=f"**<:nat_reply_cont:1011501118163013634> {interaction.user.mention}**")
+
+        edit_view = discord.ui.View()
+        edit_view.add_item(discord.ui.Button(label=f'Payout Denied', style=discord.ButtonStyle.gray, disabled=True, emoji="<a:nat_cross:1010969491347357717>"))
+
+        winner_channel = interaction.client.get_channel(data['channel'])
+        winner_message = await winner_channel.fetch_message(data['winner_message_id'])
+
+        await view.interaction.response.edit_message(embed=discord.Embed(description="<:octane_yes:1019957051721535618> | Payout Rejected Successfully!", color=discord.Color.green()), view=edit_view)
+        await interaction.message.edit(view=edit_view, embed=embed, content=None)
+        await interaction.client.payout_pending.delete(data['_id'])
 
     async def on_error(self, interaction: Interaction, error: Exception, item: discord.ui.Item):
         try:
