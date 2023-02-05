@@ -47,3 +47,14 @@ class Color_Select(Select):
         self.interaction = interaction
         self.view.value = True
         self.view.stop()
+
+class Select_General(Select):
+    def __init__(self, interaction: Interaction=None, options: list=None, **kwargs):
+        self.interaction = None
+        self.value = None
+        super().__init__(options=options, **kwargs)
+    
+    async def callback(self, interaction: Interaction):
+        self.interaction = interaction
+        self.view.value = True
+        self.view.stop()
