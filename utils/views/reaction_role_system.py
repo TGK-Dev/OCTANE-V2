@@ -1,13 +1,9 @@
 import discord
-import chat_exporter
-import datetime
-import io
 from discord import Interaction, SelectOption
 from discord.ui import View, Button, button, TextInput, Item
 from .selects import Role_select, Select_General
 from .modal import General_Modal
-from .buttons import Confirm
-from typing import Any
+
 
 class ReactionRoleMenu(View):
     def __init__(self, data:dict, interaction: Interaction,message: discord.Message=None):
