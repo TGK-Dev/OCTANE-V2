@@ -192,8 +192,12 @@ class Perks(commands.GroupCog, name="perks", description="manage your custom per
                             if resp.status != 200:
                                 return await interaction.edit_original_response(embed=discord.Embed(description="Invalid icon url.", color=0x363940))
                             icon = await resp.read()
-                if color: color = color.replace("#", "")
-                role = await interaction.guild.create_role(name=name, color=discord.Color(int(color, 16)), reason=f"Custom role perk for {interaction.user}", display_icon=icon)
+                try:
+                    if color: color = discord.Color(int(color.replace("#", ""), 16))
+                except:
+                    await interaction.edit_original_response(embed=discord.Embed(description="Invalid color Hex code.", color=0x363940))
+
+                role = await interaction.guild.create_role(name=name, color=color, reason=f"Custom role perk for {interaction.user}", display_icon=icon)
                 await role.edit(position=perks_config['custom_roles_position'])
                 await interaction.user.add_roles(role, reason=f"Custom role perk for {interaction.user}")
                 await interaction.edit_original_response(embed=discord.Embed(description="Your custom role has been created.", color=0x363940))
@@ -623,19 +627,19 @@ class Perk_Config(commands.Cog):
         if perk_data is None:
             perk_data = {'_id': interaction.guild.id, 'custom_category': None, 'custom_roles_position': 0}
             await self.bot.perk.config.insert(perk_data)
-        if options == "show":
+        if options.value == "show":
             embed = discord.Embed(description="")
             embed.description += f"**Custom Channel Category:** {perk_data['custom_category'] if perk_data['custom_category'] is not None else '`None`'}\n"
             embed.description += f"**Custom Role Position:** {perk_data['custom_roles_position'] if perk_data['custom_roles_position'] is not None else '`None`'}\n"
             await interaction.response.send_message(embed=embed)
-        elif options == "channel_category":
+        elif options.value == "channel_category":
             if category is None:
                 await interaction.response.send_message(embed=discord.Embed(description="You need to provide a category", color=0x363940), ephemeral=True)
                 return
             perk_data['custom_category'] = category.id
             await self.bot.perk.update('config', perk_data)
             await interaction.response.send_message(embed=discord.Embed(description=f"Your custom channel category has been set to {category.mention}", color=0x363940))
-        elif options == "role_position":
+        elif options.value == "role_position":
             if position is None:
                 await interaction.response.send_message(embed=discord.Embed(description="You need to provide a position", color=0x363940), ephemeral=True)
                 return

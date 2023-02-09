@@ -77,7 +77,7 @@ class Payout(commands.GroupCog, name="payout", description="Payout commands"):
         if option == "show":
             await interaction.response.send_message(embed=embed)
         elif option == "edit":
-            view = Payout_Config_Edit(data)
+            view = Payout_Config_Edit(data, interaction.user)
             await interaction.response.send_message(embed=embed, view=view)
             view.message = await interaction.original_response()
     

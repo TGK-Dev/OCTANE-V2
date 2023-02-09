@@ -110,7 +110,7 @@ class Ticket(commands.GroupCog, name="ticket"):
         await view.wait()
         if view.value:
             ticket_config['panels'][name] = panel_data
-            await self.bot.tickets.config.update(ticket_config)
+            await self.bot.tickets.config.update(ticket_config['_id'], ticket_config)
     
     @panel.command(name="delete", description="Delete a ticket panel")
     @app_commands.checks.has_permissions(manage_guild=True)
@@ -157,11 +157,12 @@ class Ticket(commands.GroupCog, name="ticket"):
     @panel.command(name="send", description="Send a ticket panel")
     @app_commands.checks.has_permissions(manage_guild=True)
     async def send_panel(self, interaction: discord.Interaction):
-        await interaction.response.defer(thinking=True)
         panel_embed = discord.Embed(title=f"{interaction.guild}'s Ticket Panel", color=0x363940)
         ticket_config = await self.bot.tickets.config.find(interaction.guild.id)
         if ticket_config is None: return await interaction.response.send_message("There are no panels to send", ephemeral=True)
         if len(ticket_config['panels'].keys()) == 0: return await interaction.response.send_message("There are no panels to send", ephemeral=True)
+
+        await interaction.response.send_message(embed=discord.Embed(description="Sending ticket panel...", color=0x363940), ephemeral=True)
 
         panel_view = ticket_system.Panel_View()
         for panel in ticket_config['panels'].keys():
@@ -190,7 +191,7 @@ class Ticket(commands.GroupCog, name="ticket"):
 
         link_view = discord.ui.View()
         link_view.add_item(discord.ui.Button(label="Panel Link", style=discord.ButtonStyle.link, url=message.jump_url))
-        await interaction.followup.send(embed=discord.Embed(description="<:octane_yes:1019957051721535618> | Successfully sent the ticket panel", color=0x363940), view=link_view)
+        await interaction.edit_original_response(embed=discord.Embed(description="<:octane_yes:1019957051721535618> | Successfully sent the ticket panel", color=0x363940), view=link_view)
 
     @app_commands.command(name="add", description="Add a member to the ticket")
     @app_commands.checks.has_permissions(manage_messages=True)

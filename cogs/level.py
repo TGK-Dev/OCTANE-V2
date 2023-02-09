@@ -26,7 +26,7 @@ class level(commands.GroupCog, name="level"):
             },
             'multiplier': {'global': 1},
             'cooldown': 8,
-            'cleanup_on_leave': True,
+            'clear_on_leave': True,
         }
 
     async def round_pfp(self, pfp: Union[discord.Member, discord.Guild]):
@@ -398,7 +398,7 @@ class Level_BackEnd(commands.Cog):
         if guild.id in self.bot.level_config_cache.keys():
             guild_data = self.bot.level_config_cache[guild.id]
         else:
-            guild_data = await self.bot.level_config.find(guild)
+            guild_data = await self.bot.level_config.find(guild.id)
             if guild_data == None:
                 return
         

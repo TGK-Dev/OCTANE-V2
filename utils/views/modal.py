@@ -22,7 +22,7 @@ class Panel_Description_Modal(Modal):
         self.interaction = interaction
         self.data = data
         self.value = None
-        super().__init__(timeout=120, title=f"Description for Panel {data['key']}")
+        super().__init__(title=f"Description for Panel {data['key']}")
 
     async def on_submit(self, interaction: Interaction):
         self.data["description"] = self.children[0]
@@ -35,7 +35,7 @@ class Panel_emoji(Modal):
         self.interaction = interaction
         self.data = data
         self.value = None
-        super().__init__(timeout=120, title=f"Emoji for Panel {data['key']}")
+        super().__init__(title=f"Emoji for Panel {data['key']}")
 
     async def on_submit(self, interaction: Interaction):
         self.data["emoji"] = self.children[0]

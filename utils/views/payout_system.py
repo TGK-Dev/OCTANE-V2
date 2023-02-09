@@ -6,9 +6,10 @@ from discord import Interaction
 from utils.converters import TimeConverter
 from .buttons import Confirm
 class Payout_Config_Edit(discord.ui.View):
-    def __init__(self, data: dict, message: discord.Message=None, interaction: Interaction=None):
+    def __init__(self, data: dict, user: discord.Member,message: discord.Message=None, interaction: Interaction=None):
         self.data = data
         self.message = message
+        self.user = user
         self.interaction = interaction
         super().__init__(timeout=120)
     
@@ -23,7 +24,7 @@ class Payout_Config_Edit(discord.ui.View):
             await interaction.edit_original_response(f"An error occured: {error}")
     
     async def interaction_check(self, interaction: Interaction):
-        if interaction.user.id == interaction.message.author.id:
+        if interaction.user.id == self.user.id:
             return True
         else:
             await interaction.response.send_message("you can't use this view", ephemeral=True)

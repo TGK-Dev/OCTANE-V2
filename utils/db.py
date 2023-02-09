@@ -133,7 +133,11 @@ class Document:
             # Backwards compat so you can just pass something like
             # await doc.upsert({"_id": 1, "data": False})
             data = deepcopy(filter_dict)
-            filter_dict = self.__convert_filter(data.pop("_id"))
+            filter_dict = self.__convert_filter(data.get("_id", None))
+
+            # Check if filter is empty
+            if not filter_dict:
+                filter_dict = None
 
         await self.update_by_custom(filter_dict, data, *args, **kwargs)
 

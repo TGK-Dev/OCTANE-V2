@@ -151,13 +151,12 @@ class Panel_Edit(View):
     
     @button(label="Support Roles", style=discord.ButtonStyle.gray, emoji="<:managers:1017379642862215189>", row=0)
     async def support_roles(self, interaction: Interaction, button: Button):
-        embed = discord.Embed(description="Select the roles that can use the panel", color=0x363940)
         view = View()
         view.value = None
-        view.select = Role_select(placeholder="Select roles", min_values=1, max_values=10)
+        view.select = Role_select(placeholder="Please select support roles", min_values=1, max_values=10)
         view.add_item(view.select)
 
-        await interaction.response.send_message(embed=embed, view=view, ephemeral=True, delete_after=30)
+        await interaction.response.send_message(view=view, ephemeral=True, delete_after=30)
         await view.wait()
         if view.value is None:
             await interaction.delete_original_response()
@@ -172,13 +171,12 @@ class Panel_Edit(View):
     
     @button(label="Ping Role", style=discord.ButtonStyle.gray, emoji="<:role_mention:1063755251632582656>", row=0)
     async def ping_role(self, interaction: Interaction, button: Button):
-        embed = discord.Embed(description="Select the role to ping when the panel is used", color=0x363940)
         view = View()
         view.value = None
-        view.select = Role_select(placeholder="Select a role", min_values=1, max_values=1)
+        view.select = Role_select(placeholder="Please select a role to ping", min_values=1, max_values=1)
         view.add_item(view.select)
 
-        await interaction.response.send_message(embed=embed, view=view, ephemeral=True, delete_after=30)
+        await interaction.response.send_message(view=view, ephemeral=True, delete_after=30)
         await view.wait()
         if view.value is None:
             await interaction.delete_original_response()
@@ -195,51 +193,52 @@ class Panel_Edit(View):
     @button(label="Description", style=discord.ButtonStyle.gray, emoji="<:description:1063755251632582656>", row=1)
     async def description(self, interaction: Interaction, button: Button):
         modal = Panel_Description_Modal(self.data)
-        qestion = TextInput(label="Set the description for the panel", max_length=300, style=TextStyle.long)
-        if self.data["description"] is not None:qestion.default = self.data["description"]
-        else: qestion.placeholder = "Enter a description"
-        modal.add_item(qestion)
+        modal.qestion = TextInput(label="Set the description for the panel", max_length=500, style=TextStyle.long)
+        if self.data["description"] is not None:modal.qestion.default = self.data["description"]
+        else: modal.qestion.placeholder = "Enter a description"
+        modal.add_item(modal.qestion)
         await interaction.response.send_modal(modal)
         await modal.wait()
 
         if modal.value:
+            self.data["description"] = modal.qestion.value
             embed = self.update_embed(self.data)
             for button in self.children: 
                 if button.label == "Save": button.disabled = False
-            await modal.interaction.response.edit_message(view=None, embed=discord.Embed(description="<:octane_yes:1019957051721535618> | Description set!", color=0x363940))
-            await interaction.message.edit(embed=embed ,view=self)
+            await modal.interaction.response.edit_message(view=self, embed=embed)
+            await modal.stop()
 
     @button(label="Emoji", style=discord.ButtonStyle.gray, emoji="<:embed:1017379990289002536>", row=1)
     async def emoji(self, interaction: Interaction, button: Button):
         modal = Panel_emoji(self.data)
-        qestion = TextInput(label="Set the emoji for the panel", max_length=300)
-        if self.data["emoji"] is not None:qestion.default = self.data["emoji"]
-        else: qestion.placeholder = "Enter an emoji"
-        modal.add_item(qestion)
+        modal.qestion= TextInput(label="Set the emoji for the panel", max_length=300)
+        if self.data["emoji"] is not None:modal.qestion.default = self.data["emoji"]
+        else: modal.qestion.placeholder = "Enter an emoji"
+        modal.add_item(modal.qestion)
         await interaction.response.send_modal(modal)
         await modal.wait()
 
         if modal.value:
+            self.data["emoji"] = modal.qestion.value
             embed = self.update_embed(self.data)
             for button in self.children: 
                 if button.label == "Save": button.disabled = False
-            await modal.interaction.response.send_message("Emoji set!", ephemeral=True, delete_after=5)
-            await interaction.message.edit(embed=embed ,view=self)
+            await modal.interaction.response.edit_message(view=self, embed=embed)
+            modal.stop()
 
     @button(label="Color", style=discord.ButtonStyle.gray, emoji="<:color:1017379990289002536>", row=1)
     async def color(self, interaction: Interaction, button: Button):
-        embed = discord.Embed(description="Select the color for the panel", color=0x363940)
         view = View()
         view.value = None
         view.select = Color_Select()
         view.add_item(view.select)
 
-        await interaction.response.send_message(embed=embed, view=view, ephemeral=True, delete_after=30)
+        await interaction.response.send_message(view=view, ephemeral=True, delete_after=30)
         await view.wait()
         if view.value:
-            await view.select.interaction.response.edit_message(view=None, embed=discord.Embed(description="<:octane_yes:1019957051721535618> | Color set!", color=0x363940))
-            await interaction.delete_original_response()
             self.data["color"] = view.select.values[0]
+            await view.select.interaction.response.edit_message(view=None, embed=discord.Embed(description=f"<:octane_yes:1019957051721535618> | Color set to {self.data['color']}!", color=0x363940))
+            await interaction.delete_original_response()            
             embed = self.update_embed(self.data)
             for button in self.children: 
                 if button.label == "Save": button.disabled = False
@@ -248,25 +247,26 @@ class Panel_Edit(View):
     @button(label="Questionnaire", style=discord.ButtonStyle.gray, emoji="<:StageIconRequests:1005075865564106812>", row=2)
     async def questionnaire(self, interaction: Interaction, button: Button):
         modal = Question_Modal(self.data)
-        qestion_type = TextInput(label="Set type of asnwer", max_length=20)
+        modal.qestion_type = TextInput(label="Set type of asnwer", max_length=20)
 
-        if self.data["modal"]["type"] is not None:qestion_type.placeholder = "Avable types: (long,short)"
-        else: qestion_type.default = "short"
-        qestion = TextInput(label="Set the question for the panel", max_length=300)
-        if self.data["modal"]["question"] is not None:qestion.default = self.data["modal"]["question"]
-        else: qestion.placeholder = "Enter a question"
+        if self.data["modal"]["type"] is not None:modal.qestion_type.placeholder = "Avable types: (long,short)"
+        else: modal.qestion_type.default = "short"
+        modal.qestion = TextInput(label="Set the question for the panel", max_length=300)
+        if self.data["modal"]["question"] is not None:modal.qestion.default = self.data["modal"]["question"]
+        else: modal.qestion.placeholder = "Enter a question"
 
-        modal.add_item(qestion_type)
-        modal.add_item(qestion)
+        modal.add_item(modal.qestion_type)
+        modal.add_item(modal.qestion)
         await interaction.response.send_modal(modal)
         await modal.wait()
 
         if modal.value:
             embed = self.update_embed(self.data)
+            self.data["modal"]["type"] = modal.qestion_type.value
+            self.data["modal"]["question"] = modal.qestion.value
             for button in self.children: 
                 if button.label == "Save": button.disabled = False
-            await modal.interaction.response.edit_message(view=None, embed=discord.Embed(description="<:octane_yes:1019957051721535618> | Questionnaire set!", color=0x363940))
-            await interaction.message.edit(embed=embed ,view=self)
+            await modal.interaction.response.edit_message(view=self, embed=embed)
 
     @button(label="Save", style=discord.ButtonStyle.green, emoji="<:save:1068611610568040539>", disabled=True, row=3)
     async def save(self, interaction: Interaction, button: Button):
@@ -280,7 +280,7 @@ class Panel_Edit(View):
     async def reset(self, interaction: Interaction, button: Button):
         for button in self.children: 
             if button.label == "Save": button.disabled = True
-        self.data = {"key": self.data["key"], "description": None, "emoji": None, "color": None, "modal": {"question": None, "type": None}}
+        self.data = {'key': self.data['key'], 'support_roles': [], "ping_role": None, 'created_by': interaction.user.id, 'description': None, 'emoji': None, 'color': None, 'modal': {'type': 'short', 'question': "Please describe your issue"}}
         embed = self.update_embed(self.data)
         await interaction.response.send_message("Panel reset!", ephemeral=True, delete_after=5)
         await interaction.message.edit(embed=embed ,view=self)
@@ -292,7 +292,7 @@ class Panel_Button(Button):
         
         ticket_config = await interaction.client.tickets.config.find(interaction.guild.id)
         if ticket_config is None: await interaction.response.send_message("No ticket config found", ephemeral=True, delete_after=5)
-        try:panel = ticket_config["panels"][self.label.lower()]
+        try:panel = ticket_config["panels"][self.label]
         except KeyError: return await interaction.response.send_message("Invalid panel", ephemeral=True, delete_after=5)
 
         modal = Panel_Question(title=f"{panel['key']}'s form")
