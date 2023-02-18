@@ -520,6 +520,7 @@ class Perk_BackEND(commands.Cog):
         now = datetime.datetime.utcnow()
         for perks in data:
             guild = self.bot.get_guild(perks['guild_id'])
+            if guild is None: continue
             user = guild.get_member(perks['user_id'])
             if not user:
                 role = guild.get_role(perks['role_id'])
@@ -547,6 +548,7 @@ class Perk_BackEND(commands.Cog):
         now = discord.utils.utcnow()
         for perks in data:
             guild = self.bot.get_guild(perks['guild_id'])
+            if guild is None: continue
             user = guild.get_member(perks['user_id'])
             if not user:
                 channel = guild.get_channel(perks['channel_id'])
