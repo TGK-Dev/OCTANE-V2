@@ -70,13 +70,17 @@ class Linked_Roles(commands.GroupCog, name="linkedroles"):
     def __init__(self, bot):
         self.bot = bot
         self.bot.linked_roles = Link_Backend(self.bot, Document, 'http://tgk-api.vercel.app/api/linked-role/auth')
-        #self.refresh_task = self.refresh.start()
+        self.refresh_task = self.refresh.start()
+        self.refresh_progress = False
     
     def cog_unload(self):
         self.refresh_task.cancel()
     
-    @tasks.loop(seconds=10)
+    @tasks.loop(hours=10)
     async def refresh(self):
+        if self.refresh_progress: return
+        self.refresh_progress = True
+
         data = await self.bot.linked_roles.auth.get_all()
         now = datetime.datetime.utcnow()
         for user_data in data:
@@ -95,6 +99,7 @@ class Linked_Roles(commands.GroupCog, name="linkedroles"):
                 user_data['scope'] = response['scope']
                 user_data['token_type'] = response['token_type']
                 await self.bot.linked_roles.auth.update(user_data)
+        self.refresh_progress = False
     
     @refresh.before_loop
     async def before_refresh(self):
