@@ -21,15 +21,16 @@ class serversettingsDB():
         match settings:
             case "join_gate":
                 config = await self.join_gate.find(guild_id)
-                if config is None: config = await self.create_config(guild_id)
+                if config is None: 
+                    config = await self.create_config('join_gate', guild_id)
                 return config
             case "starboard":
                 config = await self.starboard.find(guild_id)
                 if config is None: config = await self.create_config(guild_id)
                 return config
     
-    async def create_config(self, perk, guild_id):
-        match perk:
+    async def create_config(self, settings, guild_id):
+        match settings:
             case "join_gate":
                 config = {"_id": guild_id, "joingate": {'enabled': None, 'action': None, 'accountage': None, 'whitelist': [], 'autorole': [], 'decancer': None, 'logchannel': None}}
                 await self.join_gate.insert(config)
