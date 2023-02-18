@@ -36,7 +36,18 @@ class Role_select(discord.ui.RoleSelect):
         self.interaction = interaction
         self.view.value = True
         self.view.stop()
+
+class User_Select(discord.ui.UserSelect):
+    def __init__(self, placeholder, min_values, max_values, *, disabled=False):
+        self.interaction = None
+        self.value = False
+        super().__init__(placeholder=placeholder, min_values=min_values, max_values=max_values, disabled=disabled)
     
+    async def callback(self, interaction: discord.Interaction):
+        self.interaction = interaction
+        self.view.value = True
+        self.view.stop()
+
 class Color_Select(Select):
     def __init__(self, interaction: Interaction=None):
         self.interaction = None
