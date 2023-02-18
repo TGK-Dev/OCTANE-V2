@@ -264,25 +264,25 @@ class Level_BackEnd(commands.Cog):
         user = message.interaction.user
         user_data = await self.get_rank(user.id)
 
-        if (datetime.datetime.utcnow() - user_data['last_updated']).total_seconds() < 8:
-            try:
-                self.bot.rank_in_progress.pop(user.id)
-            except KeyError:
-                pass
-            return
-        
-        else:
+        if user_data['last_updated'] != None:
 
-            multiplier = self.bot.level_config_cache[message.guild.id]['multiplier']['global']
+            if (datetime.datetime.utcnow() - user_data['last_updated']).total_seconds() < 8:
+                try:
+                    self.bot.rank_in_progress.pop(user.id)
+                except KeyError:
+                    pass
+                return
 
-            user_data['xp'] += 1 * multiplier
-            user_data['last_updated'] = datetime.datetime.utcnow()
-            await self.update_rank(user.id, user_data)
+        multiplier = self.bot.level_config_cache[message.guild.id]['multiplier']['global']
 
-            try:
-                self.bot.rank_in_progress.pop(user.id)
-            except KeyError:
-                pass
+        user_data['xp'] += 1 * multiplier
+        user_data['last_updated'] = datetime.datetime.utcnow()
+        await self.update_rank(user.id, user_data)
+
+        try:
+            self.bot.rank_in_progress.pop(user.id)
+        except KeyError:
+            pass
     
     @commands.Cog.listener()
     async def on_member_remove(self, member):

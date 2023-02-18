@@ -49,7 +49,7 @@ class LevelingConfig(View):
         view = View()
         view.value = False
         options = [SelectOption(label="1x", value="1"), SelectOption(label="2x", value="2"), SelectOption(label="3x", value="3"), SelectOption(label="4x", value="4"), SelectOption(label="5x", value="5"), SelectOption(label="6x", value="6"), SelectOption(label="7x", value="7"), SelectOption(label="8x", value="8"), SelectOption(label="9x", value="9"), SelectOption(label="10x", value="10")]
-        view.select = Select_General(options=options, placeholder="Select the multiplier you want to set", custom_id="global_multiplier", min_values=1, max_values=1)
+        view.select = Select_General(options=options, placeholder="Select the multiplier you want to set",min_values=1, max_values=1)
         view.add_item(view.select)
 
         await interaction.response.send_message(view=view, ephemeral=True)
@@ -59,7 +59,7 @@ class LevelingConfig(View):
             self.data['multiplier']['global'] = int(view.select.values[0])
             await view.select.interaction.response.edit_message(content="Global multiplier set!", embed=None, view=None)
             await view.select.interaction.delete_original_response()
-            await interaction.edit_original_response(embed=await self.update_embed(interaction, self.data))
+            await self.message.edit(embed=await self.update_embed(interaction, self.data))
             await interaction.client.level_config.update(interaction.guild.id, self.data)
             interaction.client.level_config_cache[interaction.guild.id] = self.data
     
@@ -68,11 +68,11 @@ class LevelingConfig(View):
         if self.data['clear_on_leave']:
             self.data['clear_on_leave'] = False
             await interaction.response.send_message(content="Clear on leave has been disabled!", ephemeral=True, delete_after=5)
-            await interaction.message.edit(embed=await self.update_embed(interaction, self.data))
+            await self.message.edit(embed=await self.update_embed(interaction, self.data))
         else:
             self.data['clear_on_leave'] = True
             await interaction.response.send_message(content="Clear on leave has been enabled!", ephemeral=True, delete_after=5)
-            await interaction.message.edit(embed=await self.update_embed(interaction, self.data))
+            await self.message.edit(embed=await self.update_embed(interaction, self.data))
         await interaction.client.level_config.update(interaction.guild.id, self.data)
         interaction.client.level_config_cache[interaction.guild.id] = self.data
 
@@ -80,7 +80,7 @@ class LevelingConfig(View):
     async def blacklist_channels(self, interaction: Interaction, button: Button):
         view = View()
         view.value = False
-        view.select = Channel_select(placeholder="Select the channels you want to blacklist", custom_id="blacklist_channels", min_values=1, max_values=10, channel_types=[discord.ChannelType.text])
+        view.select = Channel_select(placeholder="Select the channels you want to blacklist", min_values=1, max_values=10, channel_types=[discord.ChannelType.text])
         view.add_item(view.select)
 
         await interaction.response.send_message(view=view, ephemeral=True)
@@ -98,7 +98,7 @@ class LevelingConfig(View):
                     remove_channels += f"<#{channel.id}> "
 
             await view.select.interaction.response.edit_message(content=f"Blacklisted channels: {add_channels if add_channels else 'None'}\nUnblacklisted channels: {remove_channels if remove_channels else 'None'}", embed=None, view=None)
-            await interaction.message.edit(embed=await self.update_embed(interaction, self.data))
+            await self.message.edit(embed=await self.update_embed(interaction, self.data))
             await interaction.client.level_config.update(interaction.guild.id, self.data)
             interaction.client.level_config_cache[interaction.guild.id] = self.data
             await view.select.interaction.delete_original_response()
@@ -107,7 +107,7 @@ class LevelingConfig(View):
     async def blacklist_roles(self, interaction: Interaction, button: Button):
         view = View()
         view.value = False
-        view.select = Role_select(placeholder="Select the roles you want to blacklist", custom_id="blacklist_roles", min_values=1, max_values=10)
+        view.select = Role_select(placeholder="Select the roles you want to blacklist",min_values=1, max_values=10)
         view.add_item(view.select)
 
         await interaction.response.send_message(view=view, ephemeral=True)
@@ -126,7 +126,7 @@ class LevelingConfig(View):
                     remove_roles += f"<@&{role.id}> "
 
             await view.select.interaction.response.edit_message(content=f"Blacklisted roles: {add_roles if add_roles else 'None'}\nUnblacklisted roles: {remove_roles if remove_roles else 'None'}", embed=None, view=None)
-            await interaction.message.edit(embed=await self.update_embed(interaction, self.data))
+            await self.message.edit(embed=await self.update_embed(interaction, self.data))
             await interaction.client.level_config.update(interaction.guild.id, self.data)
             interaction.client.level_config_cache[interaction.guild.id] = self.data
             await view.select.interaction.delete_original_response()
