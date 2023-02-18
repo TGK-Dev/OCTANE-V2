@@ -154,10 +154,6 @@ class Docs(commands.Cog, name="Documentation"):
         e.description = "\n".join(f"[`{key}`]({url})" for key, url in self.matches)
         await interaction.followup.send(embed=e)
 
-    @commands.Cog.listener()
-    async def on_ready(self):
-        self.logger.info("I'm ready!")
-
     @app_commands.command(name='docs', description='Gives you a documentation link for a d.py entity.')
     @app_commands.describe(query='The entity to search for.')
     @app_commands.check(is_dev)
