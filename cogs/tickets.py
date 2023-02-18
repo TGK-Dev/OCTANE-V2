@@ -6,10 +6,14 @@ from utils.transformer import MultipleMember
 from utils.db import Document
 from typing import Union, Literal, List
 from utils.views import ticket_system
-class Ticket_DB:
-    def __init__(self, db, Document):
-        self.config: Document = Document(db, "tickets_config")
-        self.tickets: Document = Document(db, "tickets")
+
+class Ticket_DB():
+    def __init__(self, bot, Document):
+        self.bot = bot
+        self.Document = Document
+        self.db = bot.mongo['Ticket_Database']
+        self.config = Document(self.db, "Config")
+        self.tickets = Document(self.db, "Tickets")
 
 panel_templates = {
     "partnership": { 'key': 'partnership', 'support_roles': [], 'color': 'blurple', 'emoji':'<a:Partner:1000335814481416202>', 'ping_role': None, 'created_by': None, 'description': 'Used for heist partnership deals only!\nMake sure to checkout requirements first.' },
@@ -18,7 +22,7 @@ panel_templates = {
 class Ticket(commands.GroupCog, name="ticket"):
     def __init__(self, bot):
         self.bot = bot
-        self.bot.tickets = Ticket_DB(self.bot.db, Document)
+        self.bot.tickets = Ticket_DB(self.bot, Document)
     
     async def panel_auto_complete(self, interaction: discord.Interaction, current: str) -> List[Choice[str]]:
         ticket_system = await self.bot.tickets.config.find(interaction.guild.id)
@@ -48,34 +52,6 @@ class Ticket(commands.GroupCog, name="ticket"):
                 self.bot.add_view(panel_view)
                 
         self.bot.add_view(ticket_system.Panel_View())
-
-    @app_commands.command(name="config", description="Configure ticket system")
-    @app_commands.checks.has_permissions(manage_guild=True)
-    @app_commands.describe(option="Show/Edit")
-    async def ticket_config(self, interaction: discord.Interaction, option: Literal['show', 'edit']="show"):
-        ticket_config = await self.bot.tickets.config.find(interaction.guild.id)
-        if ticket_config is None:
-            ticket_config = {'_id': interaction.guild.id,'category': None,'channel': None,'logging': None,'panels': {},'last_panel_message_id': None, 'transcript': None}
-            await self.bot.tickets.config.insert(ticket_config)
-        
-        embed = discord.Embed(title="Ticket Config", color=0x2b2d31, description="")
-        embed.description += f"**Category:**" + (f" <#{ticket_config['category']}>" if ticket_config['category'] is not None else "`None`") + "\n"
-        embed.description += f"**Channel:**" + (f" <#{ticket_config['channel']}>" if ticket_config['channel'] is not None else "`None`") + "\n"
-        embed.description += f"**Logging:**" + (f" <#{ticket_config['logging']}>" if ticket_config['logging'] is not None else "`None`") + "\n"
-        embed.description += f"**Transcript:**" + (f" <#{ticket_config['transcript']}>" if ticket_config['transcript'] is not None else "`None`") + "\n"
-        embed.description += f"**Panel Message:**" + (f" {ticket_config['last_panel_message_id']}" if ticket_config['last_panel_message_id'] is not None else "`None`") + "\n"
-        embed.description += f"**Panels:**" + (f"`{len(ticket_config['panels'])}`" if ticket_config['panels'] is not None else "`0`") + "\n"
-        
-        if option == "show":
-            await interaction.response.send_message(embed=embed)
-        elif option == "edit":
-            view = ticket_system.Config_Edit(interaction.user, ticket_config)
-            await interaction.response.send_message(embed=embed, view=view)
-            view.message = await interaction.original_response()
-            await view.wait()
-            if view.value:
-                print(view.data)
-                await self.bot.tickets.config.update(view.data)
         
     @panel.command(name="create", description="Create a ticket panel")
     @app_commands.checks.has_permissions(manage_guild=True)
