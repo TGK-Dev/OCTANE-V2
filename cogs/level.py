@@ -95,11 +95,11 @@ class level(commands.GroupCog, name="level"):
 
         if channel.id in data['blacklist']['channels']:
             data['blacklist']['channels'].remove(channel.id)
-            await interaction.response.send_message(embed=discord.Embed(description=f"<:dynosuccess:1000349098240647188> | Channel {channel.mention} Suscessfully removed from blacklist", color=0x363940))
+            await interaction.response.send_message(embed=discord.Embed(description=f"<:dynosuccess:1000349098240647188> | Channel {channel.mention} Suscessfully removed from blacklist", color=0x2b2d31))
 
         else:
             data['blacklist']['channels'].append(channel.id)
-            await interaction.response.send_message(embed=discord.Embed(description=f"<:dynosuccess:1000349098240647188> | Channel {channel.mention} Suscessfully blacklisted", color=0x363940))
+            await interaction.response.send_message(embed=discord.Embed(description=f"<:dynosuccess:1000349098240647188> | Channel {channel.mention} Suscessfully blacklisted", color=0x2b2d31))
 
         await self.bot.level_config.update(data)
         self.bot.level_config_cache[interaction.guild.id] = data
@@ -115,11 +115,11 @@ class level(commands.GroupCog, name="level"):
 
         if role.id in data['blacklist']['roles']:
             data['blacklist']['roles'].remove(role.id)
-            await interaction.response.send_message(embed=discord.Embed(description=f"<:dynosuccess:1000349098240647188> | Role {role.mention} Suscessfully removed from blacklist",color=0x363940))
+            await interaction.response.send_message(embed=discord.Embed(description=f"<:dynosuccess:1000349098240647188> | Role {role.mention} Suscessfully removed from blacklist",color=0x2b2d31))
 
         else:
             data['blacklist']['roles'].append(role.id)
-            await interaction.response.send_message(embed=discord.Embed(description=f"<:dynosuccess:1000349098240647188> | Role {role.mention} Suscessfully blacklisted",color=0x363940))
+            await interaction.response.send_message(embed=discord.Embed(description=f"<:dynosuccess:1000349098240647188> | Role {role.mention} Suscessfully blacklisted",color=0x2b2d31))
 
         await self.bot.level_config.update(data)
         self.bot.level_config_cache[interaction.guild.id] = data
@@ -128,13 +128,13 @@ class level(commands.GroupCog, name="level"):
     @config.command(name="show", description="Show the current level config")
     @app_commands.checks.has_permissions(manage_guild=True)
     async def show(self, interaction: Interaction):
-        await interaction.response.send_message(embed=discord.Embed(description=f"<a:loading:998834454292344842> | Please wait while we fetch the config", color=0x363940))
+        await interaction.response.send_message(embed=discord.Embed(description=f"<a:loading:998834454292344842> | Please wait while we fetch the config", color=0x2b2d31))
         data = await self.bot.level_config.find(interaction.guild.id)
         if not data:
             data = self.template_db(interaction.guild.id)
             await self.bot.level_config.insert(data)
 
-        embed = discord.Embed(title="Level Config", color=0x363940)
+        embed = discord.Embed(title="Level Config", color=0x2b2d31)
         embed.add_field(name="Global Multiplier", value="`1`")
         embed.add_field(name="Blacklisted Channels", value="\n".join([f"<#{channel}>" for channel in data['blacklist']['channels']]) or "`None`")
         embed.add_field(name="Blacklisted Roles", value="\n".join([f"<@&{role}>" for role in data['blacklist']['roles']]) or "`None`")
@@ -155,13 +155,13 @@ class level(commands.GroupCog, name="level"):
         data['clear_on_leave'] = state
         await self.bot.level_config.update(data)
         self.bot.level_config_cache[interaction.guild.id] = data
-        await interaction.response.send_message(embed=discord.Embed(description=f"<:dynosuccess:1000349098240647188> | Cleared on leave set to {state}", color=0x363940))        
+        await interaction.response.send_message(embed=discord.Embed(description=f"<:dynosuccess:1000349098240647188> | Cleared on leave set to {state}", color=0x2b2d31))        
     
     @manage.command(name="addexp", description="give a user a exp")
     @app_commands.checks.has_permissions(manage_guild=True)
     @app_commands.describe(users="The users to add exp to", amount="The amount of exp to add")
     async def add(self, interaction: Interaction, users: app_commands.Transform[discord.Member, MultipleMember], amount: int):
-        await interaction.response.send_message(embed=discord.Embed(description=f"<a:loading:998834454292344842> | Please wait while we add the exp", color=0x363940))
+        await interaction.response.send_message(embed=discord.Embed(description=f"<a:loading:998834454292344842> | Please wait while we add the exp", color=0x2b2d31))
         description = ""
         for user in users:
             data = await self.bot.ranks.find(user.id)
@@ -173,13 +173,13 @@ class level(commands.GroupCog, name="level"):
             self.bot.rank_cache[user.id] = data
             description += f"<:dynosuccess:1000349098240647188> | {user.mention} <:join:991733999477203054> + `{amount}` exp\n"
         
-        await interaction.edit_original_response(embed=discord.Embed(description=description,color=0x363940))
+        await interaction.edit_original_response(embed=discord.Embed(description=description,color=0x2b2d31))
     
     @manage.command(name="removeexp", description="remove a user's exp")
     @app_commands.checks.has_permissions(manage_guild=True)
     @app_commands.describe(users="The users to remove exp from", amount="The amount of exp to remove")
     async def remove(self, interaction: Interaction, users: app_commands.Transform[discord.Member, MultipleMember], amount: int):
-        await interaction.response.send_message(embed=discord.Embed(description=f"<a:loading:998834454292344842> | Please wait while we remove the exp", color=0x363940))
+        await interaction.response.send_message(embed=discord.Embed(description=f"<a:loading:998834454292344842> | Please wait while we remove the exp", color=0x2b2d31))
         description = ""
         for user in users:
             data = await self.bot.ranks.find(user.id)
@@ -191,13 +191,13 @@ class level(commands.GroupCog, name="level"):
             self.bot.rank_cache[user.id] = data
             description += f"<:dynosuccess:1000349098240647188> | {user.mention} <:join:991733999477203054> - `{amount}` exp\n"
         
-        await interaction.edit_original_response(embed=discord.Embed(description=description,color=0x363940))
+        await interaction.edit_original_response(embed=discord.Embed(description=description,color=0x2b2d31))
     
     @manage.command(name="setexp", description="set a user's exp")
     @app_commands.checks.has_permissions(manage_guild=True)
     @app_commands.describe(users="The users to set exp to", amount="The amount of exp to set")
     async def set(self, interaction: Interaction, users: app_commands.Transform[discord.Member, MultipleMember], amount: int):
-        await interaction.response.send_message(embed=discord.Embed(description=f"<a:loading:998834454292344842> | Please wait while we set the exp", color=0x363940))
+        await interaction.response.send_message(embed=discord.Embed(description=f"<a:loading:998834454292344842> | Please wait while we set the exp", color=0x2b2d31))
         description = ""
         for user in users:
             data = await self.bot.ranks.find(user.id)
@@ -208,7 +208,7 @@ class level(commands.GroupCog, name="level"):
             await self.bot.ranks.update(data)
             self.bot.rank_cache[user.id] = data
         
-        await interaction.edit_original_response(embed=discord.Embed(description=description,color=0x363940))
+        await interaction.edit_original_response(embed=discord.Embed(description=description,color=0x2b2d31))
     
     @manage.command(name="globalmultiplier", description="set the global multiplier")
     @app_commands.checks.has_permissions(manage_guild=True)
@@ -222,7 +222,7 @@ class level(commands.GroupCog, name="level"):
         data['multiplier']['global'] = amount
         await self.bot.level_config.update(data)
         self.bot.level_config_cache[interaction.guild.id] = data
-        await interaction.response.send_message(embed=discord.Embed(description=f"<:dynosuccess:1000349098240647188> | Global multiplier set to `{amount}`", color=0x363940))
+        await interaction.response.send_message(embed=discord.Embed(description=f"<:dynosuccess:1000349098240647188> | Global multiplier set to `{amount}`", color=0x2b2d31))
     
     @weekly.command(name="reset", description="reset the weekly leaderboard")
     @app_commands.checks.has_permissions(administrator=True)
@@ -414,14 +414,14 @@ class Level_BackEnd(commands.Cog):
     @app_commands.describe(user="The user to get the rank of")
     async def rank(self, interaction: Interaction, user: discord.Member = None):
         user = user if user else interaction.user
-        await interaction.response.send_message(embed=discord.Embed(description=f"<a:loading:998834454292344842> | Loading {user}'s rank...", color=0x363940))
+        await interaction.response.send_message(embed=discord.Embed(description=f"<a:loading:998834454292344842> | Loading {user}'s rank...", color=0x2b2d31))
 
         if user.id in self.bot.rank_cache.keys():
             user_data = self.bot.rank_cache[user.id]
         else:
             user_data = await self.bot.ranks.find(user.id)
         
-        if user_data is None: return await interaction.edit_original_response(embed=discord.Embed(description=f"User {user.mention} is not ranked yet", color=0x363940))
+        if user_data is None: return await interaction.edit_original_response(embed=discord.Embed(description=f"User {user.mention} is not ranked yet", color=0x2b2d31))
 
         ranks = await self.bot.ranks.get_all()
         df = pd.DataFrame(ranks)
@@ -450,7 +450,7 @@ class Level_BackEnd(commands.Cog):
         df = df.reset_index(drop=True)
         df = df.head(10)
         df = df.reset_index(drop=True)
-        embed = discord.Embed(title=f"{interaction.guild.name} Leaderboard", color=0x363940, description=f"{interaction.guild.name} Weekly Leaderboard\n\n")
+        embed = discord.Embed(title=f"{interaction.guild.name} Leaderboard", color=0x2b2d31, description=f"{interaction.guild.name} Weekly Leaderboard\n\n")
         rank = df.index[df['_id'] == interaction.user.id].tolist()[0] + 1
 
         for i in range(10):
