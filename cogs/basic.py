@@ -37,6 +37,7 @@ class Basic(commands.Cog):
     
     @app_commands.command(name="snipe", description="Snipe a deleted/edited message from the channel")
     @app_commands.describe(type="The type of snipe", index="The index of the snipe", hidden="Whether the snipe should be hidden or not")
+    @app_commands.checks.cooldown(1, 10, key=lambda i:(i.guild_id, i.user.id))
     async def snipe(self, interaction: Interaction, type: Literal['delete', 'edit'], index: app_commands.Range[int, 1, 10]=1, hidden:bool=False):    
         if type == "delete":
             try:
@@ -73,10 +74,12 @@ class Basic(commands.Cog):
             return await interaction.response.send_message("Invalid type of snipe provided", ephemeral=True)
         
     @app_commands.command(name="enter", description="Tell everyone that you enter the chat")
+    @app_commands.checks.cooldown(1, 10, key=lambda i:(i.guild_id, i.user.id))
     async def enter(self, interaction: discord.Interaction):
         await interaction.response.send_message(f"**{interaction.user}** has entered the room! <:TGK_pepeenter:790189012148682782>")
 
     @app_commands.command(name="leave", description="Tell everyone that you leave the chat")
+    @app_commands.checks.cooldown(1, 10, key=lambda i:(i.guild_id, i.user.id))
     async def leave(self, interaction: discord.Interaction):
         await interaction.response.send_message(f"**{interaction.user}** has left the room! <:TGK_pepeexit:790189030569934849>")
 
