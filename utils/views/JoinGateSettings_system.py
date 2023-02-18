@@ -101,7 +101,7 @@ class JoinGateSettings_Edit(View):
             failed_roles = ""
 
             for role in view.select.values:
-                if role.is_default(): failed_roles += f"{role.mention}, "; continue
+                if role == interaction.guild.default_role: failed_roles += f"{role.mention}, "; continue
                 if role.position + 1 > interaction.guild.me.top_role.position: failed_roles += f"{role.mention}, "; continue
                 if role.permissions.administrator or role.permissions.manage_guild or role.permissions.manage_roles or role.permissions.kick_members or role.permissions.ban_members: failed_roles += f"{role.mention}, "; continue
             
