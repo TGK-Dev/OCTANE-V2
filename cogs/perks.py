@@ -655,6 +655,7 @@ class Perk_Config(commands.Cog):
     @app_commands.command(name="perk-remove", description="Remove perks from your server members")
     @app_commands.describe(perk="The perk you want to remove", member="The member you want to remove the perk from")
     @app_commands.choices(perk=[app_commands.Choice(name="Custom Channel", value="channel"), app_commands.Choice(name="Custom Role", value="roles"), app_commands.Choice(name="Custom React", value="react"), app_commands.Choice(name="Highlight", value="highlight")])
+    @app_commands.checks.has_permissions(manage_guild=True)
     async def perk(self, interaction: Interaction, perk: app_commands.Choice[str], member: discord.Member):
         user_data = await self.bot.perk.get_data(perk.value, member.id, interaction.guild.id)
         if user_data is None: return await interaction.response.send_message(embed=discord.Embed(description=f"{member.mention} doesn't have the {perk.name} perk", color=0x2b2d31))
@@ -686,6 +687,7 @@ class Perk_Config(commands.Cog):
     @app_commands.command(name="perk-give", description="Give perks to your server members")
     @app_commands.describe(perk="The perk you want to give", member="The member you want to give the perk to")
     @app_commands.choices(perk=[app_commands.Choice(name="Custom Channel", value="channel"), app_commands.Choice(name="Custom Role", value="roles"), app_commands.Choice(name="Custom React", value="react"), app_commands.Choice(name="Highlight", value="highlight")])
+    @app_commands.checks.has_permissions(manage_guild=True)
     async def perk(self, interaction: Interaction, perk: app_commands.Choice[str], member: discord.Member, duration: app_commands.Transform[int, TimeConverter]="permanent", friend_limit: app_commands.Range[int, 1, 10]=5):
         if member.bot: return await interaction.response.send_message("You can't give perks to bots.", ephemeral=True)
         perk_data = await self.bot.perk.get_data(perk.value, interaction.guild.id, member.id)
@@ -693,6 +695,34 @@ class Perk_Config(commands.Cog):
         perk_data = await self.bot.perk.create(perk.value, member.id, interaction.guild.id, duration, friend_limit)
         await interaction.response.send_message(f"Perk `{perk.value}` has been given to {member.mention}.", ephemeral=True)
         await interaction.channel.send(f"{member.mention} Now you have the perk `{perk.value}`. You can use it by typing `/perk {perk.value}`")
+    
+    @app_commands.command(name="perk-list", description="List all the perk's of a server member")
+    @app_commands.describe(member="The member you want to list the perks of")
+    @app_commands.checks.has_permissions(manage_guild=True)
+    async def perk(self, interaction: Interaction, member: discord.Member):
+        user_data = await self.bot.perk.get_data('all', interaction.guild.id, member.id)
+        if not user_data: return await interaction.response.send_message("You don't have any perks.", ephemeral=True)
+        pages = []
+        for perk, data in user_data.items():
+            embed = discord.Embed(title=f"{perk.capitalize()} perks", color=0x2b2d31, description="")
+            if perk == 'role':
+                embed.description += f"**Role:** <@&{data['role_id']}>"
+                embed.description += f"\n**Duration:** {humanfriendly.format_timespan(data['duration']) if data['duration'] != 'permanent' else 'Permanent'}\n**Friend limit:** {data['friend_limit']}"
+                embed.description += f"\nFriend list: {', '.join([f'<@{user}>' for user in data['friend_list']]) if len(data['friend_list']) > 0 else '`None`'}"
+            elif perk == 'channel':
+                embed.description += f"Channel: <#{data['channel_id']}>\nDuration: {data['duration']}\nFriend limit: {data['friend_limit']}"
+                embed.description += f"\nFriend list: {', '.join([f'<@{user}>' for user in data['friend_list']])}"
+            elif perk == 'react':
+                embed.description += f"Emoji: {data['emoji']}"
+            elif perk == 'highlight':
+                embed.description += f"Triggers: {', '.join(data['triggers']) if data['triggers'] else '`None`'}"
+                embed.description += f"\nIgnore channel: {', '.join([f'<#{channel}>' for channel in data['ignore_channel']]) if data['ignore_channel'] else '`None`'}"
+                embed.description += f"\nIgnore users: {', '.join([f'<@{user}>' for user in data['ignore_users']]) if data['ignore_users'] else '`None`'}"
+            pages.append(embed)
+
+        await Paginator(interaction=interaction, pages=pages).start(embeded=True, quick_navigation=False)
+
+
 
 async def setup(bot):
     await bot.add_cog(Perks(bot))

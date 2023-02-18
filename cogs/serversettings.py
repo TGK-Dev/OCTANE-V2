@@ -9,6 +9,7 @@ from utils.views.payout_system import Payout_Config_Edit
 from utils.views.ticket_system import Config_Edit as Ticket_Config_Edit
 from utils.views.staff_system import Staff_config_edit
 from utils.views.level_system import LevelingConfig
+from utils.views.perks_system import PerkConfig
 import humanfriendly
 import unicodedata
 import unidecode
@@ -55,6 +56,7 @@ class serversettings(commands.Cog):
     settings = [
         app_commands.Choice(name="Join Verification", value="join_gate"),
         app_commands.Choice(name="Staff Managment", value="staff"),
+        app_commands.Choice(name="Perks System", value="perks"),
         app_commands.Choice(name="Payout System", value="payout"),
         app_commands.Choice(name="Tickets System", value="tickets"),
         app_commands.Choice(name="Leveling System", value="leveling"),
@@ -185,6 +187,24 @@ class serversettings(commands.Cog):
                     await view.wait()
                     if view.value:
                         await self.bot.level_config.update(view.data)
+            case "perks":
+                perk_data = await self.bot.perk.get_data('config', interaction.guild.id, interaction.user.id)
+                if perk_data is None:
+                    perk_data = {'_id': interaction.guild.id, 'custom_category': None, 'custom_roles_position': 0}
+                    await self.bot.perk.config.insert(perk_data)
+                embed = discord.Embed(title=f"{interaction.guild.name} Perk Config", color=self.bot.default_color, description="")
+                embed.description += f"Custom Category: {interaction.guild.get_channel(perk_data['custom_category']).mention if perk_data['custom_category'] else '`None`'}\n"
+                embed.description += f"Custom Roles Position: `{perk_data['custom_roles_position']}`\n"
+
+                if option == "Show":
+                    await interaction.response.send_message(embed=embed)
+                if option == "Edit":
+                    view = PerkConfig(interaction.user, perk_data)
+                    await interaction.response.send_message(embed=embed, view=view)
+                    view.message = await interaction.original_response()
+            case _:
+                await interaction.response.send_message("Invalid option", ephemeral=True)
+
 
 class JoinGateBackEnd(commands.Cog):
     def __init__(self, bot):
