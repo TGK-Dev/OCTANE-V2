@@ -5,6 +5,11 @@ from discord.app_commands import Group
 from typing import Literal
 from utils.db import Document
 from utils.views.JoinGateSettings_system import JoinGateSettings_Edit
+from utils.views.payout_system import Payout_Config_Edit
+from utils.views.ticket_system import Config_Edit as Ticket_Config_Edit
+from utils.views.staff_system import Staff_config_edit
+from utils.views.level_system import LevelingConfig
+import humanfriendly
 import unicodedata
 import unidecode
 import stringcase
@@ -47,12 +52,21 @@ class serversettings(commands.Cog):
         self.bot = bot
         self.bot.ss = serversettingsDB(bot, Document)
     
+    settings = [
+        app_commands.Choice(name="Join Verification", value="join_gate"),
+        app_commands.Choice(name="Staff Managment", value="staff"),
+        app_commands.Choice(name="Payout System", value="payout"),
+        app_commands.Choice(name="Tickets System", value="tickets"),
+        app_commands.Choice(name="Leveling System", value="leveling"),
+    ]
+    
     @app_commands.command(name="serversettings", description="Change the settings of the server")
-    @app_commands.choices(settings=[app_commands.Choice(name="Join Gate", value="join_gate")])
+    @app_commands.choices(settings=settings)
     @app_commands.describe(option="Show or edit the settings", settings="The settings you want to change")
     @app_commands.default_permissions(administrator=True)
     async def serversettings(self, interaction: discord.Interaction, settings: app_commands.Choice[str], option: Literal['Show', 'Edit']):
         match settings.value:
+
             case "join_gate":
                 config = await self.bot.ss.get_config(settings.value, interaction.guild_id)
                 embed = discord.Embed(title="Join Gate Settings", description="", color=0x2b2d31)
@@ -73,6 +87,104 @@ class serversettings(commands.Cog):
                     await view.wait()
                     if view.value:
                         await self.bot.ss.update_config(settings.value, interaction.guild_id, view.data)
+
+            case "staff":
+                guild_config = await self.bot.staff_db.get_config(interaction.guild)
+                if interaction.user.id != interaction.guild.owner.id and interaction.user.id not in guild_config['owners']:
+                    return await interaction.response.send_message("You are not allowed to use this command!", ephemeral=True)
+                
+                embed = discord.Embed(title=f"{interaction.guild.name}'s Staff Settings", description="")
+                embed.description += f"**Owners:** {', '.join([f'<@{owner}>' for owner in guild_config['owners']])}\n"
+                embed.description += f"**Staff Managers:** {', '.join([f'<@{role}>' for role in guild_config['staff_manager']])}\n"
+                embed.description += f"**Base Role:**" + (f" <@&{guild_config['base_role']}>" if guild_config['base_role'] != None else "`None`") + "\n"
+                embed.description += f"**Leave Role:**" + (f" <@&{guild_config['leave_role']}>" if guild_config['leave_role'] != None else "`None`") + "\n"        
+                embed.description += f"**Leave Channel:**" + (f" <#{guild_config['leave_channel']}>" if guild_config['leave_channel'] != None else "`None`") + "\n"
+                embed.description += f"**Max Positions:** {guild_config['max_positions']}\n"
+                embed.description += f"**Last Edit:** <t:{round(guild_config['last_edit'].timestamp())}:R>\n"
+                embed.description += f"**Positions:** {', '.join([f'`{position.capitalize()}`' for position in guild_config['positions'].keys()])}\n"
+
+                if option == "Show":
+                    await interaction.response.send_message(embed=embed)
+                elif option == "Edit":
+                    view = Staff_config_edit(interaction.user, guild_config)
+                    await interaction.response.send_message(embed=embed, view=view)
+                    view.message = await interaction.original_response()
+            
+            case "payout":
+                embed = discord.Embed(title="Payout Config", description="", color=0x2b2d31)
+                data = await self.bot.payout_config.find(interaction.guild.id)
+                if data is None:
+                    data = {
+                        '_id': interaction.guild.id,
+                        'queue_channel': None,
+                        'pending_channel': None,
+                        'manager_roles': [],
+                        'log_channel': None,
+                        'default_claim_time': 3600,
+                    }
+                    await self.bot.payout_config.insert(data)
+                
+                embed.description += f"**Queue Channel:** {interaction.guild.get_channel(data['queue_channel']).mention if data['queue_channel'] else '`Not Set`'}\n"
+                embed.description += f"**Pending Channel:** {interaction.guild.get_channel(data['pending_channel']).mention if data['pending_channel'] else '`Not Set`'}\n"
+                embed.description += f"**Log Channel:** {interaction.guild.get_channel(data['log_channel']).mention if data['log_channel'] else '`Not Set`'}\n"
+                embed.description += f"**Manager Roles:** {', '.join([f'<@&{role}>' for role in data['manager_roles']]) if data['manager_roles'] else '`Not Set`'}\n"
+                embed.description += f"**Default Claim Time:** {humanfriendly.format_timespan(data['default_claim_time'])}\n"
+            
+                if option == "Show":
+                    await interaction.response.send_message(embed=embed)
+                elif option == "Edit":
+                    view = Payout_Config_Edit(data, interaction.user)
+                    await interaction.response.send_message(embed=embed, view=view)
+                    view.message = await interaction.original_response()
+            
+            case "tickets":                
+                ticket_config = await self.bot.tickets.config.find(interaction.guild.id)
+                if ticket_config is None:
+                    ticket_config = {'_id': interaction.guild.id,'category': None,'channel': None,'logging': None,'panels': {},'last_panel_message_id': None, 'transcript': None}
+                    await self.bot.tickets.config.insert(ticket_config)
+        
+                embed = discord.Embed(title="Ticket Config", color=0x2b2d31, description="")
+                embed.description += f"**Category:**" + (f" <#{ticket_config['category']}>" if ticket_config['category'] is not None else "`None`") + "\n"
+                embed.description += f"**Channel:**" + (f" <#{ticket_config['channel']}>" if ticket_config['channel'] is not None else "`None`") + "\n"
+                embed.description += f"**Logging:**" + (f" <#{ticket_config['logging']}>" if ticket_config['logging'] is not None else "`None`") + "\n"
+                embed.description += f"**Transcript:**" + (f" <#{ticket_config['transcript']}>" if ticket_config['transcript'] is not None else "`None`") + "\n"
+                embed.description += f"**Panel Message:**" + (f" {ticket_config['last_panel_message_id']}" if ticket_config['last_panel_message_id'] is not None else "`None`") + "\n"
+                embed.description += f"**Panels:**" + (f"`{len(ticket_config['panels'])}`" if ticket_config['panels'] is not None else "`0`") + "\n"
+        
+                if option == "Show":
+                    await interaction.response.send_message(embed=embed)
+                elif option == "Edit":
+                    view = Ticket_Config_Edit(interaction.user, ticket_config)
+                    await interaction.response.send_message(embed=embed, view=view)
+                    view.message = await interaction.original_response()
+                    await view.wait()
+                    if view.value:
+                        await self.bot.tickets.config.update(view.data)
+
+            case "leveling":
+                level_data = await self.bot.level_config.find(interaction.guild.id)
+                if not level_data: 
+                    level_data = {"_id": interaction.guild_id,"blacklist": {"channels": [],"roles": [],},'multiplier': {'global': 1, 'channels': {}, 'roles': {}},'cooldown': 8,'clear_on_leave': True}
+                    await self.bot.level_config.insert(level_data)
+                channel_multipliers = ""
+                role_multipliers = ""
+                for channel, multiplier in level_data['multiplier']['channels'].items(): channel_multipliers += f"<#{channel}>: `{multiplier}`\n"
+                for role, multiplier in level_data['multiplier']['roles'].items(): role_multipliers += f"<@&{role}>: `{multiplier}`\n"
+                embed = discord.Embed(title=f"{interaction.guild.name} Leveling Config", color=self.bot.default_color, description="")
+                embed.description += f"Global Multiplier: `{level_data['multiplier']['global']}`\n"
+                embed.description += f"Cooldown: `{level_data['cooldown'] if level_data['cooldown'] else 'None'}`\n"
+                embed.description += f"Clear On Leave: `{'On' if level_data['clear_on_leave'] else 'Off'}`\n"
+                embed.description += f"Blacklisted Channels: {', '.join([f'<#{channel}>' for channel in level_data['blacklist']['channels']]) if level_data['blacklist']['channels'] else '`None`'}\n"
+                embed.description += f"Blacklisted Roles: {', '.join([f'<@&{role}>' for role in level_data['blacklist']['roles']]) if level_data['blacklist']['roles'] else '`None`'}\n"                
+                if option == "Show":
+                    await interaction.response.send_message(embed=embed)
+                if option == "Edit":
+                    view = LevelingConfig(interaction.user, level_data)
+                    await interaction.response.send_message(embed=embed, view=view)
+                    view.message = await interaction.original_response()
+                    await view.wait()
+                    if view.value:
+                        await self.bot.level_config.update(view.data)
 
 class JoinGateBackEnd(commands.Cog):
     def __init__(self, bot):
