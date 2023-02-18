@@ -6,7 +6,6 @@ from utils.transformer import MultipleMember
 from utils.db import Document
 from typing import Union, Literal, List
 from utils.views import ticket_system
-
 class Ticket_DB:
     def __init__(self, db, Document):
         self.config: Document = Document(db, "tickets_config")
@@ -14,7 +13,6 @@ class Ticket_DB:
 
 panel_templates = {
     "partnership": { 'key': 'partnership', 'support_roles': [], 'color': 'blurple', 'emoji':'<a:Partner:1000335814481416202>', 'ping_role': None, 'created_by': None, 'description': 'Used for heist partnership deals only!\nMake sure to checkout requirements first.' },
-
 }
 
 class Ticket(commands.GroupCog, name="ticket"):
