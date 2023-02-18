@@ -25,6 +25,22 @@ class Config_Edit(View):
         embed.description += f"**Panel Message:**" + (f"{data['last_panel_message_id']}" if data['last_panel_message_id'] is not None else "`None`") + "\n"
         embed.description += f"**Panels:**" + (f"`{len(data['panels'])}`" if data['panels'] is not None else "`0`") + "\n"
         return embed
+
+    async def interaction_check(self, interaction: Interaction) -> bool:
+        if interaction.user.id != self.user.id:
+            await interaction.response.send_message("You are not the owner of this config", ephemeral=True)
+            return False
+        return True
+    
+    async def on_timeout(self) -> None:
+        for button in self.children: button.disabled = True
+        await self.message.edit(view=self)
+    
+    async def on_error(self, error: Exception, item: Item, interaction: Interaction) -> None:
+        try:
+            await interaction.response.send_message(f"An error occured: {error}", ephemeral=True)
+        except:
+            await interaction.followup.send(f"An error occured: {error}", ephemeral=True)
     
     @button(label="Category", style=discord.ButtonStyle.gray, emoji="<:category:1068484752664973324>", row=0)
     async def category(self, interaction: Interaction, button: Button):
@@ -148,6 +164,25 @@ class Panel_Edit(View):
         embed.description += f"**Color:**" + (f" {data['color']}" if data['color'] is not None else "`None`") + "\n"
         embed.description += f"**Modal:** " + (f"\n> Type: {data['modal']['type']}\n") + (f"```\n{data['modal']['question']}\n```" if data['modal']['question'] is not None else "`None`") + "\n"
         return embed
+
+    async def on_timeout(self):
+        for button in self.children: button.disabled = True
+        await self.message.edit(view=self)
+    
+    async def on_error(self, error, item, interaction):
+        try:
+            await interaction.response.send_message(f"An error occurred: {error}", ephemeral=True)
+        except:
+            await interaction.followup.send(f"An error occurred: {error}", ephemeral=True)
+    
+    async def interaction_check(self, interaction: Interaction):
+        if interaction.user.id == self.user.id:
+            return True
+        else:
+            await interaction.response.send_message("You are not allowed to use this view", ephemeral=True)
+            return False
+    
+
     
     @button(label="Support Roles", style=discord.ButtonStyle.gray, emoji="<:managers:1017379642862215189>", row=0)
     async def support_roles(self, interaction: Interaction, button: Button):
@@ -206,7 +241,7 @@ class Panel_Edit(View):
             for button in self.children: 
                 if button.label == "Save": button.disabled = False
             await modal.interaction.response.edit_message(view=self, embed=embed)
-            await modal.stop()
+            modal.stop()
 
     @button(label="Emoji", style=discord.ButtonStyle.gray, emoji="<:embed:1017379990289002536>", row=1)
     async def emoji(self, interaction: Interaction, button: Button):
@@ -216,7 +251,7 @@ class Panel_Edit(View):
         else: modal.qestion.placeholder = "Enter an emoji"
         modal.add_item(modal.qestion)
         await interaction.response.send_modal(modal)
-        await modal.wait()
+        modal.wait()
 
         if modal.value:
             self.data["emoji"] = modal.qestion.value
@@ -288,6 +323,7 @@ class Panel_Edit(View):
 class Panel_Button(Button):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
+
     async def callback(self, interaction: Interaction):
         
         ticket_config = await interaction.client.tickets.config.find(interaction.guild.id)
@@ -348,7 +384,7 @@ class Panel_Button(Button):
             await modal.interaction.edit_original_response(content=f"Ticket created! {ticket.mention}", view=None)
 
 class Panel_View(View):
-    def __init__(self):        
+    def __init__(self):     
         super().__init__(timeout=None)
     
     async def on_error(self, interaction: Interaction, error: Exception, item: Item[Any], /) -> None:
@@ -356,7 +392,7 @@ class Panel_View(View):
             await interaction.response.send_message(f"An error occured: {error}", ephemeral=True)
         except:
             await interaction.followup.send(content=f"An error occured: {error}", ephemeral=True)
-
+    
 
 class Ticket_controll(View):
     def __init__(self):
