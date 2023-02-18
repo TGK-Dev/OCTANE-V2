@@ -32,7 +32,7 @@ class Payout_Config_Edit(discord.ui.View):
 
     def update_embed(self, data:dict, interaction: Interaction):
         
-        embed = discord.Embed(title="Payout Config", description="", color=0x363940)
+        embed = discord.Embed(title="Payout Config", description="", color=0x2b2d31)
         embed.description += f"**Queue Channel:** {interaction.guild.get_channel(data['queue_channel']).mention if data['queue_channel'] else '`Not Set`'}\n"
         embed.description += f"**Pending Channel:** {interaction.guild.get_channel(data['pending_channel']).mention if data['pending_channel'] else '`Not Set`'}\n"
         embed.description += f"**Log Channel:** {interaction.guild.get_channel(data['log_channel']).mention if data['log_channel'] else '`Not Set`'}\n"
@@ -151,7 +151,7 @@ class Payout_Config_Edit(discord.ui.View):
             embed = self.update_embed(self.data, modal.interaction)
             await modal.interaction.response.edit_message(embed=embed, view=self)
 
-class Payout_clain(discord.ui.View):
+class Payout_claim(discord.ui.View):
     def __init__(self):
         super().__init__(timeout=None)
     
@@ -167,28 +167,39 @@ class Payout_clain(discord.ui.View):
             await interaction.edit_original_response(embed=discord.Embed(description="<:octane_no:1019957208466862120> | You are not the winner of this payout", color=discord.Color.red()))
             return
         
-        await interaction.edit_original_response(embed=discord.Embed(description="<:octane_yes:1019957051721535618> | Sucessfully claimed payout, you will be paid in 24hrs", color=discord.Color.green()))
         data['claimed'] = True
         await interaction.client.payout_queue.update(data)
 
         payout_config = await interaction.client.payout_config.find(interaction.guild.id)
         queue_channel = interaction.guild.get_channel(payout_config['queue_channel'])
 
-        embed = interaction.message.embeds[0]
-        embed.set_field_at(6, name="Awaiting Payout", value="<:nat_reply_cont:1011501118163013634>**Claimed**", inline=False)
-        embed.color = discord.Color.green()
-        msg = await queue_channel.send(f"<@{data['winner']}> you will be paid out in the next 24hrs!\n> If not paid within the deadline claim from support chanel", embed=embed, view=Payout_Buttton())
+        queue_embed = interaction.message.embeds[0]
+        queue_embed.description = queue_embed.description.replace("`Pending`", "`Awaiting Payment`")
+        queue_embed_description = queue_embed.description.split("\n")
+        queue_embed_description.pop(5)
+        queue_embed.description = "\n".join(queue_embed_description)
+
+        current_embed = interaction.message.embeds[0]
+        current_embed.description = current_embed.description.replace("`Pending`", "`Claimed`")
+        current_embed_description = current_embed.description.split("\n")
+        current_embed_description[5] = f"~~{current_embed_description[5]}~~"
+
+
+        await interaction.edit_original_response(embed=discord.Embed(description="<:octane_yes:1019957051721535618> | Sucessfully claimed payout, you will be paid in 24hrs", color=interaction.client.default_color))
+
+        msg = await queue_channel.send(embed=queue_embed, view=Payout_Buttton())
         pending_data = data
         pending_data['_id'] = msg.id
+
         await interaction.client.payout_pending.insert(pending_data)
         await interaction.client.payout_queue.delete(interaction.message.id)
+
         button.label = "Claimed Successfully"
         button.style = discord.ButtonStyle.gray
         button.emoji = "<a:nat_check:1010969401379536958>"
         button.disabled = True
-        embed = interaction.message.embeds[0]
-        embed.set_field_at(6, name="Claimed", value="<:nat_reply_cont:1011501118163013634>**Claimed**", inline=False)
-        await interaction.message.edit(view=self, embed=embed, content=None)
+
+        await interaction.message.edit(embed=current_embed, view=self)
 
     async def on_error(self, interaction: Interaction, error: Exception, item: discord.ui.Item):
         try:
@@ -209,11 +220,10 @@ class Payout_Buttton(discord.ui.View):
         if not data: await interaction.edit_original_response(embed=discord.Embed(description="<:dynoError:1000351802702692442> | Payout not found in Database", color=discord.Color.red()))
 
         embed = interaction.message.embeds[0]
-        embed.remove_field(len(embed.fields)-1)
-        embed.add_field(name="Status", value="**<:nat_reply_cont:1011501118163013634> Successfully Paid!**")
+        new_description = embed.description
         embed.title = "Successfully Paid!"
-        embed.color = discord.Color.green()
-        embed.add_field(name="Santioned By", value=f"**<:nat_reply_cont:1011501118163013634> {interaction.user.mention}**")
+        new_description = new_description.replace("`Awaiting Payment`", "`Successfully Paid!`")
+        embed.description += f"\n**Santioned By:** {interaction.user.mention}"
         edit_view = discord.ui.View()
         edit_view.add_item(discord.ui.Button(label=f'Successfully Paid', style=discord.ButtonStyle.gray, disabled=True, emoji="<:paid:1071752278794575932>"))
 
@@ -250,19 +260,16 @@ class Payout_Buttton(discord.ui.View):
         if not data: await view.interaction.response.edit_message(embed=discord.Embed(description="<:dynoError:1000351802702692442> | Payout not found in Database", color=discord.Color.red()))
 
         embed = interaction.message.embeds[0]
-        embed.remove_field(len(embed.fields)-1)
-        embed.add_field(name="Status", value="**<:nat_reply_cont:1011501118163013634> Rejected**")
-        embed.title = "Payout Denied!"
-        embed.color = discord.Color.red()
-        embed.add_field(name="Rejected By", value=f"**<:nat_reply_cont:1011501118163013634> {interaction.user.mention}**")
+        embed.description = embed.description.replace("`Awaiting Payment`", "`Payout Rejected`")
+        embed.title = "Payout Rejected"
+        embed.description += f"\n**Rejected By:** {interaction.user.mention}"
 
         edit_view = discord.ui.View()
         edit_view.add_item(discord.ui.Button(label=f'Payout Denied', style=discord.ButtonStyle.gray, disabled=True, emoji="<a:nat_cross:1010969491347357717>"))
 
         winner_channel = interaction.client.get_channel(data['channel'])
-        winner_message = await winner_channel.fetch_message(data['winner_message_id'])
 
-        await view.interaction.response.edit_message(embed=discord.Embed(description="<:octane_yes:1019957051721535618> | Payout Rejected Successfully!", color=discord.Color.green()), view=edit_view)
+        await view.interaction.response.edit_message(embed=discord.Embed(description="<:octane_yes:1019957051721535618> | Payout Rejected Successfully!", color=interaction.client.default_color), view=None)
         await interaction.message.edit(view=edit_view, embed=embed, content=None)
         await interaction.client.payout_pending.delete(data['_id'])
 

@@ -7,7 +7,7 @@ from discord.ext import commands, tasks
 from utils.db import Document
 from utils.views.payout_system import Payout_Config_Edit
 from utils.transformer import MultipleMember
-from utils.views.payout_system import Payout_Buttton, Payout_clain
+from utils.views.payout_system import Payout_Buttton, Payout_claim
 from utils.transformer import TimeConverter
 from typing import Literal
 from io import BytesIO
@@ -38,7 +38,10 @@ class Payout(commands.GroupCog, name="payout", description="Payout commands"):
                     message = await channel.fetch_message(payout['_id'])
                 except discord.NotFound:
                     continue
-                await message.edit(view=view, content=f"<@{payout['winner']}> you have not claimed your payout in time.")
+                embed = message.embeds[0]
+                embed.title = "Payout Expired"
+                embed.description = embed.description.replace("`Pending`", "`Expired`")
+                await message.edit(embed=embed,view=view, content=f"<@{payout['winner']}> you have not claimed your payout in time.")
                 host = guild.get_member(payout['set_by'])
                 dm_view = discord.ui.View()
                 dm_view.add_item(discord.ui.Button(label="Payout Message Link", style=discord.ButtonStyle.url, url=message.jump_url))
@@ -56,7 +59,7 @@ class Payout(commands.GroupCog, name="payout", description="Payout commands"):
 
     @app_commands.command(name="config", description="configur the payout system settings")
     async def config_show(self, interaction: discord.Interaction, option: Literal["edit", "show"] = "show"):
-        embed = discord.Embed(title="Payout Config", description="", color=0x363940)
+        embed = discord.Embed(title="Payout Config", description="", color=0x2b2d31)
         data = await self.bot.payout_config.find(interaction.guild.id)
         if data is None:
             data = {
@@ -125,17 +128,17 @@ class Payout(commands.GroupCog, name="payout", description="Payout commands"):
         claim_timestamp = f"<t:{round((datetime.datetime.now() + datetime.timedelta(seconds=claim_time)).timestamp())}:R>"
         for winner in winners:
             if isinstance(winner, discord.Member):
-                embed = discord.Embed(title="Payout Queued", color=discord.Color.random(), timestamp=datetime.datetime.now())
-                embed.add_field(name="Event", value=f"**<:nat_reply_cont:1011501118163013634> {event}**")
-                embed.add_field(name="Winner", value=f"**<:nat_reply_cont:1011501118163013634> {winner.mention} ({winner.name}#{winner.discriminator})**")
-                embed.add_field(name="prize", value=f"**<:nat_reply_cont:1011501118163013634> {prize}**")
-                embed.add_field(name="Channel", value=f"**<:nat_reply_cont:1011501118163013634> {winner_message.channel.mention}**")
-                embed.add_field(name="Message Link", value=f"**<:nat_reply_cont:1011501118163013634> [Click Here]({winner_message.jump_url})**")
-                embed.add_field(name="Set By", value=f"**<:nat_reply_cont:1011501118163013634> {interaction.user.mention}**")
-                embed.add_field(name="Status", value="**<:nat_reply_cont:1011501118163013634> Pending**")
-                embed.set_footer(text=f"Message ID: {winner_message.id}", icon_url=interaction.guild.icon.url)
+                embed = discord.Embed(title="Payout Queued", color=self.bot.default_color, timestamp=datetime.datetime.now(), description="")
+                embed.description += f"**Event:** {event}\n"
+                embed.description += f"**Winner:** {winner.mention} ({winner.name}#{winner.discriminator})\n"
+                embed.description += f"**Prize:** {prize}\n"
+                embed.description += f"**Channel:** {winner_message.channel.mention}\n"
+                embed.description += f"**Message:** [Jump to Message]({winner_message.jump_url})\n"
+                embed.description += f"**Claim Time:** {claim_timestamp}\n"
+                embed.description += f"**Set By:** {interaction.user.mention}\n"
+                embed.description += f"**Status:** `Pending`\n"
 
-                msg = await queue_channel.send(embed=embed, content=f"{winner.mention}, please claim your prize within the next {claim_timestamp}!\n> If not claimed within the deadline, you are liable to be rerolled/rehosted.", view=Payout_clain())
+                msg = await queue_channel.send(embed=embed, content=f"{winner.mention}, please claim your prize within the next {claim_timestamp}!\n> If not claimed within the deadline, you are liable to be rerolled/rehosted.", view=Payout_claim())
                 data = {
 					'_id': msg.id,
 					'channel': winner_message.channel.id,
