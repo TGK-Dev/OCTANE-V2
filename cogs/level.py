@@ -117,7 +117,7 @@ class level(commands.GroupCog, name="level"):
         await interaction.edit_original_response(embed=discord.Embed(description=description,color=0x2b2d31))
     
     @weekly.command(name="winner", description="Get the weekly winner")
-    @app_commands.checks.has_permissions(administrator=True)
+    @app_commands.checks.has_permissions(manage_guild=True)
     async def weekly_reset(self, interaction: Interaction):
         await interaction.response.defer()
         data = await self.bot.ranks.get_all()
@@ -304,6 +304,7 @@ class Level_BackEnd(commands.Cog):
 
     @app_commands.command(name="rank", description="Get your or another users rank")
     @app_commands.describe(user="The user to get the rank of")
+    @app_commands.checks.cooldown(1, 30)
     async def rank(self, interaction: Interaction, user: discord.Member = None):
         user = user if user else interaction.user
         await interaction.response.send_message(embed=discord.Embed(description=f"<a:loading:998834454292344842> | Loading {user}'s rank...", color=0x2b2d31))
@@ -334,6 +335,7 @@ class Level_BackEnd(commands.Cog):
             await interaction.edit_original_response(embed=None, attachments=[discord.File(fp=image_binary, filename=f'{user.id}_rank_cva.png')])
 
     @app_commands.command(name="leaderboard", description="Get the leaderboard")
+    @app_commands.checks.cooldown(1, 30)
     async def leaderboard(self, interaction: Interaction):
         await interaction.response.defer(thinking=True)
         data = await self.bot.ranks.get_all()
