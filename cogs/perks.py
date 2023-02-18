@@ -16,12 +16,12 @@ from utils.views.buttons import Link_view, Confirm
 class Perks_DB:
     def __init__(self, bot, Document):
         self.bot = bot
-        self.db = self.bot.mongo["perks_db"]
+        self.db = self.bot.mongo["Perk_Database"]
         self.roles = Document(self.db, "custom_roles")
         self.channel = Document(self.db, "custom_channel")
         self.react = Document(self.db, "custom_react")
         self.highlight = Document(self.db, "custom_highlight")
-        self.config = Document(self.db, "custom_perks_config")        
+        self.config = Document(self.db, "config")        
         self.cach = {'react': {}, 'highlight': {}}
     
     async def get_data(self, db, guild_id, user_id):
