@@ -8,7 +8,7 @@ import aiohttp
 import discord
 from discord.ext import commands
 from utils.checks import is_dev
-
+from discord import Interaction, app_commands
 
 class SphinxObjectFileReader:
    
@@ -41,7 +41,6 @@ class SphinxObjectFileReader:
                 yield buf[:pos].decode("utf-8")
                 buf = buf[pos + 1 :]
                 pos = buf.find(b"\n")
-
 
 class Docs(commands.Cog, name="Documentation"):
     def __init__(self, bot):
@@ -133,55 +132,43 @@ class Docs(commands.Cog, name="Documentation"):
 
         self._rtfm_cache = cache
 
-    async def do_rtfm(self, ctx, key, obj):
+    async def do_rtfm(self, interaction: Interaction, key, obj):
         page_types = self.page_types
 
         if obj is None:
-            await ctx.send(page_types[key])
+            await interaction.followup.send("You need to pass an object to search for.")
             return
 
         if not hasattr(self, "_rtfm_cache"):
-            await ctx.typing()
             await self.build_rtfm_lookup_table(page_types)
 
         cache = list(self._rtfm_cache[key].items())
 
         self.matches = self.finder(obj, cache, key=lambda t: t[0], lazy=False)[:8]
 
-        e = discord.Embed(colour=0x05FFF0)
-        e.set_footer(text=f'Requested By {ctx.author}', icon_url=f'{ctx.author.avatar.url}')
+        e = discord.Embed(colour=discord.Colour.dark_theme())
+        e.set_footer(text=f'Requested By {interaction.user}')
         if len(self.matches) == 0:
-            return await ctx.send("Could not find anything. Sorry.")
+            return await interaction.followup.send('Could not find anything. Sorry!')
 
         e.description = "\n".join(f"[`{key}`]({url})" for key, url in self.matches)
-        await ctx.send(embed=e)
-
-    def is_me():
-        def predicate(ctx):
-            return ctx.message.author.id in [488614633670967307, 301657045248114690]
-        return commands.check(predicate)
+        await interaction.followup.send(embed=e)
 
     @commands.Cog.listener()
     async def on_ready(self):
         self.logger.info("I'm ready!")
 
-    @commands.command(
-        name="rtfm",
-        description="Gives you a documentation link for a d.py entity.",
-        aliases=["doc"],
-    )
-    @commands.check_any(is_me())
-    async def rtfm(self, ctx, key: str = None, *, query: str = None):
-        if not key or key.lower() not in self.page_types.keys():
-            query = query or ""
-            key = key or ""
-
-            query = key + query
-            key = "discord.py"
+    @app_commands.command(name='docs', description='Gives you a documentation link for a d.py entity.')
+    @app_commands.describe(query='The entity to search for.')
+    @app_commands.check(is_dev)
+    async def rtfm(self, interaction: Interaction, query: str=None):
+        await interaction.response.defer(thinking=True)
+        key = "discord.py"
+        query = key + query        
 
         if query is not None:
             if query.lower() == "rtfm":
-                await ctx.send(
+                await interaction.followup.send(
                     embed=discord.Embed.from_dict(
                         {
                             "title": "Read The Fucking Manual",
@@ -192,7 +179,7 @@ class Docs(commands.Cog, name="Documentation"):
                     )
                 )
 
-        await self.do_rtfm(ctx, key, query)
+        await self.do_rtfm(interaction, key, query)
 
 
 async def setup(bot):
