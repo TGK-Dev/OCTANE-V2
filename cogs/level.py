@@ -77,103 +77,9 @@ class level(commands.GroupCog, name="level"):
             draw.text(winne_postions[index]['xp'], f"{i['xp']} XP", font=winner_exp_font, fill="#A8A8C8")
 
         return template
-
-    blacklist = app_commands.Group(name="blacklist", description="Blacklist a channel or role from leveling")
-    multiplier = app_commands.Group(name="multiplier", description="Configure the multiplier for leveling")
-    config = app_commands.Group(name="config", description="Configure the leveling system")
+    
     manage = app_commands.Group(name="manage", description="Manage exp for a user")
     weekly = app_commands.Group(name="weekly", description="Weekly leaderboard")
-
-    @blacklist.command(name="channel", description="Add/Remove a channel from the blacklist")
-    @app_commands.checks.has_permissions(manage_guild=True)
-    @app_commands.describe(channel="The channel to blacklist")
-    async def blacklist_channel(self, interaction: Interaction, channel: discord.TextChannel):
-        data = await self.bot.level_config.find(interaction.guild.id)
-        if not data:
-            data = self.template_db(interaction.guild.id)
-            await self.bot.level_config.insert(data)
-
-        if channel.id in data['blacklist']['channels']:
-            data['blacklist']['channels'].remove(channel.id)
-            await interaction.response.send_message(embed=discord.Embed(description=f"<:dynosuccess:1000349098240647188> | Channel {channel.mention} Suscessfully removed from blacklist", color=0x2b2d31))
-
-        else:
-            data['blacklist']['channels'].append(channel.id)
-            await interaction.response.send_message(embed=discord.Embed(description=f"<:dynosuccess:1000349098240647188> | Channel {channel.mention} Suscessfully blacklisted", color=0x2b2d31))
-
-        await self.bot.level_config.update(data)
-        self.bot.level_config_cache[interaction.guild.id] = data
-
-    @blacklist.command(name="role", description="Add/Remove a role from the blacklist")
-    @app_commands.checks.has_permissions(manage_guild=True)
-    @app_commands.describe(role="The role to blacklist")
-    async def blacklist_role(self, interaction: Interaction, role: discord.Role):
-        data = await self.bot.level_config.find(interaction.guild.id)
-        if not data:
-            data = self.template_db(interaction.guild.id)
-            await self.bot.level_config.insert(data)
-
-        if role.id in data['blacklist']['roles']:
-            data['blacklist']['roles'].remove(role.id)
-            await interaction.response.send_message(embed=discord.Embed(description=f"<:dynosuccess:1000349098240647188> | Role {role.mention} Suscessfully removed from blacklist",color=0x2b2d31))
-
-        else:
-            data['blacklist']['roles'].append(role.id)
-            await interaction.response.send_message(embed=discord.Embed(description=f"<:dynosuccess:1000349098240647188> | Role {role.mention} Suscessfully blacklisted",color=0x2b2d31))
-
-        await self.bot.level_config.update(data)
-        self.bot.level_config_cache[interaction.guild.id] = data
-
-    
-    @config.command(name="show", description="Show the current level config")
-    @app_commands.checks.has_permissions(manage_guild=True)
-    async def show(self, interaction: Interaction):
-        await interaction.response.send_message(embed=discord.Embed(description=f"<a:loading:998834454292344842> | Please wait while we fetch the config", color=0x2b2d31))
-        data = await self.bot.level_config.find(interaction.guild.id)
-        if not data:
-            data = self.template_db(interaction.guild.id)
-            await self.bot.level_config.insert(data)
-
-        embed = discord.Embed(title="Level Config", color=0x2b2d31)
-        embed.add_field(name="Global Multiplier", value="`1`")
-        embed.add_field(name="Blacklisted Channels", value="\n".join([f"<#{channel}>" for channel in data['blacklist']['channels']]) or "`None`")
-        embed.add_field(name="Blacklisted Roles", value="\n".join([f"<@&{role}>" for role in data['blacklist']['roles']]) or "`None`")
-        embed.add_field(name="Clear on Leave", value="<:octane_yes:1019957051721535618> On" if data['clear_on_leave'] else "<:octane_no:1019957208466862120> Off")
-        embed.add_field(name="Cooldown", value=f"`{data['cooldown']}s`")
-
-        await interaction.edit_original_response(embed=embed)
-        
-    @config.command(name="clear-on-leave", description="Clear the user's level on leave")
-    @app_commands.checks.has_permissions(manage_guild=True)
-    @app_commands.describe(state="The state to set the clear on leave to")
-    async def clear_on_leave(self, interaction: Interaction, state: bool):
-        data = await self.bot.level_config.find(interaction.guild.id)
-        if not data:
-            data = self.template_db(interaction.guild.id)
-            await self.bot.level_config.insert(data)
-
-        data['clear_on_leave'] = state
-        await self.bot.level_config.update(data)
-        self.bot.level_config_cache[interaction.guild.id] = data
-        await interaction.response.send_message(embed=discord.Embed(description=f"<:dynosuccess:1000349098240647188> | Cleared on leave set to {state}", color=0x2b2d31))        
-    
-    @manage.command(name="addexp", description="give a user a exp")
-    @app_commands.checks.has_permissions(manage_guild=True)
-    @app_commands.describe(users="The users to add exp to", amount="The amount of exp to add")
-    async def add(self, interaction: Interaction, users: app_commands.Transform[discord.Member, MultipleMember], amount: int):
-        await interaction.response.send_message(embed=discord.Embed(description=f"<a:loading:998834454292344842> | Please wait while we add the exp", color=0x2b2d31))
-        description = ""
-        for user in users:
-            data = await self.bot.ranks.find(user.id)
-            if not data:
-                Level_BackEnd.template_db(user.id)
-                await self.bot.ranks.insert(data)
-            data['xp'] += amount
-            await self.bot.ranks.update(data)
-            self.bot.rank_cache[user.id] = data
-            description += f"<:dynosuccess:1000349098240647188> | {user.mention} <:join:991733999477203054> + `{amount}` exp\n"
-        
-        await interaction.edit_original_response(embed=discord.Embed(description=description,color=0x2b2d31))
     
     @manage.command(name="removeexp", description="remove a user's exp")
     @app_commands.checks.has_permissions(manage_guild=True)
@@ -210,21 +116,7 @@ class level(commands.GroupCog, name="level"):
         
         await interaction.edit_original_response(embed=discord.Embed(description=description,color=0x2b2d31))
     
-    @manage.command(name="globalmultiplier", description="set the global multiplier")
-    @app_commands.checks.has_permissions(manage_guild=True)
-    @app_commands.describe(amount="The amount to set the global multiplier to")
-    async def globalmultiplier(self, interaction: Interaction, amount: app_commands.Range[int, 1, 10]):
-        data = await self.bot.level_config.find(interaction.guild.id)
-        if not data:
-            data = self.template_db(interaction.guild.id)
-            await self.bot.level_config.insert(data)
-
-        data['multiplier']['global'] = amount
-        await self.bot.level_config.update(data)
-        self.bot.level_config_cache[interaction.guild.id] = data
-        await interaction.response.send_message(embed=discord.Embed(description=f"<:dynosuccess:1000349098240647188> | Global multiplier set to `{amount}`", color=0x2b2d31))
-    
-    @weekly.command(name="reset", description="reset the weekly leaderboard")
+    @weekly.command(name="winner", description="Get the weekly winner")
     @app_commands.checks.has_permissions(administrator=True)
     async def weekly_reset(self, interaction: Interaction):
         await interaction.response.defer()
