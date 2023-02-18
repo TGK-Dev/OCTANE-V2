@@ -23,7 +23,7 @@ class Bot_base(commands.Bot):
     
     async def setup_hook(self) -> None:
         self.mongo = AsyncIOMotorClient(os.environ.get("MONGO"))
-        self.db = self.mongo["tgk_database_test"]
+        self.db = self.mongo["Database"]
         
         for file in os.listdir("./cogs"):
             if file.endswith(".py") and not file.startswith("_"):
@@ -32,19 +32,12 @@ class Bot_base(commands.Bot):
         # await bot.tree.sync()
         # await bot.tree.sync(guild=discord.Object(999551299286732871))
 
-bot = Bot_base(help_command=None, application_id=998152864201457754, case_insensitive=True, owner_ids=[488614633670967307], activity=discord.Activity(type=discord.ActivityType.playing, name="with discord API"), stats=discord.Status.idle)
-
-async def main():
-    async with ClientSession():
-        async with bot:
-            bot.mongo = AsyncIOMotorClient(os.environ.get("MONGO"))
-            bot.db = bot.mongo["tgk_database"]
-            bot.config = Document(bot.db, "config")
-            discord.utils.setup_logging()
+bot = Bot_base(help_command=None, application_id=998152864201457754, case_insensitive=True, owner_ids=[488614633670967307, 301657045248114690], activity=discord.Activity(type=discord.ActivityType.playing, name="with discord API"), stats=discord.Status.idle)
 
 bot.start_time = datetime.datetime.now()
 bot.secret = os.environ.get("SECRET")
 bot.token = os.environ.get("TOKEN")
+bot.default_color = 0x36393F
 
 @bot.event
 async def on_ready():
@@ -54,7 +47,7 @@ async def on_ready():
     print(f"loadded cogs: {len(bot.extensions)}")
     print(f"Cached Emoji Server: {bot.emoji_server.name} | {bot.emoji_server.id}")
     print(f"Bot Views: {len(bot.persistent_views)}")
-    await bot.change_presence(status=discord.Status.offline)
+    await bot.change_presence(status=discord.Status.dnd, activity=discord.Activity(type=discord.ActivityType.playing, name="With New Features"))
 
 @bot.tree.command(name="ping", description="Check bots leatency")
 async def ping(interaction):
