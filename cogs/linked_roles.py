@@ -113,7 +113,7 @@ class Linked_Roles(commands.GroupCog, name="linkedroles"):
             user = self.bot.get_user(i['_id'])
             if user == None: continue
             await self.bot.linked_roles.verify(user, 'weekly_winner', True)
-        embed = discord.Embed(description="Role connections have been updated for the weekly leaderboard winners!\n", color=0x363940)
+        embed = discord.Embed(description="Role connections have been updated for the weekly leaderboard winners!\n", color=0x2b2d31)
         embed.set_footer(text="if any of the winners have not connected their account you can do by clicking the link button below.")
         await channel.send(embed=embed, view=Link_view(label="Link Account", url=self.bot.linked_roles.auth_link))
 
@@ -122,12 +122,12 @@ class Linked_Roles(commands.GroupCog, name="linkedroles"):
     @app_commands.command(name="register", description="Register/refresh a role connection metadata")
     @app_commands.check(is_dev)
     async def register(self, interaction: Interaction):
-        await interaction.response.send_message(embed=discord.Embed(description="Registering role connection metadata...", color=0x363940))
+        await interaction.response.send_message(embed=discord.Embed(description="Registering role connection metadata...", color=0x2b2d31))
         new_medata = await self.bot.linked_roles.register()
         new_medata = await new_medata.json()
         if 'errors' or 'message' in new_medata.keys():
-            embed = discord.Embed(description=f"Failed to register role connection metadata: \n```json\n{new_medata}\n```", color=0x363940)
-        embed = discord.Embed(title="New Role Connection Metadata", description="", color=0x363940)
+            embed = discord.Embed(description=f"Failed to register role connection metadata: \n```json\n{new_medata}\n```", color=0x2b2d31)
+        embed = discord.Embed(title="New Role Connection Metadata", description="", color=0x2b2d31)
         for role in new_medata:
             embed.description += f"**Name:** {role['name']}\n**Description:** {role['description']}\n**Key:** {role['key']}\n\n"
         await interaction.edit_original_response(embed=embed)
@@ -137,17 +137,17 @@ class Linked_Roles(commands.GroupCog, name="linkedroles"):
     async def show(self, interaction: Interaction, member: discord.Member):
         user_data = await self.bot.linked_roles.auth.find(member.id)
         if not user_data:
-            await interaction.response.send_message(embed=discord.Embed(description="User is not registered", color=0x363940))
+            await interaction.response.send_message(embed=discord.Embed(description="User is not registered", color=0x2b2d31))
             return
         if not user_data['access_token']:
-            await interaction.response.send_message(embed=discord.Embed(description="User is not linked", color=0x363940))
+            await interaction.response.send_message(embed=discord.Embed(description="User is not linked", color=0x2b2d31))
             return
-        await interaction.response.send_message(embed=discord.Embed(description="Fetching role connection metadata...", color=0x363940))
+        await interaction.response.send_message(embed=discord.Embed(description="Fetching role connection metadata...", color=0x2b2d31))
         new_metata = await self.bot.linked_roles.get_metadata(user_data)
         new_metata = await new_metata.json()
         if 'message' or 'code' in new_metata.keys():
-            embed = discord.Embed(description=f"Failed to fetch role connection metadata: \n```json\n{new_metata}\n```", color=0x363940)
-        embed = discord.Embed(title="Role Connection Metadata", description="", color=0x363940)
+            embed = discord.Embed(description=f"Failed to fetch role connection metadata: \n```json\n{new_metata}\n```", color=0x2b2d31)
+        embed = discord.Embed(title="Role Connection Metadata", description="", color=0x2b2d31)
         embed.description += f"**Platform Name:** {new_metata['platform_name']}\n**Platform Username:** {new_metata['platform_username']}\n"
         value = ""
         for meta in new_metata['metadata'].keys():
@@ -160,15 +160,15 @@ class Linked_Roles(commands.GroupCog, name="linkedroles"):
     @app_commands.describe(key="Select a connection key", value="Select a connection value")
     @app_commands.choices(key=[app_commands.Choice(name="Beast Donor", value="beast"), app_commands.Choice(name="Weekly Winner", value="wamari")],value=[app_commands.Choice(name="True", value=1), app_commands.Choice(name="False", value=0)])
     async def verify(self, interaction: Interaction, user: discord.User, key: app_commands.Choice[str], value: app_commands.Choice[int]):
-        await interaction.response.send_message(embed=discord.Embed(description="Verifying role connection...", color=0x363940))
+        await interaction.response.send_message(embed=discord.Embed(description="Verifying role connection...", color=0x2b2d31))
         new_medata = await self.bot.linked_roles.verify(user, key.value, value.value)
         if isinstance(new_medata, bool):
-            await interaction.edit_original_response(embed=discord.Embed(description="User have not connected their account yet, please ask them to connect their and changes will be applied automatically", color=0x363940))
+            await interaction.edit_original_response(embed=discord.Embed(description="User have not connected their account yet, please ask them to connect their and changes will be applied automatically", color=0x2b2d31))
         new_medata = await new_medata.json()
         if 'code' in new_medata.keys():
-            await interaction.edit_original_response(embed=discord.Embed(description=f"Failed to verify role connection: \n```json\n{new_medata}\n```", color=0x363940))           
+            await interaction.edit_original_response(embed=discord.Embed(description=f"Failed to verify role connection: \n```json\n{new_medata}\n```", color=0x2b2d31))           
         else:
-            await interaction.edit_original_response(embed=discord.Embed(description=f"Successfully updated {user.mention}'s role connection for {key.name}", color=0x363940))
+            await interaction.edit_original_response(embed=discord.Embed(description=f"Successfully updated {user.mention}'s role connection for {key.name}", color=0x2b2d31))
 
 async def setup(bot):
     await bot.add_cog(Linked_Roles(bot))

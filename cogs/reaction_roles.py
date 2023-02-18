@@ -59,7 +59,7 @@ class ReactionRoles(commands.GroupCog, name="reactroles", description="Manage Re
         if len(guild_config["menues"]) >= guild_config["limit"]: return await interaction.response.send_message("You have reached the limit of reaction role menues", ephemeral=True)
         if name in guild_config['menues'].keys(): await interaction.response.send_message("A menu with that name already exists", ephemeral=True)
         menu_data = {'name': name, 'roles': [], 'required_roles': [], 'display_name': None,'type': None}
-        embed = discord.Embed(description="", color=0x363940)
+        embed = discord.Embed(description="", color=0x2b2d31)
         embed.description += f"**Name:** {name}\n"
         embed.description += f"**Display Name:** {menu_data['display_name'] if menu_data['display_name'] else '`None`'}\n"
         embed.description += f"**Roles:** {', '.join([f'<@&{role}>' for role in menu_data['roles']]) if menu_data['roles'] else '`None`'}\n"
@@ -98,7 +98,7 @@ class ReactionRoles(commands.GroupCog, name="reactroles", description="Manage Re
         if not guild_config['menues']: await interaction.response.send_message("There are no reaction role menues", ephemeral=True)
         embeds = []
         for name, menu_data in guild_config['menues'].items():
-            embed = discord.Embed(description="", color=0x363940)
+            embed = discord.Embed(description="", color=0x2b2d31)
             embed.description += f"**Name:** {name}\n"
             embed.description += f"**Display Name:** {menu_data['display_name'] if menu_data['display_name'] else '`None`'}\n"
             embed.description += f"**Roles:** {', '.join([f'<@&{role}>' for role in menu_data['roles']]) if menu_data['roles'] else '`None`'}\n"
@@ -116,7 +116,7 @@ class ReactionRoles(commands.GroupCog, name="reactroles", description="Manage Re
         guild_config = await self.bot.rr.get_config(interaction.guild_id)
         if name not in guild_config['menues'].keys(): await interaction.response.send_message("That menu does not exist", ephemeral=True)
         menu = guild_config['menues'][name]
-        embed = discord.Embed(title=f"", color=0x363940)
+        embed = discord.Embed(title=f"", color=0x2b2d31)
         embed.title += f"{menu['display_name'] if menu['display_name'] else name}\n"
         view = Reaction_Role_View(menu, guild=interaction.guild)
         channel = channel if channel != None else interaction.channel

@@ -17,7 +17,7 @@ class Config_Edit(View):
         super().__init__(timeout=120)
     
     def update_embed(self, data: dict):
-        embed = discord.Embed(title="Ticket Config", color=0x363940, description="")
+        embed = discord.Embed(title="Ticket Config", color=0x2b2d31, description="")
         embed.description += f"**Category:**" + (f" <#{data['category']}>" if data['category'] is not None else "`None`") + "\n"
         embed.description += f"**Channel:**" + (f" <#{data['channel']}>" if data['channel'] is not None else "`None`") + "\n"
         embed.description += f"**Logging:**" + (f" <#{data['logging']}>" if data['logging'] is not None else "`None`") + "\n"
@@ -44,7 +44,7 @@ class Config_Edit(View):
     
     @button(label="Category", style=discord.ButtonStyle.gray, emoji="<:category:1068484752664973324>", row=0)
     async def category(self, interaction: Interaction, button: Button):
-        embed = discord.Embed(description="Select a category for the ticket system to use", color=0x363940)
+        embed = discord.Embed(description="Select a category for the ticket system to use", color=0x2b2d31)
         view = View()
         view.value = None
         view.select = Channel_select(placeholder="Select a category", min_values=1, max_values=1, channel_types=[discord.ChannelType.category])
@@ -55,7 +55,7 @@ class Config_Edit(View):
         if view.value is None:
             await interaction.delete_original_message()
         else:
-            await view.select.interaction.response.edit_message(view=None, embed=discord.Embed(description="<:octane_yes:1019957051721535618> | Category set!", color=0x363940))
+            await view.select.interaction.response.edit_message(view=None, embed=discord.Embed(description="<:octane_yes:1019957051721535618> | Category set!", color=0x2b2d31))
             self.data["category"] = view.select.values[0].id
             embed = self.update_embed(self.data)
             for button in self.children: 
@@ -64,7 +64,7 @@ class Config_Edit(View):
     
     @button(label="Channel", style=discord.ButtonStyle.gray, emoji="<:channel:1017378607863181322>", row=0)
     async def channel(self, interaction: Interaction, button: Button):
-        embed = discord.Embed(description="Select a channel for the ticket system to use", color=0x363940)
+        embed = discord.Embed(description="Select a channel for the ticket system to use", color=0x2b2d31)
         view = View()
         view.value = None
         view.select = Channel_select(placeholder="Select a channel", min_values=1, max_values=1, channel_types=[discord.ChannelType.text])
@@ -75,7 +75,7 @@ class Config_Edit(View):
         if view.value is None:
             await interaction.delete_original_message()
         else:
-            await view.select.interaction.response.edit_message(view=None, embed=discord.Embed(description="<:octane_yes:1019957051721535618> | Channel set!", color=0x363940))
+            await view.select.interaction.response.edit_message(view=None, embed=discord.Embed(description="<:octane_yes:1019957051721535618> | Channel set!", color=0x2b2d31))
             self.data["channel"] = view.select.values[0].id
             embed = self.update_embed(self.data)
             for button in self.children: 
@@ -84,7 +84,7 @@ class Config_Edit(View):
     
     @button(label="Logging", style=discord.ButtonStyle.gray, emoji="<:logging:1017378971140235354>", row=1)
     async def logging(self, interaction: Interaction, button: Button):
-        embed = discord.Embed(description="Select a channel for the ticket system to log to", color=0x363940)
+        embed = discord.Embed(description="Select a channel for the ticket system to log to", color=0x2b2d31)
         view = View()
         view.value = None
         view.select = Channel_select(placeholder="Select a channel", min_values=1, max_values=1, channel_types=[discord.ChannelType.text])
@@ -95,7 +95,7 @@ class Config_Edit(View):
         if view.value is None:
             await interaction.delete_original_message()
         else:
-            await view.select.interaction.response.edit_message(view=None, embed=discord.Embed(description="<:octane_yes:1019957051721535618> | Logging channel set!", color=0x363940))
+            await view.select.interaction.response.edit_message(view=None, embed=discord.Embed(description="<:octane_yes:1019957051721535618> | Logging channel set!", color=0x2b2d31))
             self.data["logging"] = view.select.values[0].id
             embed = self.update_embed(self.data)
             for button in self.children: 
@@ -104,7 +104,7 @@ class Config_Edit(View):
     
     @button(label="Transcript", style=discord.ButtonStyle.gray, emoji="<:transcript:1069193529403916338>", row=1)
     async def transcript(self, interaction: Interaction, button: Button):
-        embed = discord.Embed(description="Select a channel for the ticket system to send transcripts to", color=0x363940)
+        embed = discord.Embed(description="Select a channel for the ticket system to send transcripts to", color=0x2b2d31)
         view = View()
         view.value = None
         view.select = Channel_select(placeholder="Select a channel", min_values=1, max_values=1, channel_types=[discord.ChannelType.text])
@@ -115,7 +115,7 @@ class Config_Edit(View):
         if view.value is None:
             await interaction.delete_original_message()
         else:
-            await view.select.interaction.response.edit_message(view=None, embed=discord.Embed(description="<:octane_yes:1019957051721535618> | Transcript channel set!", color=0x363940))
+            await view.select.interaction.response.edit_message(view=None, embed=discord.Embed(description="<:octane_yes:1019957051721535618> | Transcript channel set!", color=0x2b2d31))
             self.data["transcript"] = view.select.values[0].id
             embed = self.update_embed(self.data)
             for button in self.children: 
@@ -156,7 +156,7 @@ class Panel_Edit(View):
         super().__init__(timeout=120)
     
     def update_embed(self, data:dict):
-        embed = discord.Embed(title=f"Settings for Panel: {data['key']}", color=0x363940, description="")
+        embed = discord.Embed(title=f"Settings for Panel: {data['key']}", color=0x2b2d31, description="")
         embed.description += f"**Support Roles:** {', '.join([f'<@&{role}>' for role in data['support_roles']]) if len(data['support_roles']) > 0 else '`None`'}\n"
         embed.description += f"**Ping Role:**" + (f" <@&{data['ping_role']}>" if data['ping_role'] is not None else "`None`") + "\n"
         embed.description += f"**Description:**" + (f"```\n{data['description']}\n```" if data['description'] is not None else "`None`") + "\n"
@@ -196,7 +196,7 @@ class Panel_Edit(View):
         if view.value is None:
             await interaction.delete_original_response()
         else:
-            await view.select.interaction.response.edit_message(view=None, embed=discord.Embed(description="<:octane_yes:1019957051721535618> | Support roles set!", color=0x363940))
+            await view.select.interaction.response.edit_message(view=None, embed=discord.Embed(description="<:octane_yes:1019957051721535618> | Support roles set!", color=0x2b2d31))
             await interaction.delete_original_response()
             self.data["support_roles"] = [role.id for role in view.select.values]
             embed = self.update_embed(self.data)
@@ -216,7 +216,7 @@ class Panel_Edit(View):
         if view.value is None:
             await interaction.delete_original_response()
         else:
-            await view.select.interaction.response.edit_message(view=None, embed=discord.Embed(description="<:octane_yes:1019957051721535618> | Ping role set!", color=0x363940))
+            await view.select.interaction.response.edit_message(view=None, embed=discord.Embed(description="<:octane_yes:1019957051721535618> | Ping role set!", color=0x2b2d31))
             await interaction.delete_original_response()
             self.data["ping_role"] = view.select.values[0].id
             embed = self.update_embed(self.data)
@@ -272,7 +272,7 @@ class Panel_Edit(View):
         await view.wait()
         if view.value:
             self.data["color"] = view.select.values[0]
-            await view.select.interaction.response.edit_message(view=None, embed=discord.Embed(description=f"<:octane_yes:1019957051721535618> | Color set to {self.data['color']}!", color=0x363940))
+            await view.select.interaction.response.edit_message(view=None, embed=discord.Embed(description=f"<:octane_yes:1019957051721535618> | Color set to {self.data['color']}!", color=0x2b2d31))
             await interaction.delete_original_response()            
             embed = self.update_embed(self.data)
             for button in self.children: 
@@ -350,7 +350,7 @@ class Panel_Button(Button):
                 if role is not None: over_write[role] = discord.PermissionOverwrite(view_channel=True, send_messages=True, read_message_history=True, attach_files=True, embed_links=True, add_reactions=True)
 
             ticket = await interaction.guild.create_text_channel(f"ticket-{interaction.user.display_name}", overwrites=over_write, category=interaction.guild.get_channel(ticket_config["category"]), topic=f"Ticket for {interaction.user.mention} ({interaction.user.id})")
-            ticket_embed = discord.Embed(title=f"Ticket for {interaction.user.display_name}", description="",color=0x363940)
+            ticket_embed = discord.Embed(title=f"Ticket for {interaction.user.display_name}", description="",color=0x2b2d31)
             ticket_embed.description += "Kindly wait patiently. A staff member will assist you shortly.If you're looking to approach a specific staff member, ping the member once. Do not spam ping any member or role."
             ticket_embed.set_footer(text=f"Developers: JAY#0138 & utki007#0007")
             ticket_embed.set_thumbnail(url=interaction.guild.icon.url)
@@ -368,7 +368,7 @@ class Panel_Button(Button):
                 "log_message_id": None,
             }
             if ticket_config['logging'] is not None:
-                log_embed = discord.Embed(description="", color=0x363940)
+                log_embed = discord.Embed(description="", color=0x2b2d31)
                 log_embed.description += f"**Ticket created by {interaction.user.mention}**\n"
                 log_embed.description += f"**Channel:** {ticket.mention}({ticket.name}|{ticket.id})\n"
                 log_embed.description += f"**Panel:** {panel['key']}\n"
@@ -405,7 +405,7 @@ class Ticket_controll(View):
             await interaction.followup.send(content=f"An error occured: {error}", ephemeral=True)
     
     async def log_embed(self, log_chanenl: discord.TextChannel, action: str, ticket:discord.TextChannel, user: discord.Member) -> discord.Message:
-        embed = discord.Embed(description="", color=0x363940)
+        embed = discord.Embed(description="", color=0x2b2d31)
         embed.set_author(name=f"Ticket {action}")
         embed.description += f"**Ticket:** {ticket.mention}({ticket.name}|{ticket.id})\n"
         embed.description += f"**User:** {user.mention}({user.name}|{user.id})\n"
@@ -419,7 +419,7 @@ class Ticket_controll(View):
         if ticket_data is None: return await interaction.response.send_message("No ticket found", ephemeral=True, delete_after=5)
         if ticket_data["status"] == "open": return await interaction.response.send_message("Ticket is already open", ephemeral=True, delete_after=5)
 
-        embed = discord.Embed(description="<a:loading:998834454292344842> | Opening ticket...", color=0x363940)
+        embed = discord.Embed(description="<a:loading:998834454292344842> | Opening ticket...", color=0x2b2d31)
         await interaction.response.send_message(embed=embed, ephemeral=False)
         overwrite = discord.PermissionOverwrite(view_channel=True)
         for i in ticket_data["added_roles"]: await interaction.channel.set_permissions(interaction.guild.get_role(i), overwrite=overwrite)
@@ -429,7 +429,7 @@ class Ticket_controll(View):
             else: ticket_data["added_users"].remove(i)
         ticket_owner = interaction.guild.get_member(ticket_data["user"])
         if ticket_owner is not None: await interaction.channel.set_permissions(ticket_owner, overwrite=overwrite)
-        else: return await interaction.edit_original_response(embed=discord.Embed(description="Ticket owner not found/left the server", color=0x363940))
+        else: return await interaction.edit_original_response(embed=discord.Embed(description="Ticket owner not found/left the server", color=0x2b2d31))
         
         ticket_data["status"] = "open"
         await interaction.client.tickets.tickets.update(ticket_data)
@@ -447,7 +447,7 @@ class Ticket_controll(View):
         if ticket_data is None: return await interaction.response.send_message("No ticket found", ephemeral=True, delete_after=5)
         if ticket_data["status"] == "closed": return await interaction.response.send_message("Ticket is already closed", ephemeral=True, delete_after=5)
 
-        embed = discord.Embed(description="<a:loading:998834454292344842> | Closing ticket...", color=0x363940)
+        embed = discord.Embed(description="<a:loading:998834454292344842> | Closing ticket...", color=0x2b2d31)
         await interaction.response.send_message(embed=embed, ephemeral=False)
         overwrite = discord.PermissionOverwrite(view_channel=False)
         for i in ticket_data["added_roles"]: await interaction.channel.set_permissions(interaction.guild.get_role(i), overwrite=overwrite)
@@ -459,7 +459,7 @@ class Ticket_controll(View):
         await interaction.client.tickets.tickets.update(ticket_data)
         ticket_owner = interaction.guild.get_member(ticket_data["user"])
         if ticket_owner is not None: await interaction.channel.set_permissions(ticket_owner, overwrite=overwrite)
-        else: return await interaction.edit_original_response(embed=discord.Embed(description="Ticket owner not found/left the server", color=0x363940))
+        else: return await interaction.edit_original_response(embed=discord.Embed(description="Ticket owner not found/left the server", color=0x2b2d31))
 
         embed.description = "<:dynosuccess:1000349098240647188> | Ticket closed!"
         await interaction.edit_original_response(embed=embed)
@@ -473,7 +473,7 @@ class Ticket_controll(View):
         ticket_data = await interaction.client.tickets.tickets.find(interaction.channel.id)
         if ticket_data is None: return await interaction.response.send_message("No ticket found", ephemeral=True, delete_after=5)
         timestemp = datetime.datetime.now() + datetime.timedelta(seconds=20)
-        embed = discord.Embed(description=f"Deleting ticket in <t:{round(timestemp.timestamp())}:R>, use the button below to cancel", color=0x363940)
+        embed = discord.Embed(description=f"Deleting ticket in <t:{round(timestemp.timestamp())}:R>, use the button below to cancel", color=0x2b2d31)
         
         view = Confirm(interaction.user, 20)
         
@@ -483,10 +483,10 @@ class Ticket_controll(View):
         view.message = await interaction.original_response()
         await view.wait()
 
-        if view.value == True:  return await view.interaction.response.edit_message(embed=discord.Embed(description="Command cancelled", color=0x363940), view=None)
+        if view.value == True:  return await view.interaction.response.edit_message(embed=discord.Embed(description="Command cancelled", color=0x2b2d31), view=None)
         else:
             for button in view.children: button.disabled = True
-            await interaction.edit_original_response(embed=discord.Embed(description="<a:loading:998834454292344842> | Saving ticket...", color=0x363940), view=view)
+            await interaction.edit_original_response(embed=discord.Embed(description="<a:loading:998834454292344842> | Saving ticket...", color=0x2b2d31), view=view)
 
             ticket_config = await interaction.client.tickets.config.find(interaction.guild.id)
             if ticket_config['logging'] is not None: 

@@ -14,7 +14,7 @@ class JoinGateSettings_Edit(View):
         super().__init__()
     
     def update_embed(self, data):
-        embed = discord.Embed(title="Join Gate Settings", description="", color=0x363940)
+        embed = discord.Embed(title="Join Gate Settings", description="", color=0x2b2d31)
         embed.description += f"**Enabled:** `{data['joingate']['enabled']}`\n"
         embed.description += f"**Decancer:** `{data['joingate']['decancer'] if data['joingate']['decancer'] is not None else 'None'}`\n"
         embed.description += f"**Action:** `{data['joingate']['action'] if data['joingate']['action'] is not None else 'None'}`\n"

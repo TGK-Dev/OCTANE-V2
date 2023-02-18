@@ -55,7 +55,7 @@ class serversettings(commands.Cog):
         match settings.value:
             case "join_gate":
                 config = await self.bot.ss.get_config(settings.value, interaction.guild_id)
-                embed = discord.Embed(title="Join Gate Settings", description="", color=0x363940)
+                embed = discord.Embed(title="Join Gate Settings", description="", color=0x2b2d31)
                 embed.description += f"**Enabled:** `{config['joingate']['enabled']}`\n"
                 embed.description += f"**Decancer:** `{config['joingate']['decancer'] if config['joingate']['decancer'] is not None else 'None'}`\n"
                 embed.description += f"**Action:** `{config['joingate']['action'] if config['joingate']['action'] is not None else 'None'}`\n"

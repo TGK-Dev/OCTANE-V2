@@ -58,7 +58,7 @@ class Ticket(commands.GroupCog, name="ticket"):
             ticket_config = {'_id': interaction.guild.id,'category': None,'channel': None,'logging': None,'panels': {},'last_panel_message_id': None, 'transcript': None}
             await self.bot.tickets.config.insert(ticket_config)
         
-        embed = discord.Embed(title="Ticket Config", color=0x363940, description="")
+        embed = discord.Embed(title="Ticket Config", color=0x2b2d31, description="")
         embed.description += f"**Category:**" + (f" <#{ticket_config['category']}>" if ticket_config['category'] is not None else "`None`") + "\n"
         embed.description += f"**Channel:**" + (f" <#{ticket_config['channel']}>" if ticket_config['channel'] is not None else "`None`") + "\n"
         embed.description += f"**Logging:**" + (f" <#{ticket_config['logging']}>" if ticket_config['logging'] is not None else "`None`") + "\n"
@@ -94,7 +94,7 @@ class Ticket(commands.GroupCog, name="ticket"):
         else:
             panel_data = panel_templates[template.value]
 
-        embed = discord.Embed(title=f"Settings for Panel: {name}", color=0x363940, description="")
+        embed = discord.Embed(title=f"Settings for Panel: {name}", color=0x2b2d31, description="")
         embed.description += f"**Support Roles:** {', '.join([f'<@&{role}>' for role in panel_data['support_roles']]) if len(panel_data['support_roles']) > 0 else '`None`'}\n"
         embed.description += f"**Ping Role:**" + (f" <@&{panel_data['ping_role']}>" if panel_data['ping_role'] is not None else "`None`") + "\n"
         embed.description += f"**Description:**" + (f"```\n{panel_data['description']}\n```" if panel_data['description'] is not None else "`None`") + "\n"
@@ -123,7 +123,7 @@ class Ticket(commands.GroupCog, name="ticket"):
         if name not in ticket_config['panels'].keys(): return await interaction.response.send_message("This panel does not exist", ephemeral=True, delete_after=5)
         del ticket_config['panels'][name]
         await self.bot.tickets.config.update(ticket_config)
-        await interaction.response.send_message(embed=discord.Embed(description=f"Successfully deleted panel `{name}`", color=0x363940))
+        await interaction.response.send_message(embed=discord.Embed(description=f"Successfully deleted panel `{name}`", color=0x2b2d31))
 
     @panel.command(name="edit", description="Edit a ticket panel")
     @app_commands.checks.has_permissions(manage_guild=True)
@@ -140,7 +140,7 @@ class Ticket(commands.GroupCog, name="ticket"):
             panel_data = ticket_config['panels'][name]
         except KeyError:
             return await interaction.response.send_message("This panel does not exist", ephemeral=True, delete_after=5)
-        embed = discord.Embed(title=f"Settings for Panel: {name}", color=0x363940, description="")
+        embed = discord.Embed(title=f"Settings for Panel: {name}", color=0x2b2d31, description="")
         embed.description += f"**Support Roles:** {', '.join([f'<@&{role}>' for role in panel_data['support_roles']]) if len(panel_data['support_roles']) > 0 else '`None`'}\n"
         embed.description += f"**Ping Role:**" + (f" <@&{panel_data['ping_role']}>" if panel_data['ping_role'] is not None else "`None`") + "\n"
         embed.description += f"**Description:**" + (f"```\n{panel_data['description']}\n```" if panel_data['description'] is not None else "`None`") + "\n"
@@ -155,12 +155,12 @@ class Ticket(commands.GroupCog, name="ticket"):
     @panel.command(name="send", description="Send a ticket panel")
     @app_commands.checks.has_permissions(manage_guild=True)
     async def send_panel(self, interaction: discord.Interaction):
-        panel_embed = discord.Embed(title=f"{interaction.guild}'s Ticket Panel", color=0x363940)
+        panel_embed = discord.Embed(title=f"{interaction.guild}'s Ticket Panel", color=0x2b2d31)
         ticket_config = await self.bot.tickets.config.find(interaction.guild.id)
         if ticket_config is None: return await interaction.response.send_message("There are no panels to send", ephemeral=True)
         if len(ticket_config['panels'].keys()) == 0: return await interaction.response.send_message("There are no panels to send", ephemeral=True)
 
-        await interaction.response.send_message(embed=discord.Embed(description="Sending ticket panel...", color=0x363940), ephemeral=True)
+        await interaction.response.send_message(embed=discord.Embed(description="Sending ticket panel...", color=0x2b2d31), ephemeral=True)
 
         panel_view = ticket_system.Panel_View()
         for panel in ticket_config['panels'].keys():
@@ -189,7 +189,7 @@ class Ticket(commands.GroupCog, name="ticket"):
 
         link_view = discord.ui.View()
         link_view.add_item(discord.ui.Button(label="Panel Link", style=discord.ButtonStyle.link, url=message.jump_url))
-        await interaction.edit_original_response(embed=discord.Embed(description="<:octane_yes:1019957051721535618> | Successfully sent the ticket panel", color=0x363940), view=link_view)
+        await interaction.edit_original_response(embed=discord.Embed(description="<:octane_yes:1019957051721535618> | Successfully sent the ticket panel", color=0x2b2d31), view=link_view)
 
     @app_commands.command(name="add", description="Add a member to the ticket")
     @app_commands.checks.has_permissions(manage_messages=True)
@@ -202,7 +202,7 @@ class Ticket(commands.GroupCog, name="ticket"):
             if target.id in ticket_data['roles']: return await interaction.response.send_message("This role is already added to the ticket", ephemeral=True)
             else:
                 ticket_data['roles'].append(target.id)
-                return await interaction.response.send_message(embed=discord.Embed(description=f"<:octane_yes:1019957051721535618> | Added {target.mention} to the ticket", color=0x363940))
+                return await interaction.response.send_message(embed=discord.Embed(description=f"<:octane_yes:1019957051721535618> | Added {target.mention} to the ticket", color=0x2b2d31))
 
         elif isinstance(target, discord.Member):
             if target.id in ticket_data['members']: return await interaction.response.send_message("This member is already added to the ticket", ephemeral=True)
@@ -211,7 +211,7 @@ class Ticket(commands.GroupCog, name="ticket"):
 
         await interaction.channel.set_permissions(target, read_messages=True, send_messages=True, view_channel=True)
         await self.bot.tickets.tickets.update(ticket_data)
-        await interaction.response.send_message(embed=discord.Embed(description=f"<:octane_yes:1019957051721535618> | Added {target.mention} to the ticket", color=0x363940))
+        await interaction.response.send_message(embed=discord.Embed(description=f"<:octane_yes:1019957051721535618> | Added {target.mention} to the ticket", color=0x2b2d31))
     
     @app_commands.command(name="remove", description="Remove a member from the ticket")
     @app_commands.checks.has_permissions(manage_messages=True)
@@ -224,7 +224,7 @@ class Ticket(commands.GroupCog, name="ticket"):
             if target.id not in ticket_data['roles']: return await interaction.response.send_message("This role is not added to the ticket", ephemeral=True)
             else:
                 ticket_data['roles'].remove(target.id)
-                return await interaction.response.send_message(embed=discord.Embed(description=f"<:octane_yes:1019957051721535618> | Removed {target.mention} from the ticket", color=0x363940))
+                return await interaction.response.send_message(embed=discord.Embed(description=f"<:octane_yes:1019957051721535618> | Removed {target.mention} from the ticket", color=0x2b2d31))
 
         elif isinstance(target, discord.Member):
             if target.id not in ticket_data['members']: return await interaction.response.send_message("This member is not added to the ticket", ephemeral=True)
@@ -233,7 +233,7 @@ class Ticket(commands.GroupCog, name="ticket"):
 
         await interaction.channel.set_permissions(target, read_messages=False, send_messages=False, view_channel=False)
         ticket_data = await self.bot.tickets.tickets.find(interaction.channel.id)
-        await interaction.response.send_message(embed=discord.Embed(description=f"<:octane_yes:1019957051721535618> | Removed {target.mention} from the ticket", color=0x363940))
+        await interaction.response.send_message(embed=discord.Embed(description=f"<:octane_yes:1019957051721535618> | Removed {target.mention} from the ticket", color=0x2b2d31))
 
 async def setup(bot):
     await bot.add_cog(Ticket(bot))

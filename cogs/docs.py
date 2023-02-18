@@ -146,7 +146,7 @@ class Docs(commands.Cog, name="Documentation"):
 
         self.matches = self.finder(obj, cache, key=lambda t: t[0], lazy=False)[:8]
 
-        e = discord.Embed(colour=discord.Colour.dark_theme())
+        e = discord.Embed(colour=0x2b2d31)
         e.set_footer(text=f'Requested By {interaction.user}')
         if len(self.matches) == 0:
             return await interaction.followup.send('Could not find anything. Sorry!')

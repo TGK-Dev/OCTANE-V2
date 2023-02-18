@@ -134,7 +134,7 @@ class Basic(commands.Cog):
     @commands.Cog.listener()
     async def on_afk_return(self, message):
         user_data = await self.bot.afk.find(message.author.id)
-        embed = discord.Embed(description="**This is the list of the pepole that pinged you while you were afk**\n", color=0x363940)
+        embed = discord.Embed(description="**This is the list of the pepole that pinged you while you were afk**\n", color=0x2b2d31)
         if len(user_data['pings']) == 0:
             embed.description = "No one pinged you while you were afk"
         else:
@@ -171,7 +171,7 @@ class Basic(commands.Cog):
     @app_commands.describe(reason="The reason for your afk status")
     async def afk(self, interaction: Interaction, reason: str=None):
         user_data = await self.bot.afk.find(interaction.user.id)
-        if user_data is not None: return await interaction.response.send_message(embed=discord.Embed(description="You are already afk", color=0x363940), ephemeral=True)
+        if user_data is not None: return await interaction.response.send_message(embed=discord.Embed(description="You are already afk", color=0x2b2d31), ephemeral=True)
         user_data = {'_id': interaction.user.id,'guild_id': interaction.guild.id,'reason': reason,'last_nick': interaction.user.display_name,'pings': []}
         await self.bot.afk.insert(user_data)
         await interaction.response.send_message(f"`{interaction.user.display_name}` I set your status to {reason if reason else 'afk'}", ephemeral=True)

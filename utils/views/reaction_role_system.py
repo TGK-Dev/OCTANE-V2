@@ -14,7 +14,7 @@ class ReactionRoleMenu(View):
         super().__init__(timeout=180)
     
     def update_embed(self, data:dict):
-        embed = discord.Embed(title="Setting up reaction role menu", description="", color=0x363940)
+        embed = discord.Embed(title="Setting up reaction role menu", description="", color=0x2b2d31)
         embed.description += f"**Name:** {data['name']}\n"
         embed.description += f"**Display Name:** {data['display_name'] if data['display_name'] else '`None`'}\n"
         embed.description += f"**Roles:** {','.join([f'<@&{role}>' for role in data['roles']]) if data['roles'] else '`None`'}\n"
@@ -56,7 +56,7 @@ class ReactionRoleMenu(View):
                     if role.permissions.administrator or role.permissions.manage_guild or role.permissions.manage_roles or role.permissions.kick_members or role.permissions.ban_members: return await view.select.interaction.response.edit_message(content=f"I can't add {role.mention} to the reaction role menu because it has administrator or manage guild or manage roles or kick members or ban members permissions", view=None)
                     self.data["roles"].append(role.id)
             embed = self.update_embed(self.data)
-            await view.select.interaction.response.edit_message(embed=discord.Embed(description="Roles added to the reaction role menu", color=0x363940), view=None)
+            await view.select.interaction.response.edit_message(embed=discord.Embed(description="Roles added to the reaction role menu", color=0x2b2d31), view=None)
             await interaction.message.edit(embed=embed, view=self)
         else:
             await interaction.delete_original_response()
@@ -77,7 +77,7 @@ class ReactionRoleMenu(View):
                 if role_id in self.data["roles"]:
                     self.data["roles"].remove(role_id)
             embed = self.update_embed(self.data)
-            await view.select.interaction.response.edit_message(embed=discord.Embed(description=f"{','.join([f'<@&{role}>' for role in view.select.values])} removed from the reaction role menu", color=0x363940), view=None)
+            await view.select.interaction.response.edit_message(embed=discord.Embed(description=f"{','.join([f'<@&{role}>' for role in view.select.values])} removed from the reaction role menu", color=0x2b2d31), view=None)
             await interaction.message.edit(embed=embed, view=self)
 
     @button(label="Set Required Roles", style=discord.ButtonStyle.gray, emoji="<:role_mention:1063755251632582656>", row=0)
@@ -92,7 +92,7 @@ class ReactionRoleMenu(View):
         if view.value:
             self.data["required_roles"] = [role.id for role in view.select.values]
             embed = self.update_embed(self.data)
-            await view.select.interaction.response.edit_message(embed=discord.Embed(description="Required roles set for the reaction role menu", color=0x363940), view=None)
+            await view.select.interaction.response.edit_message(embed=discord.Embed(description="Required roles set for the reaction role menu", color=0x2b2d31), view=None)
             await interaction.message.edit(embed=embed, view=self)
         else:
             await interaction.delete_original_response()
@@ -122,7 +122,7 @@ class ReactionRoleMenu(View):
         if view.value:
             self.data["type"] = view.select.values[0]
             embed = self.update_embed(self.data)
-            await view.select.interaction.response.edit_message(embed=discord.Embed(description="Type changed", color=0x363940), view=None)
+            await view.select.interaction.response.edit_message(embed=discord.Embed(description="Type changed", color=0x2b2d31), view=None)
             await interaction.message.edit(embed=embed, view=self)
         else:
             await interaction.delete_original_response()
@@ -132,7 +132,7 @@ class ReactionRoleMenu(View):
         for button in self.children:
             button.disabled = True
         button.label = "Saved"
-        await interaction.response.send_message(embed=discord.Embed(description="Menu saved", color=0x363940), ephemeral=True, delete_after=5)
+        await interaction.response.send_message(embed=discord.Embed(description="Menu saved", color=0x2b2d31), ephemeral=True, delete_after=5)
         await interaction.message.edit(view=self)
         self.value = True
         self.stop()
@@ -145,31 +145,31 @@ class RoleMenu_Button(Button):
         if self.view.required_roles != None:
             user_roles = [role.id for role in interaction.user.roles]
             if not (set(user_roles) & set(self.view.required_roles)):
-                await interaction.response.send_message(embed=discord.Embed(description=f"You don't have the required roles to use this menu\n> Required Roles: {', '.join([f'<@&{role}>' for role in self.view.required_roles])}", color=0x363940), ephemeral=True)
+                await interaction.response.send_message(embed=discord.Embed(description=f"You don't have the required roles to use this menu\n> Required Roles: {', '.join([f'<@&{role}>' for role in self.view.required_roles])}", color=0x2b2d31), ephemeral=True)
                 return
         button_id = self.custom_id.split(":")[::-1]
         role = interaction.guild.get_role(int(button_id[0]))
         if self.view.menu_type == "add_remove":
             if role in interaction.user.roles:
                 await interaction.user.remove_roles(role)
-                await interaction.response.send_message(embed=discord.Embed(description=f"Removed role {role.mention}", color=0x363940), ephemeral=True)
+                await interaction.response.send_message(embed=discord.Embed(description=f"Removed role {role.mention}", color=0x2b2d31), ephemeral=True)
             else:
                 await interaction.user.add_roles(role)
-                await interaction.response.send_message(embed=discord.Embed(description=f"Added role {role.mention}", color=0x363940), ephemeral=True)
+                await interaction.response.send_message(embed=discord.Embed(description=f"Added role {role.mention}", color=0x2b2d31), ephemeral=True)
         elif self.view.menu_type == "only_add":
             if role in interaction.user.roles:
-                await interaction.response.send_message(embed=discord.Embed(description=f"You already have the role {role.mention}", color=0x363940), ephemeral=True)
+                await interaction.response.send_message(embed=discord.Embed(description=f"You already have the role {role.mention}", color=0x2b2d31), ephemeral=True)
             else:
                 await interaction.user.add_roles(role)
-                await interaction.response.send_message(embed=discord.Embed(description=f"Added role {role.mention}", color=0x363940), ephemeral=True)
+                await interaction.response.send_message(embed=discord.Embed(description=f"Added role {role.mention}", color=0x2b2d31), ephemeral=True)
         elif self.view.menu_type == "only_remove":
             if role in interaction.user.roles:
                 await interaction.user.remove_roles(role)
-                await interaction.response.send_message(embed=discord.Embed(description=f"Removed role {role.mention}", color=0x363940), ephemeral=True)
+                await interaction.response.send_message(embed=discord.Embed(description=f"Removed role {role.mention}", color=0x2b2d31), ephemeral=True)
             else:
-                await interaction.response.send_message(embed=discord.Embed(description=f"You don't have the role {role.mention}", color=0x363940), ephemeral=True)        
+                await interaction.response.send_message(embed=discord.Embed(description=f"You don't have the role {role.mention}", color=0x2b2d31), ephemeral=True)        
         else:
-            await interaction.response.send_message(embed=discord.Embed(description=f"Invalid menu type", color=0x363940), ephemeral=True)
+            await interaction.response.send_message(embed=discord.Embed(description=f"Invalid menu type", color=0x2b2d31), ephemeral=True)
 
 class Reaction_Role_View(View):
     def __init__(self, guild_config: dict, guild: discord.Guild):
@@ -184,5 +184,5 @@ class Reaction_Role_View(View):
             self.add_item(button)        
     
     # async def on_error(self, interaction: Interaction, error: Exception, item: Item[Any], /) -> None:
-    #     await interaction.response.send_message(embed=discord.Embed(description=f"Error: {error}", color=0x363940), ephemeral=True)
+    #     await interaction.response.send_message(embed=discord.Embed(description=f"Error: {error}", color=0x2b2d31), ephemeral=True)
 
