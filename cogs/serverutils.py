@@ -56,33 +56,6 @@ class Payout(commands.GroupCog, name="payout", description="Payout commands"):
     @check_unclaim.before_loop
     async def before_check_unclaim(self):
         await self.bot.wait_until_ready()
-
-    @app_commands.command(name="config", description="configur the payout system settings")
-    async def config_show(self, interaction: discord.Interaction, option: Literal["edit", "show"] = "show"):
-        embed = discord.Embed(title="Payout Config", description="", color=0x2b2d31)
-        data = await self.bot.payout_config.find(interaction.guild.id)
-        if data is None:
-            data = {
-                '_id': interaction.guild.id,
-                'queue_channel': None,
-                'pending_channel': None,
-                'manager_roles': [],
-                'log_channel': None,
-                'default_claim_time': 3600,
-            }
-            await self.bot.payout_config.insert(data)
-        embed.description += f"**Queue Channel:** {interaction.guild.get_channel(data['queue_channel']).mention if data['queue_channel'] else '`Not Set`'}\n"
-        embed.description += f"**Pending Channel:** {interaction.guild.get_channel(data['pending_channel']).mention if data['pending_channel'] else '`Not Set`'}\n"
-        embed.description += f"**Log Channel:** {interaction.guild.get_channel(data['log_channel']).mention if data['log_channel'] else '`Not Set`'}\n"
-        embed.description += f"**Manager Roles:** {', '.join([f'<@&{role}>' for role in data['manager_roles']]) if data['manager_roles'] else '`Not Set`'}\n"
-        embed.description += f"**Default Claim Time:** {humanfriendly.format_timespan(data['default_claim_time'])}\n"
-    
-        if option == "show":
-            await interaction.response.send_message(embed=embed)
-        elif option == "edit":
-            view = Payout_Config_Edit(data, interaction.user)
-            await interaction.response.send_message(embed=embed, view=view)
-            view.message = await interaction.original_response()
     
     @app_commands.command(name="set", description="configur the payout system settings")
     @app_commands.describe(event="event name", message_id="winner message id", winners="winner of the event", prize="what did they win?")
