@@ -41,10 +41,11 @@ class Bot_base(commands.Bot):
             await self.tree.sync(guild=discord.Object(785839283847954433))
         self.emoji_server = await self.fetch_guild(991711295139233834)
 
-bot = Bot_base(998152864201457754, False)
+bot = Bot_base(816699167824281621, False)
 bot.secret = os.environ.get("SECRET")
 bot.token = os.environ.get("TOKEN")
 bot.connection_url = os.environ.get("MONGO")    
+
 tree = bot.tree
 async def main():
     await bot.start(bot.token)
@@ -57,10 +58,15 @@ async def on_ready():
     print(f"Bot Views: {len(bot.persistent_views)}")
 
 @bot.tree.command(name="ping", description="Check bots leatency")
-@app_commands.checks.cooldown(1, 5)
 async def ping(interaction):
     await interaction.response.send_message("Pong!")
     await interaction.edit_original_response(content=None, embed=discord.Embed(description=f"Ping {bot.latency*1000.0:.2f}ms"))
+
+@bot.event
+async def on_messae(message):
+    if message.author.bot:
+        return
+    await bot.process_commands(message)
 
 @tree.error
 async def on_app_command_error(interaction: discord.Interaction, error):
