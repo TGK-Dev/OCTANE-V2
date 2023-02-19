@@ -175,7 +175,6 @@ class Perks(commands.GroupCog, name="perks", description="manage your custom per
     @app_commands.choices(perk=[app_commands.Choice(name="Custom Role", value="roles"),app_commands.Choice(name="Custom Channel", value="channel"),app_commands.Choice(name="Custom Reaction (ar)", value="react")])
     async def _claim(self, interaction: Interaction, perk: app_commands.Choice[str], name:str=None, color:str=None, icon: discord.Attachment=None, emoji:str=None):
         user_data = await self.bot.perk.get_data(perk.value, interaction.guild.id, interaction.user.id)
-        print("user_data", user_data)
         if not user_data: return await interaction.response.send_message(f"You don't have any `{perk.value}` perks.", ephemeral=True)
 
         match perk.value:
@@ -199,6 +198,8 @@ class Perks(commands.GroupCog, name="perks", description="manage your custom per
                     await interaction.edit_original_response(embed=discord.Embed(description="Invalid color Hex code.", color=0x2b2d31))
 
                 role = await interaction.guild.create_role(name=name, color=color, reason=f"Custom role perk for {interaction.user}", display_icon=icon)
+                position_role = interaction.guild.get_role(perks_config['custom_roles_position'])
+                position = position_role.position - 1
                 await role.edit(position=perks_config['custom_roles_position'])
                 await interaction.user.add_roles(role, reason=f"Custom role perk for {interaction.user}")
                 await interaction.edit_original_response(embed=discord.Embed(description="Your custom role has been created.", color=0x2b2d31))
@@ -238,7 +239,7 @@ class Perks(commands.GroupCog, name="perks", description="manage your custom per
 
     @app_commands.command(name="friend", description="manage your friends list")
     @app_commands.describe(perk="The perk you want to manage", option="The option you want to use", traget="The user you want to add/remove from your friends list")
-    @app_commands.choices(option=[app_commands.Choice(name="Add", value="add"), app_commands.Choice(name="Remove", value="remove"), app_commands.Choice(name="List", value="list"), app_commands.Choice(name="Clear", value="clear"), app_commands.Choice(name="fix", value="fix")],perk=[app_commands.Choice(name="Custom Role", value="role"), app_commands.Choice(name="Custom Channel", value="channel")])
+    @app_commands.choices(option=[app_commands.Choice(name="Add", value="add"), app_commands.Choice(name="Remove", value="remove"), app_commands.Choice(name="List", value="list"), app_commands.Choice(name="Clear", value="clear"), app_commands.Choice(name="fix", value="fix")],perk=[app_commands.Choice(name="Custom Role", value="roles"), app_commands.Choice(name="Custom Channel", value="channel")])
     async def _friend(self, interaction: Interaction, perk: app_commands.Choice[str],option: app_commands.Choice[str], traget: discord.Member=None):
         user_data = await self.bot.perk.get_data(perk.value, interaction.guild.id, interaction.user.id)
         if not user_data: return await interaction.response.send_message("You don't have any perks.", ephemeral=True)
@@ -246,7 +247,7 @@ class Perks(commands.GroupCog, name="perks", description="manage your custom per
 
         match perk.value:
 
-            case "role":
+            case "roles":
 
                 if not user_data['role_id']: return await interaction.response.send_message("You haven't created a custom role yet.", ephemeral=True)
                 role = interaction.guild.get_role(user_data['role_id'])
@@ -258,14 +259,14 @@ class Perks(commands.GroupCog, name="perks", description="manage your custom per
                     if traget.id in user_data['friend_list']: return await interaction.response.send_message("This user is already in your friend list.", ephemeral=True)
                     else:
                         user_data['friend_list'].append(traget.id)
-                        traget.add_roles(role, reason=f"Custom role perk for {interaction.user}")
+                        await traget.add_roles(role, reason=f"Custom role perk for {interaction.user}")
                         await interaction.response.send_message(embed=discord.Embed(description=f"{traget.mention} has been added to your friend list.", color=0x2b2d31))
                 elif option.value == "remove":
                     if traget is None: return await interaction.response.send_message("You need to provide a member.", ephemeral=True)
                     if traget.id not in user_data['friend_list']: return await interaction.response.send_message("This user is not in your friend list.", ephemeral=True)
                     else:
                         user_data['friend_list'].remove(traget.id)
-                        traget.remove_roles(role, reason=f"Custom role perk for {interaction.user}")
+                        await traget.remove_roles(role, reason=f"Custom role perk for {interaction.user}")
                         await self.bot.perk.update(perk.value, user_data)
                         await interaction.response.send_message(embed=discord.Embed(description=f"{traget.mention} has been removed from your friend list.", color=0x2b2d31))
                 elif option.value == "list":
@@ -283,11 +284,12 @@ class Perks(commands.GroupCog, name="perks", description="manage your custom per
                     await self.bot.perk.update(perk.value, user_data)
                     await interaction.response.send_message(embed=discord.Embed(description="Your friend list has been cleared.", color=0x2b2d31))
                 elif option.value == "fix":
+                    await interaction.response.send_message(embed=discord.Embed(description="Fixing your friend list...", color=0x2b2d31))
                     for friend in role.members:
                         if friend.id not in user_data['friend_list']:
                             user_data['friend_list'].append(friend.id)
                         await self.bot.perk.update(perk.value, user_data)
-                    await interaction.response.send_message(embed=discord.Embed(description="Your friend list has been fixed.", color=0x2b2d31))
+                    await interaction.edit_original_response(embed=discord.Embed(description="Your friend list has been fixed.", color=0x2b2d31))
         
             case "channel":
                 if not user_data['channel_id']: return await interaction.response.send_message("You haven't created a custom channel yet.", ephemeral=True)
@@ -498,7 +500,6 @@ class Perk_BackEND(commands.Cog):
 
                 for trigger in message_content:
                     if trigger in user_data['triggers']:
-                        print(user_data['last_trigger'])
                         if user_data['last_trigger'] is None or (datetime.datetime.utcnow() - user_data['last_trigger']).total_seconds() > 300:
                             self.bot.dispatch('highlight', message, user_id, user_data)
                             user_data['last_trigger'] = datetime.datetime.utcnow()
@@ -602,7 +603,7 @@ class Perk_BackEND(commands.Cog):
             view = Link_view("Jump to message", message.jump_url)
             await user.send(embed=embed, view=view)
         except Exception as e:
-            print(e)
+            pass
         user_data['last_trigger'] = datetime.datetime.utcnow()
         await self.bot.perk.update_cache('highlight', user_id, message.guild.id, user_data)
         await self.bot.perk.update('highlight', user_data)
@@ -614,79 +615,71 @@ class Perk_BackEND(commands.Cog):
         if len(message.mentions) > 0: await self.autoreact(message)
         await self.highlight(message)
 
-class Perk_Config(commands.Cog):
+class Perk_Config(commands.GroupCog, name="perk"):
     def __init__(self, bot):
         self.bot = bot
     
-    @app_commands.command(name="perk-remove", description="Remove perks from your server members")
-    @app_commands.describe(perk="The perk you want to remove", member="The member you want to remove the perk from")
-    @app_commands.choices(perk=[app_commands.Choice(name="Custom Channel", value="channel"), app_commands.Choice(name="Custom Role", value="roles"), app_commands.Choice(name="Custom React", value="react"), app_commands.Choice(name="Highlight", value="highlight")])
+    @app_commands.command(name="manage", description="Manage perks for your server members")
     @app_commands.checks.has_permissions(manage_guild=True)
-    async def perk(self, interaction: Interaction, perk: app_commands.Choice[str], member: discord.Member):
-        user_data = await self.bot.perk.get_data(perk.value, member.id, interaction.guild.id)
-        if user_data is None: return await interaction.response.send_message(embed=discord.Embed(description=f"{member.mention} doesn't have the {perk.name} perk", color=0x2b2d31))
+    @app_commands.choices(option=[app_commands.Choice(name="Add", value="add"), app_commands.Choice(name="Remove", value="remove"), app_commands.Choice(name="List", value="list")],perk=[app_commands.Choice(name="Custom Channel", value="channel"), app_commands.Choice(name="Custom Role", value="roles"), app_commands.Choice(name="Custom React", value="react"), app_commands.Choice(name="Highlight", value="highlight")])
+    async def perk(self, interaction: Interaction, option: app_commands.Choice[str], perk: app_commands.Choice[str], member: discord.Member, duration: app_commands.Transform[int, TimeConverter]="permanent", friend_limit: app_commands.Range[int, 1, 10]=5):
+        match option.value:
+            case "add":
+                perk_data = await self.bot.perk.get_data(perk.value, member.id, interaction.guild.id)
+                if perk_data: return await interaction.response.send_message(embed=discord.Embed(description=f"{member.mention} already has this perk.", color=interaction.client.default_color))
+                perk_data = await self.bot.perk.create(perk.value, member.id, interaction.guild.id, duration, friend_limit)
+                await interaction.response.send_message(embed=discord.Embed(description=f"Successfully added {perk.name} to {member.mention}", color=interaction.client.default_color))
+            case "remove":
+                
+                view = Confirm(interaction.user, 30)
+                await interaction.response.send_message(embed=discord.Embed(description="Are you sure you want to remove this perk?", color=interaction.client.default_color), view=view)
+                view.message = await interaction.original_response()
+                await view.wait()
+                if view.value:
+                    match perk.value:
+                        case "roles":
+                            user_data = await self.bot.perk.get_data(perk.value, member.id, interaction.guild.id)
+                            if not user_data: return await view.interaction.response.edit_message(embed=discord.Embed(description=f"{member.mention} does not have this perk.", color=interaction.client.default_color), view=None)
+                            role = interaction.guild.get_role(user_data['role_id'])
+                            if role is not None: await role.delete(reason=f"Perk Removed by {interaction.user}")
+                            await self.bot.perk.delete(user_data)
+                        case "channel":
+                            user_data = await self.bot.perk.get_data(perk.value, member.id, interaction.guild.id)
+                            if not user_data: return await view.interaction.response.edit_message(embed=discord.Embed(description=f"{member.mention} does not have this perk.", color=interaction.client.default_color), view=None)
+                            channel = interaction.guild.get_channel(user_data['channel_id'])
+                            if channel is not None: await channel.delete(reason=f"Perk Removed by {interaction.user}")
+                            await self.bot.perk.delete(user_data)
+                        case "react":
+                            user_data = await self.bot.perk.get_data(perk.value, member.id, interaction.guild.id)
+                            if not user_data: return await view.interaction.response.edit_message(embed=discord.Embed(description=f"{member.mention} does not have this perk.", color=interaction.client.default_color), view=None)
+                            await self.bot.perk.delete(user_data)
+                        case "highlight":
+                            user_data = await self.bot.perk.get_data(perk.value, member.id, interaction.guild.id)
+                            if not user_data: return await view.interaction.response.edit_message(embed=discord.Embed(description=f"{member.mention} does not have this perk.", color=interaction.client.default_color), view=None)
+                            await self.bot.perk.delete(user_data)
+                    await view.interaction.response.edit_message(embed=discord.Embed(description=f"Successfully removed {perk.value} from {member.mention}", color=interaction.client.default_color), view=None)
+            case "list":
+                        user_data = await self.bot.perk.get_data('all', interaction.guild.id, member.id)
+                        if not user_data: return await interaction.response.send_message("You don't have any perks.", ephemeral=True)
+                        pages = []
+                        for perk, data in user_data.items():
+                            embed = discord.Embed(title=f"{perk.capitalize()} perks", color=0x2b2d31, description="")
+                            if perk == 'role':
+                                embed.description += f"**Role:** <@&{data['role_id']}>"
+                                embed.description += f"\n**Duration:** {humanfriendly.format_timespan(data['duration']) if data['duration'] != 'permanent' else 'Permanent'}\n**Friend limit:** {data['friend_limit']}"
+                                embed.description += f"\nFriend list: {', '.join([f'<@{user}>' for user in data['friend_list']]) if len(data['friend_list']) > 0 else '`None`'}"
+                            elif perk == 'channel':
+                                embed.description += f"Channel: <#{data['channel_id']}>\nDuration: {data['duration']}\nFriend limit: {data['friend_limit']}"
+                                embed.description += f"\nFriend list: {', '.join([f'<@{user}>' for user in data['friend_list']])}"
+                            elif perk == 'react':
+                                embed.description += f"Emoji: {data['emoji']}"
+                            elif perk == 'highlight':
+                                embed.description += f"Triggers: {', '.join(data['triggers']) if data['triggers'] else '`None`'}"
+                                embed.description += f"\nIgnore channel: {', '.join([f'<#{channel}>' for channel in data['ignore_channel']]) if data['ignore_channel'] else '`None`'}"
+                                embed.description += f"\nIgnore users: {', '.join([f'<@{user}>' for user in data['ignore_users']]) if data['ignore_users'] else '`None`'}"
+                            pages.append(embed)
 
-        view = Confirm(interaction.user, 30)
-        await interaction.response.send_message(embed=discord.Embed(description=f"Are you sure you want to remove the {perk.name} perk from {member.mention}?", color=0x2b2d31), view=view)
-        view.message = await interaction.original_response()
-        await view.wait()
-        if view.value is None or False: return await view.message.edit(embed=discord.Embed(description=f"Timed out/Cancelled", color=0x2b2d31), view=None)
-        await view.interaction.response.edit_message(embed=discord.Embed(description="Please wait while i remove the perk..."), color=0x2b2d31, view=None)
-        match perk.value:
-            case "role":
-                role = interaction.guild.get_role(user_data['role_id'])
-                if role is not None: await role.delete(reason=f"Perk Remvoed by {interaction.user.name}")
-                await self.bot.perk.delete(user_data)
-            case "channel":
-                channel = interaction.guild.get_channel(user_data['channel_id'])
-                if channel is not None: await channel.delete(reason=f"Perk Remvoed by {interaction.user.name}")
-                await self.bot.perk.delete(user_data)
-            case "react":
-                await self.bot.perk.delete(user_data)
-                try:await self.bot.perk.cache['react'].pop(user_data['user_id'])
-                except KeyError:pass
-            case "highlight":
-                await self.bot.perk.delete(user_data)
-                try:await self.bot.perk.cache['highlight'].pop(user_data['user_id'])
-                except KeyError:pass
-
-    @app_commands.command(name="perk-give", description="Give perks to your server members")
-    @app_commands.describe(perk="The perk you want to give", member="The member you want to give the perk to")
-    @app_commands.choices(perk=[app_commands.Choice(name="Custom Channel", value="channel"), app_commands.Choice(name="Custom Role", value="roles"), app_commands.Choice(name="Custom React", value="react"), app_commands.Choice(name="Highlight", value="highlight")])
-    @app_commands.checks.has_permissions(manage_guild=True)
-    async def perk(self, interaction: Interaction, perk: app_commands.Choice[str], member: discord.Member, duration: app_commands.Transform[int, TimeConverter]="permanent", friend_limit: app_commands.Range[int, 1, 10]=5):
-        if member.bot: return await interaction.response.send_message("You can't give perks to bots.", ephemeral=True)
-        perk_data = await self.bot.perk.get_data(perk.value, interaction.guild.id, member.id)
-        if perk_data: return await interaction.response.send_message("This member already has this perk.", ephemeral=True)
-        perk_data = await self.bot.perk.create(perk.value, member.id, interaction.guild.id, duration, friend_limit)
-        await interaction.response.send_message(f"Perk `{perk.value}` has been given to {member.mention}.", ephemeral=True)
-        await interaction.channel.send(f"{member.mention} Now you have the perk `{perk.value}`. You can use it by typing `/perk {perk.value}`")
-    
-    @app_commands.command(name="perk-list", description="List all the perk's of a server member")
-    @app_commands.describe(member="The member you want to list the perks of")
-    @app_commands.checks.has_permissions(manage_guild=True)
-    async def perk(self, interaction: Interaction, member: discord.Member):
-        user_data = await self.bot.perk.get_data('all', interaction.guild.id, member.id)
-        if not user_data: return await interaction.response.send_message("You don't have any perks.", ephemeral=True)
-        pages = []
-        for perk, data in user_data.items():
-            embed = discord.Embed(title=f"{perk.capitalize()} perks", color=0x2b2d31, description="")
-            if perk == 'role':
-                embed.description += f"**Role:** <@&{data['role_id']}>"
-                embed.description += f"\n**Duration:** {humanfriendly.format_timespan(data['duration']) if data['duration'] != 'permanent' else 'Permanent'}\n**Friend limit:** {data['friend_limit']}"
-                embed.description += f"\nFriend list: {', '.join([f'<@{user}>' for user in data['friend_list']]) if len(data['friend_list']) > 0 else '`None`'}"
-            elif perk == 'channel':
-                embed.description += f"Channel: <#{data['channel_id']}>\nDuration: {data['duration']}\nFriend limit: {data['friend_limit']}"
-                embed.description += f"\nFriend list: {', '.join([f'<@{user}>' for user in data['friend_list']])}"
-            elif perk == 'react':
-                embed.description += f"Emoji: {data['emoji']}"
-            elif perk == 'highlight':
-                embed.description += f"Triggers: {', '.join(data['triggers']) if data['triggers'] else '`None`'}"
-                embed.description += f"\nIgnore channel: {', '.join([f'<#{channel}>' for channel in data['ignore_channel']]) if data['ignore_channel'] else '`None`'}"
-                embed.description += f"\nIgnore users: {', '.join([f'<@{user}>' for user in data['ignore_users']]) if data['ignore_users'] else '`None`'}"
-            pages.append(embed)
-
-        await Paginator(interaction=interaction, pages=pages).start(embeded=True, quick_navigation=False)
+                        await Paginator(interaction=interaction, pages=pages).start(embeded=True, quick_navigation=False)
 
 async def setup(bot):
     await bot.add_cog(Perks(bot))
