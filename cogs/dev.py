@@ -42,14 +42,14 @@ class Dev(commands.Cog, name="dev", description="Dev commands"):
     async def sync(self, interaction: discord.Interaction, guild_id: str=None):
         if guild_id is None:
             await interaction.response.send_message(embed=discord.Embed(description="Syncing global commands...", color=interaction.client.default_color))
-            await interaction.tree.sync()
+            await interaction.client.tree.sync()
             await interaction.edit_original_response(embed=discord.Embed(description="Successfully synced global commands", color=interaction.client.default_color))
         else:
-            guild = interaction.client.fetch_guild(int(guild_id))
+            guild = await interaction.client.fetch_guild(int(guild_id))
             if guild is None:
                 return await interaction.response.send_message(embed=discord.Embed(description="Invalid guild id", color=interaction.client.default_color))
             await interaction.response.send_message(embed=discord.Embed(description=f"Syncing guild commands for `{guild.name}`...", color=interaction.client.default_color))
-            await interaction.tree.sync(guild=guild)
+            await interaction.client.tree.sync(guild=guild)
             await interaction.edit_original_response(embed=discord.Embed(description=f"Successfully synced guild commands for `{guild.name}`", color=interaction.client.default_color))
     
     @dev.command(name="get-logs", description="Gets the logs form console")
