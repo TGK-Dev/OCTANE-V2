@@ -49,7 +49,6 @@ class Ticket(commands.GroupCog, name="ticket"):
                 emoji = panel['emoji'] if panel['emoji'] is not None else None
                 button = ticket_system.Panel_Button(label=panel['key'], style=style, emoji=emoji, custom_id=f"{ticket_config['_id']}-{panel['key']}")
                 panel_view.add_item(button)
-                print(button.label)
                 self.bot.add_view(panel_view)
                 
         self.bot.add_view(ticket_system.Panel_View())
@@ -130,7 +129,6 @@ class Ticket(commands.GroupCog, name="ticket"):
         view.message = await interaction.original_response()
         await view.wait()
         if view.value:
-            print(panel_data)
             ticket_config['panels'][name] = panel_data
             await self.bot.tickets.config.update(ticket_config['_id'], ticket_config)
             

@@ -213,7 +213,6 @@ class Level_BackEnd(commands.Cog):
     async def on_ready(self):
         config = await self.bot.level_config.get_all()
         for guild in config: self.bot.level_config_cache[guild['_id']] = guild
-        print(self.bot.level_config_cache)
     
     @commands.Cog.listener()
     async def on_message(self, message):

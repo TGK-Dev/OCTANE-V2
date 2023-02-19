@@ -161,7 +161,7 @@ class Linked_Roles(commands.GroupCog, name="linkedroles"):
         await interaction.edit_original_response(embed=embed)
 
     @app_commands.command(name="update", description="Verify a role connection manually")
-    @app_commands.check(is_dev)
+    @app_commands.checks.has_permissions(manage_guild=True)
     @app_commands.describe(key="Select a connection key", value="Select a connection value")
     @app_commands.choices(key=[app_commands.Choice(name="Beast Donor", value="beast"), app_commands.Choice(name="Weekly Winner", value="wamari")],value=[app_commands.Choice(name="True", value=1), app_commands.Choice(name="False", value=0)])
     async def verify(self, interaction: Interaction, user: discord.User, key: app_commands.Choice[str], value: app_commands.Choice[int]):

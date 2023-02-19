@@ -109,6 +109,10 @@ class Staff(commands.GroupCog, name="staff", description="Staff management comma
         await self.bot.staff_db.staff_collection.update(user.id, user_data)
 
         await interaction.edit_original_response(embed=discord.Embed(description=f"Successfully appointed {user.mention} to `{post['name'].capitalize()}`", color=self.bot.default_color))
+        try:
+            await user.send(embed=discord.Embed(description=f"You have been appointed to `{post['name'].capitalize()}` by `{interaction.user}`", color=self.bot.default_color))
+        except:
+            pass
     
     @app_commands.command(name="post-fix", description="Sync current staff members with the database")
     @app_commands.describe(post="The position to fix")

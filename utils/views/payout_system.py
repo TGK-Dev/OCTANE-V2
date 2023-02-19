@@ -37,6 +37,7 @@ class Payout_Config_Edit(discord.ui.View):
         embed.description += f"**Pending Channel:** {interaction.guild.get_channel(data['pending_channel']).mention if data['pending_channel'] else '`Not Set`'}\n"
         embed.description += f"**Log Channel:** {interaction.guild.get_channel(data['log_channel']).mention if data['log_channel'] else '`Not Set`'}\n"
         embed.description += f"**Manager Roles:** {', '.join([f'<@&{role}>' for role in data['manager_roles']]) if data['manager_roles'] else '`Not Set`'}\n"
+        embed.description += f"**Event Manager Roles:** {', '.join([f'<@&{role}>' for role in data['event_manager_roles']]) if data['event_manager_roles'] else '`Not Set`'}\n"
         embed.description += f"**Default Claim Time:** {humanfriendly.format_timespan(data['default_claim_time'])}\n"
 
         return embed
@@ -132,6 +133,34 @@ class Payout_Config_Edit(discord.ui.View):
                 await interaction.client.payout_config.update(self.data)
         else:
             await interaction.edit_original_response(content="No role selected", view=None)
+    
+    @discord.ui.button(label="Event Managers", style=discord.ButtonStyle.gray, emoji="<:role_mention:1063755251632582656>", row=1)
+    async def event_managers(self, interaction: discord.Interaction, button: discord.ui.Button):
+        view = discord.ui.View()
+        view.value = False
+        view.select = Role_select("select new event manager role", max_values=10, min_values=1, disabled=False)
+        view.add_item(view.select)
+
+        await interaction.response.send_message(content="Select a new role from the dropdown menu below", view=view, ephemeral=True)
+        await view.wait()
+
+        if view.value:
+                added = []
+                removed = []
+                for ids in view.select.values:
+                    if ids.id not in self.data["event_manager_roles"]:
+                        self.data["event_manager_roles"].append(ids.id)
+                        added.append(ids.mention)
+                    else:
+                        self.data["event_manager_roles"].remove(ids.id)
+                        removed.append(ids.mention)
+                await view.select.interaction.response.edit_message(content=f"Suscessfully updated event manager roles\nAdded: {', '.join(added)}\nRemoved: {', '.join(removed)}", view=None)
+
+                embed = self.update_embed(self.data, interaction)
+                await interaction.message.edit(embed=embed)
+                await interaction.client.payout_config.update(self.data)
+        else:
+            await interaction.edit_original_response(content="No role selected", view=None)
 
     @discord.ui.button(label="Claim Time", style=discord.ButtonStyle.gray, emoji="<:octane_claim_time:1071517327813775470>", row=2)
     async def claim_time(self, interaction: discord.Interaction, button: discord.ui.Button):
@@ -144,7 +173,6 @@ class Payout_Config_Edit(discord.ui.View):
         await modal.wait()
         if modal.value:
             time = await TimeConverter().convert(modal.interaction, modal.question.value)
-            print(time)
             if time < 3600: await modal.interaction.response.send_message("Claim time must be at least 1 hour", ephemeral=True)
             self.data['default_claim_time'] = time
             await interaction.client.payout_config.update(self.data)

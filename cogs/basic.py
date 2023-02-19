@@ -78,7 +78,7 @@ class Basic(commands.Cog):
     async def enter(self, interaction: discord.Interaction):
         await interaction.response.send_message(f"**{interaction.user}** has entered the room! <:TGK_pepeenter:790189012148682782>")
 
-    @app_commands.command(name="leave", description="Tell everyone that you leave the chat")
+    @app_commands.command(name="exit", description="Tell everyone that you leave the chat")
     @app_commands.checks.cooldown(1, 10, key=lambda i:(i.guild_id, i.user.id))
     async def leave(self, interaction: discord.Interaction):
         await interaction.response.send_message(f"**{interaction.user}** has left the room! <:TGK_pepeexit:790189030569934849>")
@@ -183,7 +183,7 @@ class Basic(commands.Cog):
 
 
 async def setup(bot):
-    await bot.add_cog(Basic(bot))
+    await bot.add_cog(Basic(bot), guilds=[discord.Object(785839283847954433)])
 
 
 

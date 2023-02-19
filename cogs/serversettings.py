@@ -121,6 +121,7 @@ class serversettings(commands.Cog):
                         'queue_channel': None,
                         'pending_channel': None,
                         'manager_roles': [],
+                        'event_manager_roles': [],
                         'log_channel': None,
                         'default_claim_time': 3600,
                     }
@@ -130,6 +131,7 @@ class serversettings(commands.Cog):
                 embed.description += f"**Pending Channel:** {interaction.guild.get_channel(data['pending_channel']).mention if data['pending_channel'] else '`Not Set`'}\n"
                 embed.description += f"**Log Channel:** {interaction.guild.get_channel(data['log_channel']).mention if data['log_channel'] else '`Not Set`'}\n"
                 embed.description += f"**Manager Roles:** {', '.join([f'<@&{role}>' for role in data['manager_roles']]) if data['manager_roles'] else '`Not Set`'}\n"
+                embed.description += f"**Event Manager Roles:** {', '.join([f'<@&{role}>' for role in data['event_manager_roles']]) if data['event_manager_roles'] else '`Not Set`'}\n"
                 embed.description += f"**Default Claim Time:** {humanfriendly.format_timespan(data['default_claim_time'])}\n"
             
                 if option == "Show":
@@ -232,7 +234,7 @@ class JoinGateBackEnd(commands.Cog):
             text = text.encode("ascii", "ignore")
             text = text.decode("utf-8")
         except Exception as e:
-            print(e)
+            pass
         return str(text)
 
     async def nick_maker(self, guild: discord.Guild, old_shit_nick):
@@ -263,9 +265,8 @@ class JoinGateBackEnd(commands.Cog):
         if fail: return
 
         if data["joingate"]["decancer"]:
-            print('doing decancer')
+            if member.name.startswith("カ"): return
             if self.is_cancerous(member.display_name):
-                print('is cancerous')
                 new_nick = await self.nick_maker(member.guild, member.display_name)
                 
                 embed = discord.Embed(color=discord.Color.green(), title="Decancer", description="")

@@ -41,10 +41,11 @@ class Bot_base(commands.Bot):
             await self.tree.sync(guild=discord.Object(785839283847954433))
         self.emoji_server = await self.fetch_guild(991711295139233834)
 
+
 bot = Bot_base(816699167824281621, False)
-bot.secret = os.environ.get("SECRET")   
+bot.secret = os.environ.get("SECRET")
 bot.token = os.environ.get("TOKEN")
-bot.connection_url = os.environ.get("MONGO")    
+bot.connection_url = os.environ.get("MONGO") 
 
 tree = bot.tree
 async def main():

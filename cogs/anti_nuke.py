@@ -45,10 +45,6 @@ class Anti_Nuke(commands.GroupCog, name="antinuke", description="Manage the anti
     async def is_me(interaction: discord.Interaction) -> bool:
         return interaction.user.id in [301657045248114690, 488614633670967307]
 
-    @commands.Cog.listener()
-    async def on_ready(self):
-        print(f'{self.__class__.__name__} Commands has been loaded')
-
     @lockdown_command.command(name="add", description="Add a channel to the lockdown list")
     @app_commands.check(is_me)
     async def lockdown_add(self, interaction: Interaction):
@@ -429,7 +425,6 @@ class Antinuke_Events(commands.Cog):
         self.bot.master_config = await self.bot.antinuke.find(785839283847954433)
         self.bot.qurantine = Document(self.bot.db, "qurantine")
         #self.role_lock_system = self.bot.master_config['role']['lock']
-        print(f'{self.__class__.__name__} Cog has been loaded\n-----')
     
     async def do_punishment(self, guild: discord.Guild, user: discord.Member, punishment: str, reason: str, log_channel: discord.TextChannel):
         now = datetime.datetime.now()
@@ -481,7 +476,6 @@ class Antinuke_Events(commands.Cog):
         
         end = datetime.datetime.now()
         total_ms = (end - now).total_seconds() * 1000
-        print(f"punishment for {user} with reason {reason} and punishment {punishment} took {total_ms}ms to complete")
 
     async def whitelist_check(self, guild: discord.Guild, user: discord.Member, action_type: str, option: str, data: dict):
         whitelist = False
@@ -610,7 +604,7 @@ class Antinuke_Events(commands.Cog):
                 user: discord.Member = server_audit_log.user
 
                 if user.id == self.bot.user.id or user.id in config['owner_ids'] or user.id == guild.owner_id: 
-                    return print("whitelisted")
+                    return
                 else:
                     await self.do_punishment(guild, user, "qurantine", reason="Unauthorized role staff addition", log_channel=guild.get_channel(config['log_channel']))
                     await self.do_punishment(guild, before, "qurantine", reason="Unauthorized role staff addition", log_channel=guild.get_channel(config['log_channel']))

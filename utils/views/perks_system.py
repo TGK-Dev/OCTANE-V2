@@ -56,7 +56,7 @@ class PerkConfig(View):
         await interaction.response.send_message(view=view, ephemeral=True)
         await view.wait()
         if view.value:
-            position = view.select.values[0].position
+            position = view.select.values[0].id
             if position >= interaction.guild.me.top_role.position:
                 return await view.select.interaction.edit_original_response(content="You can't set the position of custom roles to a role higher than your top role", view=None)
             if position == interaction.guild.default_role.position:
