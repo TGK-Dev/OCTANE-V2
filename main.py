@@ -42,7 +42,7 @@ class Bot_base(commands.Bot):
         self.emoji_server = await self.fetch_guild(991711295139233834)
 
 bot = Bot_base(816699167824281621, False)
-bot.secret = os.environ.get("SECRET")
+bot.secret = os.environ.get("SECRET")   
 bot.token = os.environ.get("TOKEN")
 bot.connection_url = os.environ.get("MONGO")    
 
@@ -75,9 +75,9 @@ async def on_app_command_error(interaction: discord.Interaction, error):
     else:
         embed = discord.Embed(description=f"```\n{error}\n```", color=bot.default_color)
         try:
-            await interaction.response.send_message(embed=embed, ephemeral=True, delete_after=10)
+            await interaction.response.send_message(embed=embed, ephemeral=True)
         except:
-            await interaction.followup.send(embed=embed, ephemeral=True, delete_after=10)
+            await interaction.followup.send(embed=embed, ephemeral=True)
         
     url = "https://canary.discord.com/api/webhooks/1076590771542708285/88D3SRMTYHPe4copSvTQ451KXx7Tk2WDsRYUPN4wtVI1qQbqDmyn0eAiUOhV7XW8SO3G"
     embed = discord.Embed(title="Error", description=f"```\n{error}\n```", color=bot.default_color)
