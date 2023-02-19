@@ -47,8 +47,9 @@ class Ticket(commands.GroupCog, name="ticket"):
                 elif panel['color'] == "green": style = discord.ButtonStyle.green
                 elif panel['color'] == "red": style = discord.ButtonStyle.red
                 emoji = panel['emoji'] if panel['emoji'] is not None else None
-                button = ticket_system.Panel_Button(label=panel['key'].capitalize(), style=style, emoji=emoji, custom_id=f"{ticket_config['_id']}-{panel['key']}")
+                button = ticket_system.Panel_Button(label=panel['key'], style=style, emoji=emoji, custom_id=f"{ticket_config['_id']}-{panel['key']}")
                 panel_view.add_item(button)
+                print(button.label)
                 self.bot.add_view(panel_view)
                 
         self.bot.add_view(ticket_system.Panel_View())
@@ -78,7 +79,7 @@ class Ticket(commands.GroupCog, name="ticket"):
         embed.description += f"**Color:**" + (f" {panel_data['color']}" if panel_data['color'] is not None else "`None`") + "\n"
         embed.description += f"**Modal:** " + (f"\n> Type: {panel_data['modal']['type']}\n") + (f"```\n{panel_data['modal']['question']}\n```" if panel_data['modal']['question'] is not None else "`None`") + "\n"
 
-        view = ticket_system.Panel_Edit(self.bot, panel_data, interaction.user)
+        view = ticket_system.Panel_Edit(interaction.user, panel_data)
         await interaction.response.send_message(embed=embed, view=view)
         view.message = await interaction.original_response()
         await view.wait()
@@ -124,9 +125,15 @@ class Ticket(commands.GroupCog, name="ticket"):
         embed.description += f"**Color:**" + (f" {panel_data['color']}" if panel_data['color'] is not None else "`None`") + "\n"
         embed.description += f"**Modal:**" + (f"type: {panel_data['modal']['type']}") + (f"```\n{panel_data['modal']['question']}\n```" if panel_data['modal']['question'] is not None else "`None`") + "\n"
 
-        view = ticket_system.Panel_Edit(self.bot, panel_data, interaction.user)
+        view = ticket_system.Panel_Edit(interaction.user, panel_data)
         await interaction.response.send_message(embed=embed, view=view)
         view.message = await interaction.original_response()
+        await view.wait()
+        if view.value:
+            print(panel_data)
+            ticket_config['panels'][name] = panel_data
+            await self.bot.tickets.config.update(ticket_config['_id'], ticket_config)
+            
     
     @panel.command(name="send", description="Send a ticket panel")
     @app_commands.checks.has_permissions(manage_guild=True)
@@ -148,7 +155,7 @@ class Ticket(commands.GroupCog, name="ticket"):
             elif panel['color'] == "red": style = discord.ButtonStyle.red
             emoji = panel['emoji'] if panel['emoji'] is not None else None
 
-            button = ticket_system.Panel_Button(label=panel['key'].capitalize(), style=style, emoji=emoji, custom_id=f"{ticket_config['_id']}-{panel['key']}")
+            button = ticket_system.Panel_Button(label=panel['key'], style=style, emoji=emoji, custom_id=f"{ticket_config['_id']}-{panel['key']}")
             panel_view.add_item(button)
 
         support_channel = self.bot.get_channel(ticket_config['channel'])
