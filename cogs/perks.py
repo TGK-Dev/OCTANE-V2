@@ -103,20 +103,21 @@ class Perks_DB:
     
     async def create_cach(self):
         self.cach = {'react': {}, 'highlight': {}}
-        for data in await self.react.get_all():
-            if 'guild_id' not in self.cach['react'].keys():
-                self.cach['react'][data['guild_id']] = {}
-            
-            if 'user_id' not in self.cach['react'][data['guild_id']].keys():
-                self.cach['react'][data['guild_id']][data['user_id']] = data
+        configs = await self.config.get_all()
+        for config in configs:
+            self.cach['react'][config['_id']] = {}
+            self.cach['highlight'][config['_id']] = {}
         
-        for data in await self.highlight.get_all():
-            if 'guild_id' not in self.cach['highlight'].keys():
-                self.cach['highlight'][data['guild_id']] = {}
-            
-            if 'user_id' not in self.cach['highlight'][data['guild_id']].keys():
-                self.cach['highlight'][data['guild_id']][data['user_id']] = data
-    
+        reacts = await self.react.get_all()
+        for react in reacts:
+            if react['guild_id'] in self.cach['react'].keys():
+                self.cach['react'][react['guild_id']][react['user_id']] = react
+        
+        highlights = await self.highlight.get_all()
+        for highlight in highlights:
+            if highlight['guild_id'] in self.cach['highlight'].keys():
+                self.cach['highlight'][highlight['guild_id']][highlight['user_id']] = highlight
+
     async def update_cache(self, perk:str,user_id: int, guild_id: int, data):
         match perk:
             case "react":
@@ -233,7 +234,7 @@ class Perks(commands.GroupCog, name="perks", description="manage your custom per
                 await message.remove_reaction(emoji, self.bot.user)
                 await self.bot.perk.update(perk.value, user_data)
                 await self.bot.perk.update_cache(perk.value, interaction.user.id , interaction.guild.id, user_data)
-                await interaction.edit_original_response(embed=discord.Embed(description="Your reaction role has been created.", color=0x2b2d31))
+                await interaction.edit_original_response(embed=discord.Embed(description="Your Custom reaction has been set.", color=0x2b2d31))
 
     @app_commands.command(name="friend", description="manage your friends list")
     @app_commands.describe(perk="The perk you want to manage", option="The option you want to use", traget="The user you want to add/remove from your friends list")
@@ -616,41 +617,6 @@ class Perk_BackEND(commands.Cog):
 class Perk_Config(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
-
-    @app_commands.command(name="perk-config", description="Configure your perks")
-    @app_commands.describe(category="The category you want to set", position="The position you want to set", options="The option you want to set")
-    @app_commands.choices(options=[
-        app_commands.Choice(name="Show", value="show"),
-        app_commands.Choice(name="Custom Channel Category", value="channel_category"),
-        app_commands.Choice(name="Custom Role Position", value="role_position")        
-    ])
-    async def channel_category(self, interaction: Interaction, options: app_commands.Choice[str], category: discord.CategoryChannel = None, position: int = None):
-        perk_data = await self.bot.perk.get_data('config', interaction.guild.id, interaction.user.id)
-        if perk_data is None:
-            perk_data = {'_id': interaction.guild.id, 'custom_category': None, 'custom_roles_position': 0}
-            await self.bot.perk.config.insert(perk_data)
-        if options.value == "show":
-            embed = discord.Embed(description="")
-            embed.description += f"**Custom Channel Category:** {perk_data['custom_category'] if perk_data['custom_category'] is not None else '`None`'}\n"
-            embed.description += f"**Custom Role Position:** {perk_data['custom_roles_position'] if perk_data['custom_roles_position'] is not None else '`None`'}\n"
-            await interaction.response.send_message(embed=embed)
-        elif options.value == "channel_category":
-            if category is None:
-                await interaction.response.send_message(embed=discord.Embed(description="You need to provide a category", color=0x2b2d31), ephemeral=True)
-                return
-            perk_data['custom_category'] = category.id
-            await self.bot.perk.update('config', perk_data)
-            await interaction.response.send_message(embed=discord.Embed(description=f"Your custom channel category has been set to {category.mention}", color=0x2b2d31))
-        elif options.value == "role_position":
-            if position is None:
-                await interaction.response.send_message(embed=discord.Embed(description="You need to provide a position", color=0x2b2d31), ephemeral=True)
-                return
-            if position >= interaction.guild.me.top_role.position:
-                await interaction.response.send_message(embed=discord.Embed(description="You cannot set a position higher/equal to my top role", color=0x2b2d31), ephemeral=True)
-                return
-            perk_data['custom_roles_position'] = position
-            await self.bot.perk.update('config', perk_data)
-            await interaction.response.send_message(embed=discord.Embed(description=f"Your custom role position has been set to {position}", color=0x2b2d31))
     
     @app_commands.command(name="perk-remove", description="Remove perks from your server members")
     @app_commands.describe(perk="The perk you want to remove", member="The member you want to remove the perk from")
@@ -721,8 +687,6 @@ class Perk_Config(commands.Cog):
             pages.append(embed)
 
         await Paginator(interaction=interaction, pages=pages).start(embeded=True, quick_navigation=False)
-
-
 
 async def setup(bot):
     await bot.add_cog(Perks(bot))
