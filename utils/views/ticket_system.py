@@ -251,7 +251,7 @@ class Panel_Edit(View):
         else: modal.qestion.placeholder = "Enter an emoji"
         modal.add_item(modal.qestion)
         await interaction.response.send_modal(modal)
-        modal.wait()
+        await modal.wait()
 
         if modal.value:
             self.data["emoji"] = modal.qestion.value
@@ -499,7 +499,7 @@ class Ticket_controll(View):
                 transcript = await chat_exporter.raw_export(channel=interaction.channel, messages=messages, tz_info="Asia/Kolkata", guild=interaction.guild, bot=interaction.client, support_dev=True, fancy_times=True)
                 transcript = discord.File(io.BytesIO(transcript.encode()), filename=f"transcript-{interaction.channel.id}.html")
 
-                transcript_message = await transcript_channel.send(file=transcript)
+                transcript_message = await transcript_channel.send(file=transcript, content=f"**Channel:** {interaction.channel.name}\n**User:** <@{ticket_data['user']}>(`{ticket_data['user']}`)")
                 link_view = discord.ui.View()
                 link_view.add_item(discord.ui.Button(label="View Transcript", url=f"https://mahto.id/chat-exporter?url={transcript_message.attachments[0].url}"))
                 await transcript_message.edit(view=link_view)
