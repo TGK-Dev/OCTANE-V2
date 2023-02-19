@@ -23,7 +23,7 @@ discord.utils.setup_logging(
 
 class Bot_base(commands.Bot):
     def __init__(self, application_id, sync:bool=False):
-        super().__init__(intents=discord.Intents.all(), command_prefix=commands.when_mentioned_or("-"),description="A Bot for server management", case_insensitive=False, owner_ids=[488614633670967307, 301657045248114690], activity=discord.Activity(type=discord.ActivityType.watching, name="Over Server Security"),status=discord.Status.dnd, help_command=None, application_id=application_id)
+        super().__init__(intents=discord.Intents.all(), command_prefix=commands.when_mentioned_or("-"),description="A Bot for server management", case_insensitive=False, owner_ids=[488614633670967307, 301657045248114690], activity=discord.Activity(type=discord.ActivityType.playing, name="Startup"),status=discord.Status.idle, help_command=None, application_id=application_id)
         self.default_color = 0x2b2d31
         self.start_time = datetime.datetime.now()    
         self.sync = sync
@@ -57,6 +57,8 @@ async def on_ready():
     print(f"loadded cogs: {len(bot.extensions)}")
     print(f"Cached Emoji Server: {bot.emoji_server.name} | {bot.emoji_server.id}")
     print(f"Bot Views: {len(bot.persistent_views)}")
+    await bot.wait_until_ready()
+    await bot.change_presence(activity=discord.Activity(type=discord.ActivityType.watching, name="Over Server Security"), status=discord.Status.dnd)
 
 @bot.tree.command(name="ping", description="Check bots leatency")
 async def ping(interaction):
@@ -86,7 +88,7 @@ async def on_app_command_error(interaction: discord.Interaction, error):
     embed.add_field(name="Channel", value=f"{interaction.channel.mention} | {interaction.channel.id}", inline=False)
     embed.add_field(name="Guild", value=f"{interaction.guild.name} | {interaction.guild.id}", inline=False)
     embed.add_field(name="Author", value=f"{interaction.user.mention} | {interaction.user.id}", inline=False)
-    embed.add_field(name="Command", value=f"{interaction.command.name}", inline=False)
+    embed.add_field(name="Command", value=f"{interaction.command.name if interaction.command else 'None'}", inline=False)
     
     async with aiohttp.ClientSession() as session:
         webhook = discord.Webhook.from_url(url, session=session)

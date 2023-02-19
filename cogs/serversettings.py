@@ -186,9 +186,7 @@ class serversettings(commands.Cog):
                     view = LevelingConfig(interaction.user, level_data)
                     await interaction.response.send_message(embed=embed, view=view)
                     view.message = await interaction.original_response()
-                    await view.wait()
-                    if view.value:
-                        await self.bot.level_config.update(view.data)
+                    
             case "perks":
                 perk_data = await self.bot.perk.get_data('config', interaction.guild.id, interaction.user.id)
                 if perk_data is None:

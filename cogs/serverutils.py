@@ -32,6 +32,11 @@ class Payout(commands.GroupCog, name="payout", description="Payout commands"):
     def cog_unload(self):
         self.claim_task.cancel()
 
+    @commands.Cog.listener()
+    async def on_ready(self):
+        self.bot.add_view(Payout_Buttton())
+        self.bot.add_view(Payout_claim())
+
     @tasks.loop(seconds=10)
     async def check_unclaim(self):
         data = await self.bot.payout_queue.get_all()
@@ -75,7 +80,7 @@ class Payout(commands.GroupCog, name="payout", description="Payout commands"):
         if len(message.embeds) == 0: return
 
         embed = message.embeds[0]
-        if  not embed.title == "<:Crwn2:872850260756664350> **__WINNER!__**" and not len(message.mentions) == 1:
+        if  not embed.title == "<:Crwn2:872850260756664350> **__WINNER!__**" and not len(message.mentions) > 0:
             return
         
         winner = message.mentions[0]
@@ -208,7 +213,7 @@ class Payout(commands.GroupCog, name="payout", description="Payout commands"):
                 await asyncio.sleep(1)
             
         if first_message is None:
-            return await interaction.edit_original_response("No valid winners were found!", ephemeral=True, embed=None)
+            return await interaction.edit_original_response("No valid winners were found!", embed=None)
         link_view = discord.ui.View()
         link_view.add_item(discord.ui.Button(label="Go to Payout-Queue", url=first_message.jump_url))
         finished_embed.description += f"\n**<:nat_reply_cont:1011501118163013634> Successfully queued {len(winners)}**"

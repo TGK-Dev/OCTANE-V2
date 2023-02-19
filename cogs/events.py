@@ -71,7 +71,7 @@ class Events(commands.Cog):
         if message.author.id != 270904126974590976: return
         if len(message.embeds) == 0: return
         embed = message.embeds[0]
-
+        if embed is None: return
         if not embed.description.startswith("Successfully paid") and not embed.description.startswith("from the server's pool!"): return
         command_message = await message.channel.fetch_message(message.reference.message_id)
         if command_message.interaction is None: return
@@ -121,6 +121,38 @@ class Events(commands.Cog):
         else:
             embed = discord.Embed(color=0xE74C3C,description=f"<:dnd:840490624670892063> | Error: `{error}`")
             await ctx.send(embed=embed)
+    
+    @commands.Cog.listener()
+    async def on_presence_update(self, before, after):
+        if before.guild.id != 785839283847954433: return
+        supporter_role = before.guild.get_role(992108093271965856)
+        supporter_log_channel = before.guild.get_channel(1031514773310930945)
+        if len(after.activities) <= 0 and supporter_role in after.roles:
+            await after.remove_roles(supporter_role, reason="No longer supporting")
+            return        
+        await asyncio.sleep(5)
+
+        for activity in after.activities:
+            try:
+                if activity.type == discord.ActivityType.custom:
+                    if ".gg/tgk" in activity.name.lower():
+
+                        if supporter_role in after.roles: return
+                        embed = discord.Embed(description=f"Thanks for supporting the The Gambler's Kingdom\n\nYou have been given the {supporter_role.mention} role", color=supporter_role.color)
+                        embed.set_author(name=f"{after.name}#{after.discriminator} ({after.id})", icon_url=after.avatar.url if after.avatar else after.default_avatar)
+                        embed.set_footer(text=self.bot.user.name, icon_url=self.bot.user.avatar.url)
+                        embed.timestamp = datetime.datetime.now()
+                        embed.set_thumbnail(url="https://cdn.discordapp.com/emojis/869579480509841428.gif?v=1")
+                        await supporter_log_channel.send(embed=embed)
+                        await after.add_roles(supporter_role)
+                        return
+
+                    elif not ".gg/tgk" in activity.name.lower():
+                        
+                        if supporter_role in after.roles: await after.remove_roles(supporter_role)                        
+                        return
+            except Exception as e:
+                pass
 
 async def setup(bot):
     await bot.add_cog(Events(bot))

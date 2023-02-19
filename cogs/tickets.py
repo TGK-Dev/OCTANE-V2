@@ -52,6 +52,7 @@ class Ticket(commands.GroupCog, name="ticket"):
                 self.bot.add_view(panel_view)
                 
         self.bot.add_view(ticket_system.Panel_View())
+        self.bot.add_view(ticket_system.Ticket_controll())
         
     @panel.command(name="create", description="Create a ticket panel")
     @app_commands.checks.has_permissions(manage_guild=True)

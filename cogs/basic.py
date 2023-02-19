@@ -6,6 +6,7 @@ import datetime
 import psutil
 from typing import Literal
 from utils.db import Document
+from utils.views.member_view import Member_view
 
 class Basic(commands.Cog):
     def __init__(self, bot):
@@ -13,6 +14,7 @@ class Basic(commands.Cog):
         self.bot.snipes = {}
         self.bot.esnipes = {}
         self.bot.afk = Document(bot.db, "afk")
+        self.bot.votes = Document(bot.db, "Votes")
         self.bot.current_afk = {}
     
     @commands.Cog.listener()
@@ -180,7 +182,29 @@ class Basic(commands.Cog):
         except discord.Forbidden:
             pass
         self.bot.current_afk[interaction.user.id] = user_data
+    
+    @app_commands.command(name="whois", description="Get information about a user")
+    @app_commands.describe(member="The user to get information about")
+    async def whois(self, interaction: Interaction, member: discord.Member=None):
+        member = member if member else interaction.user
 
+        embed = discord.Embed(title=f"User Info - {member.name}#{member.discriminator}")
+        embed.set_thumbnail(url=member.avatar.url if member.avatar else member.default_avatar.url)
+
+        embed.add_field(name="<:authorized:991735095587254364> ID:", value=member.id)
+        embed.add_field(name="<:displayname:991733326857654312> Display Name:", value=member.display_name)
+
+        embed.add_field(name="<:bot:991733628935610388> Bot Account:", value=member.bot)
+
+        embed.add_field(name="<:settings:991733871118917683> Account creation:", value=member.created_at.strftime('%d/%m/%Y %H:%M:%S'))
+        embed.add_field(name="<:join:991733999477203054> Server join:", value=member.joined_at.strftime('%d/%m/%Y %H:%M:%S'))
+
+        if not member.bot:
+            view = Member_view(self.bot, member, interaction)
+            await interaction.response.send_message(embed=embed,view=view)
+            view.message = await interaction.original_response()
+        else:
+            await interaction.response.send_message(embed=embed)
 
 async def setup(bot):
     await bot.add_cog(Basic(bot), guilds=[discord.Object(785839283847954433)])

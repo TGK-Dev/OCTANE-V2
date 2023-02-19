@@ -53,7 +53,7 @@ class Config_Edit(View):
         await interaction.response.send_message(embed=embed, view=view, ephemeral=True, delete_after=30)
         await view.wait()
         if view.value is None:
-            await interaction.delete_original_message()
+            await interaction.delete_original_response()
         else:
             await view.select.interaction.response.edit_message(view=None, embed=discord.Embed(description="<:octane_yes:1019957051721535618> | Category set!", color=0x2b2d31))
             self.data["category"] = view.select.values[0].id
@@ -73,7 +73,7 @@ class Config_Edit(View):
         await interaction.response.send_message(embed=embed, view=view, ephemeral=True, delete_after=30)
         await view.wait()
         if view.value is None:
-            await interaction.delete_original_message()
+            await interaction.delete_original_response()
         else:
             await view.select.interaction.response.edit_message(view=None, embed=discord.Embed(description="<:octane_yes:1019957051721535618> | Channel set!", color=0x2b2d31))
             self.data["channel"] = view.select.values[0].id
@@ -93,7 +93,7 @@ class Config_Edit(View):
         await interaction.response.send_message(embed=embed, view=view, ephemeral=True, delete_after=30)
         await view.wait()
         if view.value is None:
-            await interaction.delete_original_message()
+            await interaction.delete_original_response()
         else:
             await view.select.interaction.response.edit_message(view=None, embed=discord.Embed(description="<:octane_yes:1019957051721535618> | Logging channel set!", color=0x2b2d31))
             self.data["logging"] = view.select.values[0].id
@@ -113,7 +113,7 @@ class Config_Edit(View):
         await interaction.response.send_message(embed=embed, view=view, ephemeral=True, delete_after=30)
         await view.wait()
         if view.value is None:
-            await interaction.delete_original_message()
+            await interaction.delete_original_response()
         else:
             await view.select.interaction.response.edit_message(view=None, embed=discord.Embed(description="<:octane_yes:1019957051721535618> | Transcript channel set!", color=0x2b2d31))
             self.data["transcript"] = view.select.values[0].id
