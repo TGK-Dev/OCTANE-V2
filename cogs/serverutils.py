@@ -12,12 +12,21 @@ from utils.transformer import TimeConverter
 from typing import Literal
 from io import BytesIO
 
+auto_payout = {
+	1049233574622146560: {'prize': '2 Mil', 'event': '40 Player Rumble'},
+	1049233633371750400: {'prize': '3 Mil', 'event': '69 Player Rumble'},
+	1049233702355468299: {'prize': '5 Mil', 'event': '100 Player Rumble'}, 
+	1040975933772931172: {'prize': '3 MIl', 'event': 'Daily Rumble'},
+	1042408506181025842: {'prize': '10 Mil', 'event': 'Weekly Rumble'},
+}	
+
 class Payout(commands.GroupCog, name="payout", description="Payout commands"):
     def __init__(self, bot):
         self.bot = bot
-        self.bot.payout_config = Document(self.bot.db, "payout_config")
-        self.bot.payout_queue = Document(self.bot.db, "payout_queue")
-        self.bot.payout_pending = Document(self.bot.db, "payout_pending")
+        self.db = bot.mongo['Payout_System']
+        self.bot.payout_config = Document(self.db, "payout_config")
+        self.bot.payout_queue = Document(self.db, "payout_queue")
+        self.bot.payout_pending = Document(self.db, "payout_pending")
         self.claim_task = self.check_unclaim.start()
 
     def cog_unload(self):
@@ -57,15 +66,73 @@ class Payout(commands.GroupCog, name="payout", description="Payout commands"):
     async def before_check_unclaim(self):
         await self.bot.wait_until_ready()
     
+    @commands.Cog.listener()
+    async def on_message(self, message: discord.Message):
+        if message.guild is None or message.guild.id != 785839283847954433: return
+        if not message.author.bot: return
+        if message.author.id != 693167035068317736: return
+        if message.channel.id not in auto_payout.keys(): return
+        if len(message.embeds) == 0: return
+
+        embed = message.embeds[0]
+        if  not embed.title == "<:Crwn2:872850260756664350> **__WINNER!__**" and not len(message.mentions) == 1:
+            return
+        
+        winner = message.mentions[0]
+        prize = auto_payout[message.channel.id]['prize']
+        event = auto_payout[message.channel.id]['event']
+        data = await self.bot.payout_config.find(message.guild.id)
+        claim_time = claim_time if claim_time != None else data['default_claim_time']
+        claim_timestamp = f"<t:{round((datetime.datetime.now() + datetime.timedelta(seconds=claim_time)).timestamp())}:R>"
+
+        embed = discord.Embed(title="Payout Queued", color=self.bot.default_color, timestamp=datetime.datetime.now(), description="")
+        embed.description += f"**Event:** {event}\n"
+        embed.description += f"**Winner:** {winner.mention} ({winner.name}#{winner.discriminator})\n"
+        embed.description += f"**Prize:** {prize}\n"
+        embed.description += f"**Channel:** {message.channel.mention}\n"
+        embed.description += f"**Message:** [Jump to Message]({message.jump_url})\n"
+        embed.description += f"**Claim Time:** {claim_timestamp}\n"
+        embed.description += f"**Set By:** AutoMatic Payout Queue System\n"
+        embed.description += f"**Status:** `Pending`\n"
+
+        pendin_channel = message.guild.get_channel(data['pending_channel'])
+        if pendin_channel is None:return
+        msg = await pendin_channel.send(f"<@{winner.id}> you have won {prize} in {event}! Please claim your prize within {claim_timestamp} by clicking the button below.", embed=embed, view=Payout_claim())
+        queue_data = {
+            '_id': msg.id,
+            'channel': message.channel.id,
+            'guild': message.guild.id,
+            'event': event,
+            'winner': winner.id,
+            'prize': prize,
+            'claimed': False,
+            'set_by': "AutoMatic Payout Queue System",
+            'winner_message_id': message.id,
+            'queued_at': datetime.datetime.utcnow(),
+            'claim_time': claim_time or 3600,
+        }
+        await self.bot.payout_queue.insert(queue_data)
+        loading_emoji = await self.bot.emoji_server.fetch_emoji(998834454292344842)
+        try:
+            await message.add_reaction(loading_emoji)
+        except discord.HTTPException:
+            pass
+
+        await message.channel.send(f"{winner.mention}, your prize has been queued for claim! Please check {pendin_channel.mention} to claim your prize.")
+
     @app_commands.command(name="set", description="configur the payout system settings")
     @app_commands.describe(event="event name", message_id="winner message id", winners="winner of the event", prize="what did they win?")
     async def payout_set(self, interaction: discord.Interaction, event: str, message_id: str, winners: app_commands.Transform[discord.Member, MultipleMember], prize: str, claim_time: app_commands.Transform[int, TimeConverter]= None):
         data = await self.bot.payout_config.find(interaction.guild.id)
         user_roles = [role.id for role in interaction.user.roles]
-        if (set(user_roles) & set(data['manager_roles'])):
+        if (set(user_roles) & set(data['event_manager_roles'])):
             pass
         else:
             return await interaction.response.send_message("You are not allowed to use this command!", ephemeral=True)
+        
+        if claim_time is not None:
+            if claim_time < 3600:
+                return await interaction.response.send_message("Claim time must be at least 1 hour!", ephemeral=True)
 
         loading_embed = discord.Embed(description=f"<a:loading:998834454292344842> | Setting up the payout for total of `{len(winners)}` winners!")
         finished_embed = discord.Embed(description=f"")        
@@ -99,6 +166,7 @@ class Payout(commands.GroupCog, name="payout", description="Payout commands"):
             return await interaction.followup.send("Please set up the payout config first!", ephemeral=True)
         claim_time = claim_time if claim_time != None else data['default_claim_time']
         claim_timestamp = f"<t:{round((datetime.datetime.now() + datetime.timedelta(seconds=claim_time)).timestamp())}:R>"
+        first_message = None
         for winner in winners:
             if isinstance(winner, discord.Member):
                 embed = discord.Embed(title="Payout Queued", color=self.bot.default_color, timestamp=datetime.datetime.now(), description="")
@@ -112,6 +180,7 @@ class Payout(commands.GroupCog, name="payout", description="Payout commands"):
                 embed.description += f"**Status:** `Pending`\n"
 
                 msg = await queue_channel.send(embed=embed, content=f"{winner.mention}, please claim your prize within the next {claim_timestamp}!\n> If not claimed within the deadline, you are liable to be rerolled/rehosted.", view=Payout_claim())
+                if first_message is None: first_message = msg
                 data = {
 					'_id': msg.id,
 					'channel': winner_message.channel.id,
@@ -138,8 +207,10 @@ class Payout(commands.GroupCog, name="payout", description="Payout commands"):
                 await interaction.edit_original_response(embed=loading_embed)
                 await asyncio.sleep(1)
             
+        if first_message is None:
+            return await interaction.edit_original_response("No valid winners were found!", ephemeral=True, embed=None)
         link_view = discord.ui.View()
-        link_view.add_item(discord.ui.Button(label="Go to Payout-Queue", url=msg.jump_url))
+        link_view.add_item(discord.ui.Button(label="Go to Payout-Queue", url=first_message.jump_url))
         finished_embed.description += f"\n**<:nat_reply_cont:1011501118163013634> Successfully queued {len(winners)}**"
         await interaction.edit_original_response(embed=finished_embed, view=link_view)
 
