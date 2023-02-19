@@ -72,7 +72,6 @@ class Dev(commands.Cog, name="dev", description="Dev commands"):
     
     @commands.command(name="eval", description="Evaluates a python code")
     async def _eval(self, ctx, *, code):
-        print(code)
         if ctx.author.id not in self.bot.owner_ids:
             return await ctx.send("You are not allowed to use this command")
 
