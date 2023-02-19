@@ -69,7 +69,7 @@ class Events(commands.Cog):
         if not message.author.bot: return
 
         if message.author.id != 270904126974590976: return
-        if not len(message.embeds) > 0: return
+        if len(message.embeds) == 0: return
         embed = message.embeds[0]
 
         if not embed.description.startswith("Successfully paid") and not embed.description.startswith("from the server's pool!"): return
