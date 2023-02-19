@@ -43,6 +43,7 @@ class PerkConfig(View):
         if view.value:
             self.data['custom_category'] = view.select.values[0].id
             await interaction.delete_original_response()
+            await interaction.client.perk.update('config',self.data)
             await self.message.edit(embed=await self.update_embed(interaction, self.data))
         
     @button(label="Custom Roles Position", style=discord.ButtonStyle.gray, emoji="<:tgk_role:1073908306713780284>")
@@ -62,5 +63,6 @@ class PerkConfig(View):
                 return await view.select.interaction.edit_original_response(content="You can't set the position of custom roles to the default role", view=None)
             
             self.data['custom_roles_position'] = position - 1
+            await interaction.client.perk.update('config',self.data)
             await interaction.delete_original_response()
             await self.message.edit(embed=await self.update_embed(interaction, self.data))
