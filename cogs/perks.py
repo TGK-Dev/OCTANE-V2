@@ -200,7 +200,7 @@ class Perks(commands.GroupCog, name="perks", description="manage your custom per
                 role = await interaction.guild.create_role(name=name, color=color, reason=f"Custom role perk for {interaction.user}", display_icon=icon)
                 position_role = interaction.guild.get_role(perks_config['custom_roles_position'])
                 position = position_role.position - 1
-                await role.edit(position=perks_config['custom_roles_position'])
+                await role.edit(position=position)
                 await interaction.user.add_roles(role, reason=f"Custom role perk for {interaction.user}")
                 await interaction.edit_original_response(embed=discord.Embed(description="Your custom role has been created.", color=0x2b2d31))
                 user_data['role_id'] = role.id
