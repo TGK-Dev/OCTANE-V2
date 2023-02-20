@@ -80,7 +80,7 @@ class Payout(commands.GroupCog, name="payout", description="Payout commands"):
         if len(message.embeds) == 0: return
 
         embed = message.embeds[0]
-        if  not embed.title == "<:Crwn2:872850260756664350> **__WINNER!__**" and not len(message.mentions) > 0:
+        if embed.title != "<:Crwn2:872850260756664350> **__WINNER!__**" and len(message.mentions) == 1:
             return
         
         winner = message.mentions[0]
