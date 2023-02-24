@@ -372,7 +372,7 @@ class Perks(commands.GroupCog, name="perks", description="manage your custom per
     async def edit(self, interaction: Interaction, perk: app_commands.Choice[str], name: str=None, color:str=None, icon: discord.Attachment=None):
         perk_data = await self.bot.perk.get_data(perk.value, interaction.guild.id, interaction.user.id)
         if not perk_data: return await interaction.response.send_message(f"You don't have any {perk.name.lower()} perks yet.", ephemeral=True)
-        perk_config = await self.bot.perk.get_config(perk.value, interaction.guild.id)
+        perk_config = await self.bot.perk.get("config", interaction.guild.id)
 
         match perk.value:
             case "channels":
