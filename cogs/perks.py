@@ -363,28 +363,28 @@ class Perks(commands.GroupCog, name="perks", description="manage your custom per
 
     @app_commands.command(name="edit", description="edit your custom channel or role")
     @app_commands.describe(perk="the perk you want to edit", name="the name of your custom channel or role", color="the color of your custom role", icon="the icon of your custom role")
-    @app_commands.choices(perk=[app_commands.Choice(name="Custom Channel", value="channels"), app_commands.Choice(name="Custom Role", value="roles")])
+    @app_commands.choices(perk=[app_commands.Choice(name="Custom Channel", value="channel"), app_commands.Choice(name="Custom Role", value="roles")])
     async def edit(self, interaction: Interaction, perk: app_commands.Choice[str], name: str=None, color:str=None, icon: discord.Attachment=None):
         perk_data = await self.bot.perk.get_data(perk.value, interaction.guild.id, interaction.user.id)
         if not perk_data: return await interaction.response.send_message(f"You don't have any {perk.name.lower()} perks yet.", ephemeral=True)
-        perk_config = await self.bot.perk.get("config", interaction.guild.id)
+        perk_config = await self.bot.perk.get_data("config", interaction.guild.id, interaction.user.id)
 
         match perk.value:
-            case "channels":
+            case "channel":
                 channel = interaction.guild.get_channel(perk_data['channel_id'])
                 if not channel: return await interaction.response.send_message("Your channel perk is invalid/missing.", ephemeral=True)
                 await interaction.response.send_message(embed=discord.Embed(description="Please wait while we edit your channel perk", color=0x2b2d31))
-                if not name: await interaction.send_message(embed=discord.Embed(description="Please provide a name for your channel.", color=0x2b2d31))
+                if not name: await interaction.edit_original_response(embed=discord.Embed(description="Please provide a name for your channel.", color=0x2b2d31))
                 await channel.edit(name=name, reason=f"Custom channel perk for {interaction.user}")
-                await interaction.response.send_message(embed=discord.Embed(description="Your channel has been edited.", color=0x2b2d31))
+                await interaction.edit_original_response(embed=discord.Embed(description="Your channel has been edited.", color=0x2b2d31))
             case "roles":
                 role = interaction.guild.get_role(perk_data['role_id'])
                 if not role: return await interaction.response.send_message("Your role perk is invalid/missing.", ephemeral=True)
                 await interaction.response.send_message(embed=discord.Embed(description="Please wait while we edit your role perk", color=0x2b2d31))
                 if icon: 
-                    if not icon.filename.url.endswith(('png', 'jpg')): return await interaction.send_message(embed=discord.Embed(description="Please provide a valid image for your role icon.", color=0x2b2d31))
+                    if not icon.filename.url.endswith(('png', 'jpg')): return await interaction.edit_original_response(embed=discord.Embed(description="Please provide a valid image for your role icon.", color=0x2b2d31))
                     async with self.bot.session.get(icon.filename.url) as resp:
-                        if resp.status != 200: return await interaction.send_message(embed=discord.Embed(description="Please provide a valid image for your role icon.", color=0x2b2d31))
+                        if resp.status != 200: return await interaction.edit_original_response(embed=discord.Embed(description="Please provide a valid image for your role icon.", color=0x2b2d31))
                         icon = await resp.read()
                 color = color.replace("#", "") if color else None
                 await role.edit(name=name, color=discord.Color(int(color, 16)) if color else role.color, reason=f"Custom role perk for {interaction.user}", display_icon=icon)
