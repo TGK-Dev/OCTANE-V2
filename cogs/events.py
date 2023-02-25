@@ -69,9 +69,11 @@ class Events(commands.Cog):
         if not message.author.bot: return
 
         if message.author.id != 270904126974590976: return
-        if len(message.embeds) == 0: return
+        if len(message.embeds) == 0: 
+            return
         embed = message.embeds[0]
-        if embed is None: return
+        if isinstance(embed, discord.Embed) == False: return
+        if embed.description is None: return
         if not embed.description.startswith("Successfully paid") and not embed.description.startswith("from the server's pool!"): return
         command_message = await message.channel.fetch_message(message.reference.message_id)
         if command_message.interaction is None: return
