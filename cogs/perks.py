@@ -74,7 +74,6 @@ class Perks_DB:
             case 'config':
                 await self.config.delete(data['_id'])
 
-
     async def create(self, type: str, user_id: int, guild_id: int, duration: Union[int, str], friend_limit: int=None):
         match type:
             case "roles":
@@ -103,35 +102,31 @@ class Perks_DB:
     
     async def create_cach(self):
         self.cach = {'react': {}, 'highlight': {}}
-        configs = await self.config.get_all()
-        for config in configs:
-            self.cach['react'][config['_id']] = {}
-            self.cach['highlight'][config['_id']] = {}
+        config = await self.config.get_all()
+        for guild in config:
+            if guild['_id'] not in self.cach['react'].keys():
+                self.cach['react'][guild['_id']] = {}
+            if guild['_id'] not in self.cach['highlight'].keys():
+                self.cach['highlight'][guild['_id']] = {}
         
-        reacts = await self.react.get_all()
-        for react in reacts:
-            if react['guild_id'] in self.cach['react'].keys():
-                self.cach['react'][react['guild_id']][react['user_id']] = react
+        react = await self.react.get_all()
+        for data in react:
+            if data['emoji'] != None:
+                self.cach['react'][data['guild_id']][data['user_id']] = data
         
-        highlights = await self.highlight.get_all()
-        for highlight in highlights:
-            if highlight['guild_id'] in self.cach['highlight'].keys():
-                self.cach['highlight'][highlight['guild_id']][highlight['user_id']] = highlight
+        highlight = await self.highlight.get_all()
+        for data in highlight:
+            if data['guild_id'] not in self.cach['highlight'].keys():
+                self.cach['highlight'][data['guild_id']]['user_id'] = data
 
     async def update_cache(self, perk:str,user_id: int, guild_id: int, data):
         match perk:
             case "react":
-                if 'guild_id' not in self.cach['react'].keys():
-                    self.cach['react'][guild_id] = {}
-                if 'user_id' not in self.cach['react'][guild_id].keys():
-                    self.cach['react'][guild_id][user_id] = {}
                 self.cach['react'][guild_id][user_id] = data
+                return
             case "highlight":
-                if 'guild_id' not in self.cach['highlight'].keys():
-                    self.cach['highlight'][guild_id] = {}
-                if 'user_id' not in self.cach['highlight'][guild_id].keys():
-                    self.cach['highlight'][guild_id][user_id] = {}
                 self.cach['highlight'][guild_id][user_id] = data
+                return
             case _:
                 raise Exception("Invalid perk type")
 
@@ -476,7 +471,15 @@ class Perk_BackEND(commands.Cog):
         for mention in message.mentions:
             if mention.id not in self.bot.perk.cach['react'][message.guild.id].keys(): continue
             user_data = self.bot.perk.cach['react'][message.guild.id][mention.id]
-            if user_data['last_react'] is None or (datetime.datetime.utcnow() - user_data['last_react']).total_seconds() > 60:
+            if user_data['last_react'] is None:
+                try:
+                    await message.add_reaction(user_data['emoji'])
+                except:
+                    return
+                user_data['last_react'] = datetime.datetime.utcnow()
+                await self.bot.perk.update_cache('react', mention.id, message.guild.id, user_data)
+                await self.bot.perk.update('react', user_data)
+            elif (datetime.datetime.utcnow() - user_data['last_react']).total_seconds() > 30:
                 try:
                     await message.add_reaction(user_data['emoji'])
                 except:
