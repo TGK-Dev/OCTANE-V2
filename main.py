@@ -11,6 +11,7 @@ import aiohttp
 
 from dotenv import load_dotenv
 from motor.motor_asyncio import AsyncIOMotorClient
+from utils.converters import dict_to_tree
 
 
 load_dotenv()
@@ -84,7 +85,9 @@ async def on_app_command_error(interaction: discord.Interaction, error):
         
     url = "https://canary.discord.com/api/webhooks/1076590771542708285/88D3SRMTYHPe4copSvTQ451KXx7Tk2WDsRYUPN4wtVI1qQbqDmyn0eAiUOhV7XW8SO3G"
     embed = discord.Embed(title="Error", description=f"```\n{error}\n```", color=bot.default_color)
-    embed.add_field(name="Interaction Data", value=f"```\n{interaction.data}\n```", inline=False)
+    tree_format = interaction.data.copy()
+    tree_format = dict_to_tree(tree_format)
+    embed.add_field(name="Interaction Data Tree", value=f"```yaml\n{tree_format}\n```", inline=False)
     embed.add_field(name="Channel", value=f"{interaction.channel.mention} | {interaction.channel.id}", inline=False)
     embed.add_field(name="Guild", value=f"{interaction.guild.name} | {interaction.guild.id}", inline=False)
     embed.add_field(name="Author", value=f"{interaction.user.mention} | {interaction.user.id}", inline=False)

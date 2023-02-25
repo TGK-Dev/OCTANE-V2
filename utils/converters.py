@@ -32,3 +32,35 @@ def clean_code(content):
         return "\n".join(content.split("\n")[1:])[:-3]
     else:
         return content
+
+#create an function to convert a dict to a tree and return it as string and use characters to display the tree, where  is a branch, ├─ is a branch with a child, └─ is a branch with a child and ─ is a child
+def dict_to_tree(data, indent=0):
+    tree = ""
+    for i, (key, value) in enumerate(data.items()):
+        tree += "\n" + "│  "*indent
+        if isinstance(value, (dict, list)):
+            tree += f"├─{key}:"
+            if isinstance(value, dict):
+                tree += dict_to_tree(value, indent=indent+1)
+            elif isinstance(value, list):
+                for index, item in enumerate(value):
+                    tree += "\n" + "│  "*(indent+1) + f"├─{key}[{index}]:"
+                    if isinstance(item, (dict, list)):
+                        tree += dict_to_tree(item, indent=indent+2)
+                    else:
+                        tree += "\n" + "│  "*(indent+2) + str(item)
+        else:
+            if i == len(data)-1:
+                tree += f"└─{key}: {value}"
+            else:
+                tree += f"├─{key}: {value}"
+    return tree
+
+
+
+
+
+
+
+exp = {'type': 1, 'options': [{'type': 1, 'options': [{'value': 'channel', 'type': 3, 'name': 'perk'}, {'value': 'test', 'type': 3, 'name': 'name'}], 'name': 'edit'}], 'name': 'perks', 'id': '1076624547429744680'}
+print(dict_to_tree(exp))
