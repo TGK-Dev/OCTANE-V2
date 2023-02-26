@@ -65,7 +65,7 @@ class Dev(commands.Cog, name="dev", description="Dev commands"):
         view.message = await interaction.original_response()
         await view.wait()
         if view.value:
-            await interaction.edit_original_response(embed=discord.Embed(description="Shutting down...", color=interaction.client.default_color))
+            await interaction.edit_original_response(embed=discord.Embed(description="Bye Bye", color=interaction.client.default_color), view=None)
             await interaction.client.close()
         else:
             await interaction.edit_original_response(embed=discord.Embed(description="Shutdown cancelled", color=interaction.client.default_color))
