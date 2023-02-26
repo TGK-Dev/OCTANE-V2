@@ -58,9 +58,9 @@ class level(commands.GroupCog, name="level"):
         template.paste(guild_icon, (15, 8), guild_icon)
 
         draw = ImageDraw.Draw(template)
-        font = ImageFont.truetype('arial.ttf', 25)
-        winner_name_font = ImageFont.truetype('arial.ttf', 28)
-        winner_exp_font = ImageFont.truetype('arial.ttf', 20)
+        font = ImageFont.truetype('./assets/fonts/Clockwise-Light.ttf', 25)
+        winner_name_font = ImageFont.truetype('./assets/fonts/Clockwise-Light.ttf', 28)
+        winner_exp_font = ImageFont.truetype('./assets/fonts/Clockwise-Light.ttf', 20)
         
         winne_postions = {
             0: {'icon': (58, 150), 'name': (176, 165), 'xp': (176, 202)},
@@ -172,8 +172,8 @@ class Level_BackEnd(commands.Cog):
         profile = profile.resize((189, 189), Image.Resampling.LANCZOS).convert('RGBA')
 
         draw = ImageDraw.Draw(base_image)
-        name_font = ImageFont.truetype('arial.ttf', 38)
-        other_font = ImageFont.truetype('arial.ttf', 32)
+        name_font = ImageFont.truetype('./assets/fonts/Clockwise-Light.ttf', 38)
+        other_font = ImageFont.truetype('./assets/fonts/Clockwise-Light.ttf', 32)
         base_image.paste(profile, (39, 46))
 
         #exp = exp.split(".")[0]
@@ -331,7 +331,10 @@ class Level_BackEnd(commands.Cog):
         with BytesIO() as image_binary:
             image.save(image_binary, 'PNG')
             image_binary.seek(0)
-            await interaction.edit_original_response(embed=None, attachments=[discord.File(fp=image_binary, filename=f'{user.id}_rank_cva.png')])
+            embed = discord.Embed(color=0x2b2d31)
+            image_file = discord.File(fp=image_binary, filename=f'{user.id}_rank_cva.png')
+            embed.set_image(url=f"attachment://{user.id}_rank_cva.png")
+            await interaction.edit_original_response(embed=embed, attachments=[discord.File(fp=image_binary, filename=f'{user.id}_rank_cva.png')])
 
     @app_commands.command(name="leaderboard", description="Get the leaderboard")
     @app_commands.checks.cooldown(1, 30)
