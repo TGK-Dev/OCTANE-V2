@@ -253,7 +253,9 @@ class Payout_Buttton(discord.ui.View):
         embed = interaction.message.embeds[0]
         new_description = embed.description
         embed.title = "Successfully Paid!"
-        new_description = new_description.replace("`Awaiting Payment`", "`Successfully Paid!`")
+        embed.description = ""
+        new_description = new_description.replace("`Awaiting Payment`", "`Paid`")
+        embed.description = new_description
         embed.description += f"\n**Santioned By:** {interaction.user.mention}"
         edit_view = discord.ui.View()
         edit_view.add_item(discord.ui.Button(label=f'Successfully Paid', style=discord.ButtonStyle.gray, disabled=True, emoji="<:paid:1071752278794575932>"))
