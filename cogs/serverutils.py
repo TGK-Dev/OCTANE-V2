@@ -103,25 +103,25 @@ class Payout(commands.GroupCog, name="payout", description="Payout commands"):
         pendin_channel = message.guild.get_channel(data['pending_channel'])
         if pendin_channel is None:return
         msg = await pendin_channel.send(f"<@{winner.id}> you have won {prize} in {event}! Please claim your prize within {claim_timestamp} by clicking the button below.", embed=embed, view=Payout_claim())
-        # queue_data = {
-        #     '_id': msg.id,
-        #     'channel': message.channel.id,
-        #     'guild': message.guild.id,
-        #     'event': event,
-        #     'winner': winner.id,
-        #     'prize': prize,
-        #     'claimed': False,
-        #     'set_by': "AutoMatic Payout Queue System",
-        #     'winner_message_id': message.id,
-        #     'queued_at': datetime.datetime.utcnow(),
-        #     'claim_time': claim_time or 3600,
-        # }
-        # await self.bot.payout_queue.insert(queue_data)
-        # loading_emoji = await self.bot.emoji_server.fetch_emoji(998834454292344842)
-        # try:
-        #     await message.add_reaction(loading_emoji)
-        # except discord.HTTPException:
-        #     pass
+        queue_data = {
+            '_id': msg.id,
+            'channel': message.channel.id,
+            'guild': message.guild.id,
+            'event': event,
+            'winner': winner.id,
+            'prize': prize,
+            'claimed': False,
+            'set_by': "AutoMatic Payout Queue System",
+            'winner_message_id': message.id,
+            'queued_at': datetime.datetime.utcnow(),
+            'claim_time': claim_time or 3600,
+        }
+        await self.bot.payout_queue.insert(queue_data)
+        loading_emoji = await self.bot.emoji_server.fetch_emoji(998834454292344842)
+        try:
+            await message.add_reaction(loading_emoji)
+        except discord.HTTPException:
+            pass
 
         await message.channel.send(f"{winner.mention}, your prize has been queued for claim! Please check {pendin_channel.mention} to claim your prize.")
 
