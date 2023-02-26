@@ -189,7 +189,7 @@ class Payout_claim(discord.ui.View):
         await interaction.response.send_message(embed=loading_embed, ephemeral=True)
 
         data = await interaction.client.payout_queue.find(interaction.message.id)
-        if not data: await interaction.edit_original_response(embed=discord.Embed(description="<:octane_no:1019957208466862120> | This payout has already been claimed or invalid", color=discord.Color.red()))
+        if not data: return await interaction.edit_original_response(embed=discord.Embed(description="<:octane_no:1019957208466862120> | This payout has already been claimed or invalid", color=discord.Color.red()))
 
         if interaction.user.id != data['winner']:
             await interaction.edit_original_response(embed=discord.Embed(description="<:octane_no:1019957208466862120> | You are not the winner of this payout", color=discord.Color.red()))

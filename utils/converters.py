@@ -55,12 +55,3 @@ def dict_to_tree(data, indent=0):
             else:
                 tree += f"├─{key}: {value}"
     return tree
-
-
-
-
-
-
-
-exp = {'type': 1, 'options': [{'type': 1, 'options': [{'value': 'channel', 'type': 3, 'name': 'perk'}, {'value': 'test', 'type': 3, 'name': 'name'}], 'name': 'edit'}], 'name': 'perks', 'id': '1076624547429744680'}
-print(dict_to_tree(exp))
