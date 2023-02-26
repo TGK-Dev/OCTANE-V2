@@ -110,7 +110,7 @@ class Payout(commands.GroupCog, name="payout", description="Payout commands"):
         embed = message.embeds[0]
         if embed.title != "<:Crwn2:872850260756664350> **__WINNER!__**" and len(message.mentions) == 1:
             return
-        
+        if len(message.mentions) == 0: return
         winner = message.mentions[0]
         prize = auto_payout[message.channel.id]['prize']
         event = auto_payout[message.channel.id]['event']
