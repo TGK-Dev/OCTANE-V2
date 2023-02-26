@@ -59,6 +59,8 @@ class Payout(commands.GroupCog, name="payout", description="Payout commands"):
                 host = guild.get_member(payout['set_by'])
                 dm_view = discord.ui.View()
                 dm_view.add_item(discord.ui.Button(label="Payout Message Link", style=discord.ButtonStyle.url, url=message.jump_url))
+                user = guild.get_member(payout['winner'])
+                self.bot.dispatch("payout_expired", message, user)
                 try:
                     await host.send(f"<@{payout['winner']}> has failed to claim within the deadline. Please reroll/rehost the event/giveaway.", view=dm_view)
                 except discord.HTTPException:
@@ -124,6 +126,7 @@ class Payout(commands.GroupCog, name="payout", description="Payout commands"):
             pass
 
         await message.channel.send(f"{winner.mention}, your prize has been queued for claim! Please check {pendin_channel.mention} to claim your prize.")
+        self.bot.dispatch("payout_queue", message.guild.me, f"{auto_payout[message.channel.id]['event']}", message, msg, winner, auto_payout[message.channel.id]['prize'], claim_time)
 
     @app_commands.command(name="set", description="configur the payout system settings")
     @app_commands.describe(event="event name", message_id="winner message id", winners="winner of the event", prize="what did they win?")
@@ -211,13 +214,84 @@ class Payout(commands.GroupCog, name="payout", description="Payout commands"):
                 
                 await interaction.edit_original_response(embed=loading_embed)
                 await asyncio.sleep(1)
-            
+                self.bot.dispatch("payout_queue", interaction.user, event, winner_message, msg, winner, prize)
+
         if first_message is None:
             return await interaction.edit_original_response("No valid winners were found!", embed=None)
         link_view = discord.ui.View()
         link_view.add_item(discord.ui.Button(label="Go to Payout-Queue", url=first_message.jump_url))
         finished_embed.description += f"\n**<:nat_reply_cont:1011501118163013634> Successfully queued {len(winners)}**"
         await interaction.edit_original_response(embed=finished_embed, view=link_view)
+    
+    @commands.Cog.listener()
+    async def on_payout_queue(self, host: discord.Member,event: str, win_message: discord.Message, queue_message: discord.Message, winner: discord.Member, prize: str):
+        embed = discord.Embed(title="Payout | Queued", color=discord.Color.green(), timestamp=datetime.datetime.now(), description="")
+        embed.description += f"**Host:** {host.mention}\n"
+        embed.description += f"**Event:** {event}\n"
+        embed.description += f"**Winner:** {winner.mention} ({winner.name}#{winner.discriminator})\n"
+        embed.description += f"**Prize:** {prize}\n"
+        embed.description += f"**Event Message:** [Jump to Message]({win_message.jump_url})\n"
+        embed.description += f"**Queue Message:** [Jump to Message]({queue_message.jump_url})\n"
+        embed.set_footer(text=f"Queue Message ID: {queue_message.id}")
+
+        config = await self.bot.payout_config.find(queue_message.guild.id)
+        if config is None: return
+        log_channel = queue_message.guild.get_channel(config['log_channel'])
+        if log_channel is None: return
+        await log_channel.send(embed=embed)
+
+    @commands.Cog.listener()
+    async def on_payout_claim(self, message: discord.Message, user: discord.Member):
+        embed = discord.Embed(title="Payout | Claimed", color=discord.Color.green(), timestamp=datetime.datetime.now(), description="")
+        embed.description += f"**User:** {user.mention}\n"
+        embed.description += f"**Queue Message:** [Jump to Message]({message.jump_url})\n"
+        embed.set_footer(text=f"Queue Message ID: {message.id}")
+
+        config = await self.bot.payout_config.find(message.guild.id)
+        if config is None: return
+        log_channel = message.guild.get_channel(config['log_channel'])
+        if log_channel is None: return
+        await log_channel.send(embed=embed)
+    
+    @commands.Cog.listener()
+    async def on_payout_pending(self, message: discord.Message):
+        embed = discord.Embed(title="Payout | Pending", color=discord.Color.yellow(), timestamp=datetime.datetime.now(), description="")
+        embed.description += f"**Queue Message:** [Jump to Message]({message.jump_url})\n"
+        embed.set_footer(text=f"Queue Message ID: {message.id}")
+
+        config = await self.bot.payout_config.find(message.guild.id)
+        if config is None: return
+        log_channel = message.guild.get_channel(config['log_channel'])
+        if log_channel is None: return
+        await log_channel.send(embed=embed)
+    
+    @commands.Cog.listener()
+    async def on_payout_paid(self, message: discord.Message, user: discord.Member, winner: discord.Member, prize: str):
+        embed = discord.Embed(title="Payout | Paid", color=discord.Color.dark_green(), timestamp=datetime.datetime.now(), description="")
+        embed.description += f"**User:** {user.mention}\n"
+        embed.description += f"**Winner:** {winner.mention} ({winner.name}#{winner.discriminator})\n"
+        embed.description += f"**Prize:** {prize}\n"
+        embed.description += f"**Queue Message:** [Jump to Message]({message.jump_url})\n"
+        embed.set_footer(text=f"Queue Message ID: {message.id}")
+
+        config = await self.bot.payout_config.find(message.guild.id)
+        if config is None: return
+        log_channel = message.guild.get_channel(config['log_channel'])
+        if log_channel is None: return
+        await log_channel.send(embed=embed)
+    
+    @commands.Cog.listener()
+    async def on_payout_expired(self, message: discord.Message, user: discord.Member):
+        embed = discord.Embed(title="Payout | Expired", color=discord.Color.red(), timestamp=datetime.datetime.now(), description="")
+        embed.description += f"**User:** {user.mention}\n"
+        embed.description += f"**Queue Message:** [Jump to Message]({message.jump_url})\n"
+        embed.set_footer(text=f"Queue Message ID: {message.id}")
+
+        config = await self.bot.payout_config.find(message.guild.id)
+        if config is None: return
+        log_channel = message.guild.get_channel(config['log_channel'])
+        if log_channel is None: return
+        await log_channel.send(embed=embed)
 
 class Dump(commands.GroupCog, name="dump", description="Dump commands"):
     def __init__(self, bot):

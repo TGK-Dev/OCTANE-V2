@@ -228,7 +228,8 @@ class Payout_claim(discord.ui.View):
         button.disabled = True
 
         await interaction.message.edit(embed=current_embed, view=self)
-
+        interaction.client.dispatch("payout_claim", interaction.message, interaction.user)
+        interaction.client.dispatch("payout_pending", msg)
     async def on_error(self, interaction: Interaction, error: Exception, item: discord.ui.Item):
         try:
             await interaction.response.send_message(f"Error: {error}", ephemeral=True)
@@ -264,6 +265,8 @@ class Payout_Buttton(discord.ui.View):
         success_embed = discord.Embed(description="<:octane_yes:1019957051721535618> | Payout Marked Successfully!", color=discord.Color.green())
         await interaction.edit_original_response(embed=success_embed)
         await interaction.message.edit(view=edit_view, embed=embed, content=None)
+        winner = interaction.guild.get_member(data['winner'])
+        interaction.client.dispatch("payout_paid", interaction.message, interaction.user, winner, data['prize'])
         await interaction.client.payout_pending.delete(data['_id'])
         
         is_more_payout_pending = await interaction.client.payout_pending.find_many_by_custom({'winner_message_id': data['winner_message_id']})
