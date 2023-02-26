@@ -4,6 +4,7 @@ from .selects import Channel_select, Role_select
 from .modal import General_Modal
 from discord import Interaction
 from utils.converters import TimeConverter
+import datetime
 from .buttons import Confirm
 class Payout_Config_Edit(discord.ui.View):
     def __init__(self, data: dict, user: discord.Member,message: discord.Message=None, interaction: Interaction=None):
@@ -218,7 +219,8 @@ class Payout_claim(discord.ui.View):
         msg = await queue_channel.send(embed=queue_embed, view=Payout_Buttton())
         pending_data = data
         pending_data['_id'] = msg.id
-
+        delete_queue_data = {'_id': interaction.message.id,'channel': interaction.message.channel.id,'now': datetime.datetime.utcnow(),'delete_after': 1800, 'reason': 'payout_claim'}
+        await self.bot.payout_delete_queue.insert(delete_queue_data)
         await interaction.client.payout_pending.insert(pending_data)
         await interaction.client.payout_queue.delete(interaction.message.id)
 

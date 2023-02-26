@@ -27,10 +27,13 @@ class Payout(commands.GroupCog, name="payout", description="Payout commands"):
         self.bot.payout_config = Document(self.db, "payout_config")
         self.bot.payout_queue = Document(self.db, "payout_queue")
         self.bot.payout_pending = Document(self.db, "payout_pending")
+        self.bot.payout_delete_queue = Document(self.db, "payout_delete_queue")
         self.claim_task = self.check_unclaim.start()
+        self.delete_queue_task = self.check_delete_queue.start()
 
     def cog_unload(self):
         self.claim_task.cancel()
+        self.delete_queue_task.cancel()
 
     @commands.Cog.listener()
     async def on_ready(self):
@@ -61,6 +64,8 @@ class Payout(commands.GroupCog, name="payout", description="Payout commands"):
                 dm_view.add_item(discord.ui.Button(label="Payout Message Link", style=discord.ButtonStyle.url, url=message.jump_url))
                 user = guild.get_member(payout['winner'])
                 self.bot.dispatch("payout_expired", message, user)
+                delete_queue_data = {'_id': message.id,'channel': message.channel.id,'now': datetime.datetime.utcnow(),'delete_after': 1800, 'reason': 'payout_expired'}
+                await self.bot.payout_delete_queue.insert(delete_queue_data)
                 try:
                     await host.send(f"<@{payout['winner']}> has failed to claim within the deadline. Please reroll/rehost the event/giveaway.", view=dm_view)
                 except discord.HTTPException:
@@ -68,6 +73,27 @@ class Payout(commands.GroupCog, name="payout", description="Payout commands"):
                 await self.bot.payout_queue.delete(payout['_id'])
             else:
                 pass
+    
+    @tasks.loop(seconds=10)
+    async def check_delete_queue(self):
+        data = await self.bot.payout_delete_queue.get_all()
+        now = datetime.datetime.utcnow()
+        for payout in data:
+            if payout['reason'] == 'payout_expired': continue
+            if now > payout['now'] + datetime.timedelta(seconds=payout['delete_after']):
+                channel = self.bot.get_channel(payout['channel'])
+                try:
+                    message = await channel.fetch_message(payout['_id'])
+                except discord.NotFound:
+                    continue
+                await message.delete()
+                await self.bot.payout_delete_queue.delete(payout['_id'])
+            else:
+                pass
+    
+    @check_delete_queue.before_loop
+    async def before_check_delete_queue(self):
+        await self.bot.wait_until_ready()
             
     @check_unclaim.before_loop
     async def before_check_unclaim(self):
@@ -222,6 +248,26 @@ class Payout(commands.GroupCog, name="payout", description="Payout commands"):
         link_view.add_item(discord.ui.Button(label="Go to Payout-Queue", url=first_message.jump_url))
         finished_embed.description += f"\n**<:nat_reply_cont:1011501118163013634> Successfully queued {len(winners)}**"
         await interaction.edit_original_response(embed=finished_embed, view=link_view)
+    
+    @app_commands.command(name="clear-expired", description="Clears all expired payouts from the queue")
+    @commands.has_permissions(manage_guild=True)
+    async def clear_expired(self, interaction: discord.Interaction):
+        await interaction.response.send_message(embed=discord.Embed(color=self.bot.default_color, description="clearing expired payouts..."), ephemeral=False)
+        deleted = 0
+        delete_queue =  await self.bot.payout_delete_queue.get_all()
+        config = await self.bot.payout_config.find(interaction.guild.id)
+
+        queue_channel = interaction.guild.get_channel(data['pending_channel'])
+        for data in delete_queue:
+            if data['reason'] == "payout_claim": continue
+            try:
+                msg = await queue_channel.fetch_message(data['_id'])
+                await msg.delete()
+                deleted += 1
+            except:
+                pass
+            await self.bot.payout_delete_queue.delete(data['_id'])
+        await interaction.edit_original_response(embed=discord.Embed(color=self.bot.default_color, description=f"Successfully deleted {deleted} expired payouts!"))
     
     @commands.Cog.listener()
     async def on_payout_queue(self, host: discord.Member,event: str, win_message: discord.Message, queue_message: discord.Message, winner: discord.Member, prize: str):
