@@ -152,8 +152,7 @@ class Payout(commands.GroupCog, name="payout", description="Payout commands"):
             pass
 
         await message.channel.send(f"{winner.mention}, your prize has been queued for claim! Please check {pendin_channel.mention} to claim your prize.")
-        self.bot.dispatch("payout_queue", message.guild.me, f"{auto_payout[message.channel.id]['event']}", message, msg, winner, auto_payout[message.channel.id]['prize'], claim_time)
-
+        self.bot.dispatch("payout_queue", message.guild.me, f"{auto_payout[message.channel.id]['event']}", message, msg, winner, auto_payout[message.channel.id]['prize'])
     @app_commands.command(name="set", description="configur the payout system settings")
     @app_commands.describe(event="event name", message_id="winner message id", winners="winner of the event", prize="what did they win?")
     async def payout_set(self, interaction: discord.Interaction, event: str, message_id: str, winners: app_commands.Transform[discord.Member, MultipleMember], prize: str, claim_time: app_commands.Transform[int, TimeConverter]= None):
@@ -257,7 +256,7 @@ class Payout(commands.GroupCog, name="payout", description="Payout commands"):
         delete_queue =  await self.bot.payout_delete_queue.get_all()
         config = await self.bot.payout_config.find(interaction.guild.id)
 
-        queue_channel = interaction.guild.get_channel(data['pending_channel'])
+        queue_channel = interaction.guild.get_channel(config['pending_channel'])
         for data in delete_queue:
             if data['reason'] == "payout_claim": continue
             try:

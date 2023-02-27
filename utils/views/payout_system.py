@@ -220,7 +220,7 @@ class Payout_claim(discord.ui.View):
         pending_data = data
         pending_data['_id'] = msg.id
         delete_queue_data = {'_id': interaction.message.id,'channel': interaction.message.channel.id,'now': datetime.datetime.utcnow(),'delete_after': 1800, 'reason': 'payout_claim'}
-        await self.bot.payout_delete_queue.insert(delete_queue_data)
+        await interaction.client.payout_delete_queue.insert(delete_queue_data)
         await interaction.client.payout_pending.insert(pending_data)
         await interaction.client.payout_queue.delete(interaction.message.id)
 
@@ -232,6 +232,7 @@ class Payout_claim(discord.ui.View):
         await interaction.message.edit(embed=current_embed, view=self)
         interaction.client.dispatch("payout_claim", interaction.message, interaction.user)
         interaction.client.dispatch("payout_pending", msg)
+
     async def on_error(self, interaction: Interaction, error: Exception, item: discord.ui.Item):
         try:
             await interaction.response.send_message(f"Error: {error}", ephemeral=True)
@@ -292,7 +293,7 @@ class Payout_Buttton(discord.ui.View):
         await view.wait()
         if not view.value: return await interaction.delete_original_response()
         data = await interaction.client.payout_pending.find(interaction.message.id)
-        if not data: await view.interaction.response.edit_message(embed=discord.Embed(description="<:dynoError:1000351802702692442> | Payout not found in Database", color=discord.Color.red()))
+        if not data: return await view.interaction.response.edit_message(embed=discord.Embed(description="<:dynoError:1000351802702692442> | Payout not found in Database", color=discord.Color.red()))
 
         embed = interaction.message.embeds[0]
         embed.description = embed.description.replace("`Awaiting Payment`", "`Payout Rejected`")
