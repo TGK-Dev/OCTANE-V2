@@ -86,7 +86,7 @@ class Payout(commands.GroupCog, name="payout", description="Payout commands"):
                     message = await channel.fetch_message(payout['_id'])
                 except discord.NotFound:
                     continue
-                await message.delete()
+                #await message.delete()
                 await self.bot.payout_delete_queue.delete(payout['_id'])
             else:
                 pass
