@@ -249,7 +249,7 @@ class Payout(commands.GroupCog, name="payout", description="Payout commands"):
         await interaction.edit_original_response(embed=finished_embed, view=link_view)
     
     @app_commands.command(name="clear-expired", description="Clears all expired payouts from the queue")
-    @commands.has_permissions(manage_guild=True)
+    @app_commands.checks.has_permissions(manage_guild=True)
     async def clear_expired(self, interaction: discord.Interaction):
         await interaction.response.send_message(embed=discord.Embed(color=self.bot.default_color, description="clearing expired payouts..."), ephemeral=False)
         deleted = 0
