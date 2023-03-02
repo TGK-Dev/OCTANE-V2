@@ -29,11 +29,11 @@ class Payout(commands.GroupCog, name="payout", description="Payout commands"):
         self.bot.payout_pending = Document(self.db, "payout_pending")
         self.bot.payout_delete_queue = Document(self.db, "payout_delete_queue")
         self.claim_task = self.check_unclaim.start()
-        self.delete_queue_task = self.check_delete_queue.start()
+        # self.delete_queue_task = self.check_delete_queue.start()
 
     def cog_unload(self):
         self.claim_task.cancel()
-        self.delete_queue_task.cancel()
+        # self.delete_queue_task.cancel()
 
     @commands.Cog.listener()
     async def on_ready(self):
@@ -74,26 +74,26 @@ class Payout(commands.GroupCog, name="payout", description="Payout commands"):
             else:
                 pass
     
-    @tasks.loop(seconds=10)
-    async def check_delete_queue(self):
-        data = await self.bot.payout_delete_queue.get_all()
-        now = datetime.datetime.utcnow()
-        for payout in data:
-            if payout['reason'] == 'payout_expired': continue
-            if now > payout['now'] + datetime.timedelta(seconds=payout['delete_after']):
-                channel = self.bot.get_channel(payout['channel'])
-                try:
-                    message = await channel.fetch_message(payout['_id'])
-                except discord.NotFound:
-                    continue
-                #await message.delete()
-                await self.bot.payout_delete_queue.delete(payout['_id'])
-            else:
-                pass
+    # @tasks.loop(seconds=10)
+    # async def check_delete_queue(self):
+    #     data = await self.bot.payout_delete_queue.get_all()
+    #     now = datetime.datetime.utcnow()
+    #     for payout in data:
+    #         if payout['reason'] == 'payout_expired': continue
+    #         if now > payout['now'] + datetime.timedelta(seconds=payout['delete_after']):
+    #             channel = self.bot.get_channel(payout['channel'])
+    #             try:
+    #                 message = await channel.fetch_message(payout['_id'])
+    #             except discord.NotFound:
+    #                 continue
+    #             #await message.delete()
+    #             await self.bot.payout_delete_queue.delete(payout['_id'])
+    #         else:
+    #             pass
     
-    @check_delete_queue.before_loop
-    async def before_check_delete_queue(self):
-        await self.bot.wait_until_ready()
+    # @check_delete_queue.before_loop
+    # async def before_check_delete_queue(self):
+    #     await self.bot.wait_until_ready()
             
     @check_unclaim.before_loop
     async def before_check_unclaim(self):
