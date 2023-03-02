@@ -4,8 +4,10 @@ from .selects import Channel_select, Role_select
 from .modal import General_Modal
 from discord import Interaction
 from utils.converters import TimeConverter
+from .buttons import Link_view
 import datetime
 from .buttons import Confirm
+
 class Payout_Config_Edit(discord.ui.View):
     def __init__(self, data: dict, user: discord.Member,message: discord.Message=None, interaction: Interaction=None):
         self.data = data
@@ -216,7 +218,7 @@ class Payout_claim(discord.ui.View):
 
         await interaction.edit_original_response(embed=discord.Embed(description="<:octane_yes:1019957051721535618> | Sucessfully claimed payout, you will be paid in 24hrs", color=interaction.client.default_color))
 
-        msg = await queue_channel.send(embed=queue_embed, view=Payout_Buttton())
+        msg = await queue_channel.send(embed=queue_embed, view=Payout_Buttton(), content=f"{interaction.user.mention} You will be paid in 24hrs, if not please contact a staff member through tickets")
         pending_data = data
         pending_data['_id'] = msg.id
         delete_queue_data = {'_id': interaction.message.id,'channel': interaction.message.channel.id,'now': datetime.datetime.utcnow(),'delete_after': 1800, 'reason': 'payout_claim'}
@@ -228,6 +230,7 @@ class Payout_claim(discord.ui.View):
         button.style = discord.ButtonStyle.gray
         button.emoji = "<a:nat_check:1010969401379536958>"
         button.disabled = True
+        self.add_item(Link_view("Queue Message", url=msg.jump_url))
 
         await interaction.message.edit(embed=current_embed, view=self)
         interaction.client.dispatch("payout_claim", interaction.message, interaction.user)
