@@ -65,12 +65,15 @@ class Payout(commands.GroupCog, name="payout", description="Payout commands"):
                 user = guild.get_member(payout['winner'])
                 self.bot.dispatch("payout_expired", message, user)
                 delete_queue_data = {'_id': message.id,'channel': message.channel.id,'now': datetime.datetime.utcnow(),'delete_after': 1800, 'reason': 'payout_expired'}
-                await self.bot.payout_delete_queue.insert(delete_queue_data)
-                try:
-                    await host.send(f"<@{payout['winner']}> has failed to claim within the deadline. Please reroll/rehost the event/giveaway.", view=dm_view)
-                except discord.HTTPException:
+                #await self.bot.payout_delete_queue.insert(delete_queue_data)
+                if payout['host'] == 'AutoMatic Payout Queue System':
                     pass
-                await self.bot.payout_queue.delete(payout['_id'])
+                else:
+                    try:
+                        await host.send(f"<@{payout['winner']}> has failed to claim within the deadline. Please reroll/rehost the event/giveaway.", view=dm_view)
+                    except discord.HTTPException:
+                        pass
+                    await self.bot.payout_queue.delete(payout['_id'])
             else:
                 pass
     
