@@ -230,7 +230,7 @@ class Payout_claim(discord.ui.View):
         button.style = discord.ButtonStyle.gray
         button.emoji = "<a:nat_check:1010969401379536958>"
         button.disabled = True
-        self.add_item(discord.ui.Button(label=f'Payout Queue Message', style=discord.ButtonStyle.url, disabled=False, emoji="<a:nat_cross:1010969491347357717>", url=msg.jump_url))
+        self.add_item(discord.ui.Button(label=f'Payout Queue Message', style=discord.ButtonStyle.url, disabled=False, url=msg.jump_url))
 
         await interaction.message.edit(embed=current_embed, view=self)
         interaction.client.dispatch("payout_claim", interaction.message, interaction.user)
