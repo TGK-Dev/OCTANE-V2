@@ -74,25 +74,34 @@ class Events(commands.Cog):
         embed = message.embeds[0]
         if isinstance(embed, discord.Embed) == False: return
         if embed.description is None: return
-        if not embed.description.startswith("Successfully paid") and not embed.description.startswith("from the server's pool!"): return
-        command_message = await message.channel.fetch_message(message.reference.message_id)
-        if command_message.interaction is None: return
-        if command_message.interaction.name != "serverevents payout": return
+        if embed.description.startswith("Successfully paid") and embed.description.startswith("from the server's pool!"):
+            command_message = await message.channel.fetch_message(message.reference.message_id)
+            if command_message.interaction is None: return
+            if command_message.interaction.name != "serverevents payout": return
 
-        embed = command_message.embeds[0].to_dict()
-        winner = re.findall(r"<@!?\d+>", embed['description'])
-        prize = re.findall(r"\*\*(.*?)\*\*", embed['description'])[0]
-        emojis = list(set(re.findall(":\w*:\d*", prize)))
-        for emoji in emojis :prize = prize.replace(emoji,"",100); prize = prize.replace("<>","",100);prize = prize.replace("<a>","",100);prize = prize.replace("  "," ",100)
+            embed = command_message.embeds[0].to_dict()
+            winner = re.findall(r"<@!?\d+>", embed['description'])
+            prize = re.findall(r"\*\*(.*?)\*\*", embed['description'])[0]
+            emojis = list(set(re.findall(":\w*:\d*", prize)))
+            for emoji in emojis :prize = prize.replace(emoji,"",100); prize = prize.replace("<>","",100);prize = prize.replace("<a>","",100);prize = prize.replace("  "," ",100)
 
-        log_embed = discord.Embed(title="Server Events Payout", description=f"",color=self.bot.default_color)
-        log_embed.description += f"**Winner**: {winner[0]}\n"
-        log_embed.description += f"**Prize**: {prize}\n"
-        log_embed.description += f"**Paid by**: {command_message.interaction.user.mention}\n"
-        link_view = discord.ui.View()
-        link_view.add_item(discord.ui.Button(label="Go to Payout Message", url=command_message.jump_url))
-        log_channel = self.bot.get_channel(1076586539368333342)
-        await log_channel.send(embed=log_embed, view=link_view)
+            log_embed = discord.Embed(title="Server Events Payout", description=f"",color=self.bot.default_color)
+            log_embed.description += f"**Winner**: {winner[0]}\n"
+            log_embed.description += f"**Prize**: {prize}\n"
+            log_embed.description += f"**Paid by**: {command_message.interaction.user.mention}\n"
+            link_view = discord.ui.View()
+            link_view.add_item(discord.ui.Button(label="Go to Payout Message", url=command_message.jump_url))
+            log_channel = self.bot.get_channel(1076586539368333342)
+            await log_channel.send(embed=log_embed, view=link_view)
+        elif embed.description.startswith('Successfully donated!') and message.channel.id == 851663580620521472:
+            command_message = await message.channel.fetch_message(message.reference.message_id)
+            if command_message.interaction is None: return
+            if command_message.interaction.name != "serverevents donate": return
+
+            embed = command_message.embeds[0].to_dict()
+            donor = command_message.interaction.user
+            prize = re.findall(r"\*\*(.*?)\*\*", embed['description'])[0]
+            await command_message.reply(f'{donor.mention} successfully donated **{prize}** to the server pool!', allowed_mentions=discord.AllowedMentions.none())
     
     @commands.Cog.listener()
     async def on_command_error(self, ctx, error):
