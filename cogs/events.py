@@ -101,6 +101,9 @@ class Events(commands.Cog):
             embed = command_message.embeds[0].to_dict()
             donor = command_message.interaction.user
             prize = re.findall(r"\*\*(.*?)\*\*", embed['description'])[0]
+            emojis = list(set(re.findall(":\w*:\d*", prize)))
+            for emoji in emojis :prize = prize.replace(emoji,"",100); prize = prize.replace("<>","",100);prize = prize.replace("<a>","",100);prize = prize.replace("  "," ",100)
+
             await command_message.reply(f'{donor.mention} successfully donated **{prize}** to the server pool!', allowed_mentions=discord.AllowedMentions.none())
     
     @commands.Cog.listener()
