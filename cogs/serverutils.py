@@ -66,7 +66,7 @@ class Payout(commands.GroupCog, name="payout", description="Payout commands"):
                 self.bot.dispatch("payout_expired", message, user)
                 delete_queue_data = {'_id': message.id,'channel': message.channel.id,'now': datetime.datetime.utcnow(),'delete_after': 1800, 'reason': 'payout_expired'}
                 #await self.bot.payout_delete_queue.insert(delete_queue_data)
-                if payout['host'] == 'AutoMatic Payout Queue System':
+                if payout['set_by'] == 'AutoMatic Payout Queue System':
                     pass
                 else:
                     try:
