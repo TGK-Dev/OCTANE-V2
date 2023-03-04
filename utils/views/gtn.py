@@ -35,9 +35,7 @@ class GuessTheNumber(View):
     @button(label='Start Game', style=discord.ButtonStyle.green)
     async def start_game(self, interaction: Interaction, button: Button):
         self.right_number = random.randint(1, self.max_number)
-        await interaction.channel.set_permissions(self.user.guild.default_role, overwrite=discord.PermissionOverwrite(send_messages_in_threads=False))
         await interaction.response.send_message(embed=discord.Embed(description="Starting game...", color=interaction.client.default_color), ephemeral=True)
-
         thread = await interaction.message.create_thread(name=f"Guess The Number | 1-{self.max_number}", auto_archive_duration=1440, reason="Guess The Number", slowmode_delay=5)
 
         embed = interaction.message.embeds[0]
@@ -69,9 +67,5 @@ class GuessTheNumber(View):
         await asyncio.sleep(15)
         await interaction.client.gtn.insert(data)
         interaction.client.gtn_cache[data['_id']] = data
-        if self.req_role:
-            await interaction.channel.set_permissions(self.req_role, overwrite=discord.PermissionOverwrite(send_messages_in_threads=True))
-        else:
-            await interaction.channel.set_permissions(self.user.guild.default_role, overwrite=discord.PermissionOverwrite(send_messages_in_threads=True))
         await thread_message.edit(embed=discord.Embed(description="Game has started!\nGuess a number between 1 and {}.".format(self.max_number), color=interaction.client.default_color))
         interaction.client.dispatch("gtn_start", thread, data)

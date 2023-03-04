@@ -19,13 +19,19 @@ class Games(commands.GroupCog, name="games"):
     @gtn.command(name="start", description="Start a game of guess the number")
     @app_commands.describe(max_number="The maximum number to guess from", requried_role="The role required to play the game", prize="The prize for the game")
     async def gtn_start(self, interaction:Interaction, max_number: app_commands.Range[int, 50, 10000], requried_role: discord.Role = None, prize: str = None):
+        if isinstance(interaction.channel, discord.Thread):
+            return await interaction.response.send_message(embed=discord.Embed(description="You can't start a game of guess the number in a thread!", color=self.bot.default_color), ephemeral=True)        
         await interaction.response.send_message(embed=discord.Embed(description="Setting up game of guess the number...", color=self.bot.default_color), ephemeral=True)
+        overwrite = interaction.channel.overwrites_for(interaction.guild.default_role)
+        overwrite.send_messages_in_threads = False
+        await interaction.channel.set_permissions(interaction.guild.default_role, overwrite=overwrite)
         embed = discord.Embed(description="", title="Guess the number", color=self.bot.default_color)
-        embed.description += f"**Max Number:** {max_number}\n"
-        embed.description += f"**Thread:** `Waiting for host to start game`\n"
         embed.description += f"**Host:** {interaction.user.mention}\n"
-        embed.description += f"**Right Number:** `Waiting for host to start game`\n"
-        embed.description += f"**Guesses:** `Waiting Game to end`\n"
+        embed.description += f"**Winner:** `Waiting for game to end`\n"
+        embed.description += f"**Thread:** `Waiting for game to start`\n"
+        embed.description += f"**Right Number:** `Waiting for game to end`\n"
+        embed.description += f"**Max Number:** `{max_number}`\n"
+        embed.description += f"**Guesses:** `Waiting for game to start`\n"
         if prize:
             embed.description += f"Prize: {prize}\n"
         
@@ -46,8 +52,13 @@ class Games(commands.GroupCog, name="games"):
             await interaction.response.send_message(embed=discord.Embed(description="Ending game of guess the number...", color=self.bot.default_color))
             if data["req_role"] != None:
                 role = interaction.guild.get_role(data["req_role"])
-                await thread.parent.set_permissions(role, overwrite=discord.PermissionOverwrite(send_messages_in_threads=None))
-            await thread.parent.set_permissions(interaction.guild.default_role, overwrite=discord.PermissionOverwrite(send_messages_in_threads=False))
+                overwrite = interaction.channel.overwrites_for(role)
+                overwrite.send_messages_in_threads = None
+                await interaction.channel.set_permissions(role, overwrite=overwrite)
+            
+            default_role_overwrite = interaction.channel.overwrites_for(interaction.guild.default_role)
+            default_role_overwrite.send_messages_in_threads = False
+            await thread.parent.set_permissions(interaction.guild.default_role, overwrite=default_role_overwrite)
             await thread.send(embed=discord.Embed(description=f"The game of guess the number has ended! The right number was `{data['right_number']}` total guesses: `{data['guesses']}`", color=self.bot.default_color))
             await self.bot.gtn.delete({"_id": thread.id})
             try:
@@ -80,32 +91,44 @@ class Games_BackEnd(commands.Cog):
         self.bot = bot
 
     def gtn_check(self, m):
-        if m.channel.id not in self.bot.gtn_cache.keys():
-            pass
-        else:
-            data = self.bot.gtn_cache[m.channel.id]
-            if data != None:
-                try:
-                    int(m.content)
-                    if m.content == str(self.bot.gtn_cache[m.channel.id]["right_number"]) and m.author.id != self.bot.user.id and m.author.id != self.bot.gtn_cache[m.channel.id]["user_id"]:
-                        self.bot.dispatch("gtn_end", data, m, m.channel)
-                        return True
-                    else:
-                        self.bot.gtn_cache[m.channel.id]["guesses"] += 1
-                        if int(m.content) > self.bot.gtn_cache[m.channel.id]["max_number"]:                        
-                            self.bot.dispatch("gtn_out_of_range", m, data)
-                        self.bot.dispatch("gtn_update", self.bot.gtn_cache[m.channel.id])
-                except ValueError:
-                    pass
-            
+        if not m.author.bot:
+            if m.channel.id not in self.bot.gtn_cache.keys():
+                pass
+            else:
+                data = self.bot.gtn_cache[m.channel.id]
+                if data != None:
+                    try:
+                        int(m.content)
+                        if m.content == str(self.bot.gtn_cache[m.channel.id]["right_number"]) and m.author.id != self.bot.user.id:
+                            self.bot.dispatch("gtn_end", data, m, m.channel)
+                            return True
+                        else:
+                            self.bot.gtn_cache[m.channel.id]["guesses"] += 1
+                            if int(m.content) > self.bot.gtn_cache[m.channel.id]["max_number"]:                        
+                                self.bot.dispatch("gtn_out_of_range", m, data)
+                            else:
+                                self.bot.dispatch("gtn_update", self.bot.gtn_cache[m.channel.id])
+                    except ValueError:
+                        pass
     
     @commands.Cog.listener()
     async def on_gtn_start(self, thread: discord.Thread, data: dict):
+        if data['req_role'] != None:
+            role = thread.guild.get_role(data['req_role'])
+            role_overwrite = thread.parent.overwrites_for(role)
+            role_overwrite.send_messages_in_threads = True
+            await thread.parent.set_permissions(role, overwrite=role_overwrite)
+        else:
+            default_role_overwrite = thread.parent.overwrites_for(thread.guild.default_role)
+            default_role_overwrite.send_messages_in_threads = True
+            await thread.parent.set_permissions(thread.guild.default_role, overwrite=default_role_overwrite)
         try:
             msg = await self.bot.wait_for("message", check=self.gtn_check, timeout=3600)
         except asyncio.TimeoutError:
             await thread.parent.send(embed=discord.Embed(description="The game of guess the number has timed out!", color=self.bot.default_color))
-            await thread.parent.set_permissions(msg.guild.default_role, overwrite=discord.PermissionOverwrite(send_messages_in_threads=False))
+            default_role_overwrite = thread.parent.overwrites_for(thread.guild.default_role)
+            default_role_overwrite.send_messages_in_threads = False
+            await thread.parent.set_permissions(msg.guild.default_role, overwrite=default_role_overwrite)
             try:
                 await self.bot.gtn.delete({"_id": data["_id"]})
                 del self.bot.gtn_cache[thread.parent.id]
@@ -125,26 +148,33 @@ class Games_BackEnd(commands.Cog):
         if data["req_role"] != None:
             user_roles = [role.id for role in message.author.roles]
             if data["req_role"] not in user_roles: 
-                print("not in roles")
                 return
-        await message.reply(embed=discord.Embed(description=f"`🏆` {message.author.mention} has won the game of guess the number!", color=self.bot.default_color))
-        await thread.parent.send(embed=discord.Embed(description=f"`🏆` {message.author.mention} has won the game of guess the number in {thread.mention}!", color=self.bot.default_color))
-
-        message = await thread.parent.fetch_message(thread.id)
-        embed = message.embeds[0]
-        embed_new_desc =  embed.description
-        embed_new_desc = embed_new_desc.split("\n")
-        embed_new_desc[3] = f"**Right Number:** {data['right_number']}"
-        embed_new_desc[4] = f"**Guesses:** {data['guesses']}"
-        embed_new_desc = "\n".join(embed_new_desc)
-        embed.description = embed_new_desc
-        embed.set_footer(text="This Game has ended and threads are now locked for this channel")
+            
         if data['req_role'] != None:
             role = message.guild.get_role(data['req_role'])
-            await thread.parent.set_permissions(role, discord.PermissionOverwrite(send_messages_in_threads=None))
-        await thread.parent.set_permissions(message.guild.default_role, discord.PermissionOverwrite(send_messages_in_threads=False))
+            role_overwrite = thread.parent.overwrites_for(role)
+            role_overwrite.send_messages_in_threads = None
+            await thread.parent.set_permissions(role, overwrite=role_overwrite)
+
+        overwrite = thread.parent.overwrites_for(message.guild.default_role)
+        overwrite.send_messages_in_threads = False
+        await thread.parent.set_permissions(message.guild.default_role, overwrite=overwrite)
+
+        await thread.edit(auto_archive_duration=60, name=f"{thread.name} (Ended)")
+        await message.reply(embed=discord.Embed(description=f"**`🏆`{message.author.mention} has won the game of guess the number!**\nThread will be archived in 60 minutes", color=self.bot.default_color))
+
+        parent_message = await thread.parent.fetch_message(thread.id)
+        embed = discord.Embed(title="Guess The Number", description="", color=self.bot.default_color)
+        embed.description += f"**Host:** <@{data['user_id']}>\n"
+        embed.description += f"**Winner:** {message.author.mention}\n"
+        embed.description += f"**Thread:** {thread.mention}\n"
+        embed.description += f"**Right Number:** `{data['right_number']}`\n"
+        embed.description += f"**Max Number:** `{data['max_number']}`\n"
+        embed.description += f"**Guesses:** `{data['guesses']}`\n"
+        embed.set_footer(text="This Game has ended and threads are now locked for this channel")        
+        
         await message.edit(embed=embed)
-        await thread.edit(name=f"{thread.name} (Ended)")
+        await parent_message.reply(embed=discord.Embed(description=f"`🏆` {message.author.mention} has won the game of guess the number in {thread.mention}!", color=self.bot.default_color))
         await self.bot.gtn.delete({"_id": data["_id"]})
         try:
             del self.bot.gtn_cache[thread.parent.id]
