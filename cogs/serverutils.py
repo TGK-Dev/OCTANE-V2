@@ -63,7 +63,7 @@ class Payout(commands.GroupCog, name="payout", description="Payout commands"):
                 dm_view = discord.ui.View()
                 dm_view.add_item(discord.ui.Button(label="Payout Message Link", style=discord.ButtonStyle.url, url=message.jump_url))
                 user = guild.get_member(payout['winner'])
-                self.bot.dispatch("payout_expired", message, user)
+                #self.bot.dispatch("payout_expired", message, user)
                 delete_queue_data = {'_id': message.id,'channel': message.channel.id,'now': datetime.datetime.utcnow(),'delete_after': 1800, 'reason': 'payout_expired'}
                 #await self.bot.payout_delete_queue.insert(delete_queue_data)
                 if payout['set_by'] == 'AutoMatic Payout Queue System':
