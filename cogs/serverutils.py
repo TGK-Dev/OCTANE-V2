@@ -63,40 +63,18 @@ class Payout(commands.GroupCog, name="payout", description="Payout commands"):
                 dm_view = discord.ui.View()
                 dm_view.add_item(discord.ui.Button(label="Payout Message Link", style=discord.ButtonStyle.url, url=message.jump_url))
                 user = guild.get_member(payout['winner'])
-                #self.bot.dispatch("payout_expired", message, user)
+                self.bot.dispatch("payout_expired", message, user)
                 delete_queue_data = {'_id': message.id,'channel': message.channel.id,'now': datetime.datetime.utcnow(),'delete_after': 1800, 'reason': 'payout_expired'}
-                #await self.bot.payout_delete_queue.insert(delete_queue_data)
-                if payout['set_by'] == 'AutoMatic Payout Queue System':
-                    pass
-                else:
+                if host:
                     try:
                         await host.send(f"<@{payout['winner']}> has failed to claim within the deadline. Please reroll/rehost the event/giveaway.", view=dm_view)
                     except discord.HTTPException:
                         pass
-                    await self.bot.payout_queue.delete(payout['_id'])
+
+                await self.bot.payout_queue.delete(payout['_id'])
+                    
             else:
                 pass
-    
-    # @tasks.loop(seconds=10)
-    # async def check_delete_queue(self):
-    #     data = await self.bot.payout_delete_queue.get_all()
-    #     now = datetime.datetime.utcnow()
-    #     for payout in data:
-    #         if payout['reason'] == 'payout_expired': continue
-    #         if now > payout['now'] + datetime.timedelta(seconds=payout['delete_after']):
-    #             channel = self.bot.get_channel(payout['channel'])
-    #             try:
-    #                 message = await channel.fetch_message(payout['_id'])
-    #             except discord.NotFound:
-    #                 continue
-    #             #await message.delete()
-    #             await self.bot.payout_delete_queue.delete(payout['_id'])
-    #         else:
-    #             pass
-    
-    # @check_delete_queue.before_loop
-    # async def before_check_delete_queue(self):
-    #     await self.bot.wait_until_ready()
             
     @check_unclaim.before_loop
     async def before_check_unclaim(self):
@@ -154,8 +132,9 @@ class Payout(commands.GroupCog, name="payout", description="Payout commands"):
         except discord.HTTPException:
             pass
 
-        await message.channel.send(f"{winner.mention}, your prize has been queued for claim! Please check {pendin_channel.mention} to claim your prize.")
+        await message.channel.send(f"{winner.mention}, your prize {prize} has been queued for payout. Please check <#{data['pending_channel']}> for more information.", allowed_mentions=discord.AllowedMentions(users=False, roles=False, everyone=False))
         self.bot.dispatch("payout_queue", message.guild.me, f"{auto_payout[message.channel.id]['event']}", message, msg, winner, auto_payout[message.channel.id]['prize'])
+
     @app_commands.command(name="set", description="configur the payout system settings")
     @app_commands.describe(event="event name", message_id="winner message id", winners="winner of the event", prize="what did they win?")
     async def payout_set(self, interaction: discord.Interaction, event: str, message_id: str, winners: app_commands.Transform[discord.Member, MultipleMember], prize: str, claim_time: app_commands.Transform[int, TimeConverter]= None):
