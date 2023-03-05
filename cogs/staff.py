@@ -77,6 +77,7 @@ class Staff(commands.GroupCog, name="staff", description="Staff management comma
         if post['owner_only'] == True:
             if interaction.user.id != interaction.guild.owner.id and interaction.user.id not in guild_config['owners']:
                 return await interaction.edit_original_response(embed=discord.Embed(description=f"Only `{interaction.guild.name}'s` owners can appoint to `{position.capitalize()}`", color=self.bot.default_color))
+            
         user_data = await self.bot.staff_db.get_staff(user)
         if post['name'] in user_data['positions'].keys():
             return await interaction.edit_original_response(embed=discord.Embed(description=f"{user.mention} is already in `{post['name'].capitalize()}`", color=self.bot.default_color))
@@ -102,9 +103,10 @@ class Staff(commands.GroupCog, name="staff", description="Staff management comma
         post_data = {'name': post['name'], 'appointed_by': interaction.user.id, 'appointed_at': datetime.datetime.utcnow()}
         user_data['positions'][post['name']] = post_data
         post_role = interaction.guild.get_role(post['role'])
+        base_role = interaction.guild.get_role(guild_config['base_role'])
         if post_role is None:
             return await interaction.edit_original_response(embed=discord.Embed(description=f"`{post['name'].capitalize()}` role does not exist", color=self.bot.default_color))
-        await user.add_roles(post_role, reason=f"Appointed to {post['name'].capitalize()} by {interaction.user}")
+        await user.add_roles(post_role, base_role,reason=f"Appointed to {post['name'].capitalize()} by {interaction.user}")
 
         await self.bot.staff_db.staff_collection.update(user.id, user_data)
 
@@ -181,9 +183,10 @@ class Staff(commands.GroupCog, name="staff", description="Staff management comma
             return await interaction.edit_original_response(embed=discord.Embed(description=f"{user.mention} is not in `{post['name'].capitalize()}`", color=self.bot.default_color))
         
         post_role = interaction.guild.get_role(post['role'])
+        base_role = interaction.guild.get_role(guild_config['base_role'])
         if post_role is None:
             return await interaction.edit_original_response(embed=discord.Embed(description=f"`{post['name'].capitalize()}` role does not exist", color=self.bot.default_color))
-        await user.remove_roles(post_role, reason=f"Revoked from {post['name'].capitalize()} by {interaction.user}")
+        await user.remove_roles(post_role, base_role,reason=f"Revoked from {post['name'].capitalize()} by {interaction.user}")
         del user_data['positions'][post['name']]
         if len(user_data['positions'].keys()) == 0:
             await self.bot.staff_db.staff_collection.delete(user.id)
@@ -244,7 +247,7 @@ class Staff(commands.GroupCog, name="staff", description="Staff management comma
         if leave_role is not None: await user.add_roles(leave_role, reason=f"Leave from {interaction.guild.name} by {interaction.user}")
         leave_channel = interaction.guild.get_channel(guild_config['leave_channel'])
         time = round((datetime.datetime.now() + datetime.timedelta(seconds=time)).timestamp())
-        embed = discord.Embed(title=f"{user.name} is on leave", color=self.bot.default_color,description=f"**Reason:** {reason}\n**Time:** <t:{time}:R>\n**Aproved by:** {interaction.user.mention}")
+        embed = discord.Embed(color=self.bot.default_color,description=f"Staff: {user.mention}|`{user.id}` \m**Reason:** {reason}\n**Post:**{', '.join(user_data['positions'].keys())}\n**Time:** <t:{time}:R>")
         if leave_channel is not None: 
             msg = await leave_channel.send(embed=embed)
             user_data['leave']['message_id'] = msg.id
@@ -289,7 +292,6 @@ class Staff(commands.GroupCog, name="staff", description="Staff management comma
         user_data['leave']['reason'] = None
         user_data['leave']['time'] = None
         await self.bot.staff_db.staff_collection.update(user.id, user_data)
-
  
 async def setup(bot):
     await bot.add_cog(Staff(bot))

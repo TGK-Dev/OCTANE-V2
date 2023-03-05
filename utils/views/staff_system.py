@@ -152,7 +152,7 @@ class Staff_config_edit(View):
                         view.value = False
                         view.select = Role_select(placeholder="Please select the role for the position", min_values=1, max_values=1)
                         view.add_item(view.select)
-                        await modal.interaction.response.edit_message(embed=discord.Embed(description="Please select the role for the position", color=0x2b2d31), view=view)
+                        await modal.interaction.response.edit_message(view=view)
                         await view.wait()
                         if view.value:
                             role = view.select.values[0]
