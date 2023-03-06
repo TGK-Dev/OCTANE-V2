@@ -15,7 +15,9 @@ class Events(commands.Cog):
         self.vote_remider_task = self.check_vote_reminders.start()
         self.bot.votes = Document(self.bot.db, "votes")
         self.vote_task_progress = False
-    
+        self.bot.dank_db = self.bot.mongo["Dank_Data"]
+        self.bot.dank_items = Document(self.bot.dank_db, "Item prices")
+
     def cog_unload(self):
         self.vote_remider_task.cancel()
     
@@ -67,6 +69,9 @@ class Events(commands.Cog):
     async def on_message(self, message):
         if not message.guild or message.guild.id != 785839283847954433: return
         if not message.author.bot: return
+
+        if message.channel.id == 1079670945171640360:
+            self.bot.dispatch("dank_price_update", message)
 
         if message.author.id != 270904126974590976: return
         if len(message.embeds) == 0: 
@@ -167,6 +172,25 @@ class Events(commands.Cog):
                         return
             except Exception as e:
                 pass
+              
+    @commands.Cog.listener()
+    async def dank_price_update(self, message: discord.Message):
+        if len(message.embeds) == 0: return
+
+        embed = message.embeds[0]
+        item = embed.title
+        #remove all ` , ⏣ and spaces from embed.fields[1].value
+        price = embed.fields[1].value.replace("`","").replace("⏣","").replace(" ","")
+        price = int(price)
+
+        data = await self.bot.dank_items.find(item)
+        if not data:
+            data = {"_id": item, "price": price, 'aliases':[], 'last_updated': datetime.datetime.now()}
+            await self.bot.dank_items.insert(data)
+        else:
+            data['price'] = price
+            data['last_updated'] = datetime.datetime.now()
+            await self.bot.dank_items.update(data)
 
 async def setup(bot):
     await bot.add_cog(Events(bot))
