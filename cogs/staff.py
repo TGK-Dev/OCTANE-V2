@@ -146,7 +146,9 @@ class Staff(commands.GroupCog, name="staff", description="Staff management comma
         staff_members = await self.bot.staff_db.staff_collection.get_all()
         for staff_member in staff_members:
             user = interaction.guild.get_member(staff_member['_id'])
-            if user is None: await self.bot.staff_db.staff_collection.delete(staff_member['_id'])
+            if user is None: 
+                await self.bot.staff_db.staff_collection.delete(staff_member['_id'])
+                continue
 
             if post in staff_member['positions'].keys():
                 if post_role not in user.roles:
