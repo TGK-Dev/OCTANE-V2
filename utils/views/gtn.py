@@ -36,7 +36,7 @@ class GuessTheNumber(View):
     async def start_game(self, interaction: Interaction, button: Button):
         self.right_number = random.randint(1, self.max_number)
         await interaction.response.send_message(embed=discord.Embed(description="Starting game...", color=interaction.client.default_color), ephemeral=True)
-        thread = await interaction.message.create_thread(name=f"Guess The Number | 1-{self.max_number}", auto_archive_duration=1440, reason="Guess The Number", slowmode_delay=5)
+        thread = await interaction.message.create_thread(name=f"Guess The Number | 1-{self.max_number}", auto_archive_duration=1440, reason="Guess The Number")
 
         embed = interaction.message.embeds[0]
         new_description = embed.description.split("\n")
