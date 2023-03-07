@@ -191,6 +191,8 @@ class Events(commands.Cog):
             data['price'] = price
             data['last_updated'] = datetime.datetime.now()
             await self.bot.dank_items.update(data)
+        
+        await message.add_reaction("<:YES_TICK:957348921120792717>")
 
 async def setup(bot):
     await bot.add_cog(Events(bot))
