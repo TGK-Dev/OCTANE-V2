@@ -38,12 +38,15 @@ class Basic(commands.Cog):
         await interaction.edit_original_response(content=None, embed=embed)
     
     @app_commands.command(name="snipe", description="Snipe a deleted/edited message from the channel")
-    @app_commands.describe(type="The type of snipe", index="The index of the snipe", hidden="Whether the snipe should be hidden or not")
+    @app_commands.describe(type="The type of snipe", number="Which # of message do you want to snipe?", hidden="Whether the snipe should be hidden or not")
     @app_commands.checks.cooldown(1, 10, key=lambda i:(i.guild_id, i.user.id))
-    async def snipe(self, interaction: Interaction, type: Literal['delete', 'edit'], index: app_commands.Range[int, 1, 10]=1, hidden:bool=False):    
+    async def snipe(self, interaction: Interaction, type: Literal['delete', 'edit'], number: app_commands.Range[int, 1, 10]=1, hidden:bool=False):    
+        index = number
         if type == "delete":
             try:
-                message = self.bot.snipes[interaction.channel.id][index - 1]
+                message = self.bot.snipes[interaction.channel.id]
+                message.reverse()
+                message = message[index - 1]
             except KeyError:
                 return await interaction.response.send_message("No snipes found in this channel", ephemeral=True)
             except IndexError:
@@ -59,7 +62,9 @@ class Basic(commands.Cog):
 
         elif type == "edit":
             try:
-                message = self.bot.esnipes[interaction.channel.id][index - 1]
+                message = self.bot.esnipes[interaction.channel.id]
+                message.reverse()
+                message = message[index - 1]
             except KeyError:
                 return await interaction.response.send_message("No snipes found in this channel", ephemeral=True)
             except IndexError:
