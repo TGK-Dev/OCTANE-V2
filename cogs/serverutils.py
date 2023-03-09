@@ -9,7 +9,7 @@ from utils.views.payout_system import Payout_Config_Edit
 from utils.transformer import MultipleMember
 from utils.views.payout_system import Payout_Buttton, Payout_claim
 from utils.transformer import TimeConverter
-from typing import Literal
+from typing import Literal, List
 from io import BytesIO
 
 auto_payout = {
@@ -29,11 +29,35 @@ class Payout(commands.GroupCog, name="payout", description="Payout commands"):
         self.bot.payout_pending = Document(self.db, "payout_pending")
         self.bot.payout_delete_queue = Document(self.db, "payout_delete_queue")
         self.claim_task = self.check_unclaim.start()
-        # self.delete_queue_task = self.check_delete_queue.start()
+        self.comman_event = ["Mega Giveaway", "Daily Giveaway", "Silent Giveaway", "Black Tea", "Rumble Royale", "Hunger Games", "Guess The Number", "Split Or Steal"]
+    
+    async def event_auto_complete(self, interaction: discord.Interaction, current: str) -> List[app_commands.Choice[str]]:
+        _list = [
+            app_commands.Choice(name=event, value=event)
+            for event in self.comman_event if event.lower() in current.lower()
+        ]
+        if len(_list) == 0:
+            return [
+                app_commands.Choice(name=event, value=event)
+                for event in self.comman_event
+            ]
+        return _list[:24]
+
+    async def item_autocomplete(self, interaction: discord.Interaction, string: str) -> List[app_commands.Choice[str]]:
+        choices = []
+        for item in self.bot.dank_items_cache.keys():
+            if string.lower() in item.lower():
+                choices.append(app_commands.Choice(name=item, value=item))
+        if len(choices) == 0:
+            return [
+                app_commands.Choice(name=item, value=item)
+                for item in self.bot.dank_items_cache.keys()
+            ]
+        else:
+            return choices[:24]
 
     def cog_unload(self):
         self.claim_task.cancel()
-        # self.delete_queue_task.cancel()
 
     @commands.Cog.listener()
     async def on_ready(self):
@@ -63,6 +87,15 @@ class Payout(commands.GroupCog, name="payout", description="Payout commands"):
                 dm_view = discord.ui.View()
                 dm_view.add_item(discord.ui.Button(label="Payout Message Link", style=discord.ButtonStyle.url, url=message.jump_url))
                 user = guild.get_member(payout['winner'])
+
+                event_channel = guild.get_channel(payout['channel'])
+                try:
+                    event_message = await event_channel.fetch_message(payout['event_message'])
+                    loading_emoji = await self.bot.emoji_server.fetch_emoji(998834454292344842)
+                    event_message.remove_reaction(loading_emoji, event_message.guild.me)
+                except discord.NotFound:
+                    pass
+
                 self.bot.dispatch("payout_expired", message, user)
                 delete_queue_data = {'_id': message.id,'channel': message.channel.id,'now': datetime.datetime.utcnow(),'delete_after': 1800, 'reason': 'payout_expired'}
                 if host:
@@ -136,8 +169,10 @@ class Payout(commands.GroupCog, name="payout", description="Payout commands"):
         self.bot.dispatch("payout_queue", message.guild.me, f"{auto_payout[message.channel.id]['event']}", message, msg, winner, auto_payout[message.channel.id]['prize'])
 
     @app_commands.command(name="set", description="configur the payout system settings")
-    @app_commands.describe(event="event name", message_id="winner message id", winners="winner of the event", prize="what did they win?")
-    async def payout_set(self, interaction: discord.Interaction, event: str, message_id: str, winners: app_commands.Transform[discord.Member, MultipleMember], prize: str, claim_time: app_commands.Transform[int, TimeConverter]= None):
+    @app_commands.describe(event="event name", message_id="winner message id", winners="winner of the event", prize="what did they win?", item="what item did they win?", claim_time="how long do they have to claim their prize?")
+    @app_commands.autocomplete(event=event_auto_complete)
+    @app_commands.autocomplete(item=item_autocomplete)
+    async def payout_set(self, interaction: discord.Interaction, event: str, message_id: str, winners: app_commands.Transform[discord.Member, MultipleMember], prize: str, item: str=None, claim_time: app_commands.Transform[int, TimeConverter]= None):
         data = await self.bot.payout_config.find(interaction.guild.id)
         user_roles = [role.id for role in interaction.user.roles]
         if (set(user_roles) & set(data['event_manager_roles'])):
@@ -187,7 +222,10 @@ class Payout(commands.GroupCog, name="payout", description="Payout commands"):
                 embed = discord.Embed(title="Payout Queued", color=self.bot.default_color, timestamp=datetime.datetime.now(), description="")
                 embed.description += f"**Event:** {event}\n"
                 embed.description += f"**Winner:** {winner.mention} ({winner.name}#{winner.discriminator})\n"
-                embed.description += f"**Prize:** {prize}\n"
+                if item:
+                    embed.description += f"**Prize:** **{prize}x {item}**\n"
+                else:
+                    embed.description += f"**Prize:** {prize}\n"
                 embed.description += f"**Channel:** {winner_message.channel.mention}\n"
                 embed.description += f"**Message:** [Jump to Message]({winner_message.jump_url})\n"
                 embed.description += f"**Claim Time:** {claim_timestamp}\n"

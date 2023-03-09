@@ -10,6 +10,7 @@ from discord import app_commands
 from utils.db import Document
 from typing import List
 from utils.views.buttons import Confirm
+from utils.checks import is_dev
 
 class Events(commands.Cog):
     def __init__(self, bot):
@@ -291,6 +292,7 @@ class Dank_Events(commands.GroupCog, name="dank"):
     
     @item.command(name="update", description="Update an items price")
     @app_commands.autocomplete(item=item_autocomplete)
+    @app_commands.checks.has_permissions(manage_guild=True)
     @app_commands.describe(item="The item to update the price of", price="The new price of the item")
     async def item_update(self, interaction: discord.Interaction, item: str, price: int):
         item = await self.bot.dank_items.find(item)
@@ -313,8 +315,9 @@ class Dank_Events(commands.GroupCog, name="dank"):
         await interaction.response.send_message(embed=embed)
 
     
-    @item.command(name="force-scrape", description="Force scrape an items price")
-    @app_commands.describe(message="The message to scrape the price from")
+    @item.command(name="bulk_update", description="Bulk update items")
+    @app_commands.describe(message="The message to bulk update items from")
+    @app_commands.check(is_dev)
     async def item_force_scrape(self, interaction: discord.Interaction, message: str):
         await interaction.response.send_message("Scraping...", ephemeral=True)
         try:
@@ -324,22 +327,24 @@ class Dank_Events(commands.GroupCog, name="dank"):
         
         await interaction.edit_original_response(embed=discord.Embed(description="Message Found starting scrape...", color=interaction.client.default_color), content=None)
         embed = message.embeds[0]
-        items = embed.description.replace(" ", "").replace("*", "").replace("⏣", "").replace("`", "").replace(",", "").replace(":", " ").split("\n")
-        success_fully_scraped = 0
-        faild_to_scrape = 0
-        for item in items:
-            raw = item.split(" ")
-            if len(raw) != 2: 
-                faild_to_scrape += 1
-                continue
-            item = raw[0]
-            price = int(raw[1])
+        items = embed.description.replace("*", "").replace("`", "").replace("⏣", "").replace(",", "").split("\n")
 
+        success = ""
+        failed = ""
+
+        for item in items:
+            raw = item.removeprefix(" ").split(":")
+            item = raw[0].removesuffix(" ")
+            try:
+                price = int(raw[1].removeprefix(" "))
+            except:
+                failed += f"{item}: {raw[1]}\n"
+                continue
             data = await self.bot.dank_items.find(item)
-            if not data: 
+            if not data:
                 data = {"_id": item, "price": price, 'last_updated': datetime.datetime.now(), 'last_prices': []}
                 await self.bot.dank_items.insert(data)
-                success_fully_scraped += 1
+                success += f"{item}: {data['price']}\n"
             else:
                 old_price = data['price']
                 update_data = {"day": data['last_updated'].strftime("%d/%m/%Y"),"old_price": old_price, "new_price": price}
@@ -348,13 +353,16 @@ class Dank_Events(commands.GroupCog, name="dank"):
                 if len(data['last_prices']) > 10:
                     data['last_prices'].pop(0)
                 data['last_updated'] = datetime.datetime.now()
-                success_fully_scraped += 1
                 await self.bot.dank_items.update(data)
+                success += f"{item}: {data['price']}\n"
         
-        embed = discord.Embed(description="", color=interaction.client.default_color)
-        embed.description += f"**Success:** `{success_fully_scraped}`\n"
-        embed.description += f"**Faild:** `{faild_to_scrape}`"
-        await interaction.edit_original_response(embed=embed)
+        final_embed = discord.Embed(title="Scrape Complete", color=interaction.client.default_color, description="")
+        final_embed.description += f"**Success:**\n{success}"
+        final_embed.description += f"**Failed:**\n{failed}"
+        await interaction.edit_original_response(embed=final_embed, content=None)
+
+
+
 
 async def setup(bot):
     await bot.add_cog(Events(bot))
