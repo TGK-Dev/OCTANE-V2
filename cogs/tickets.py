@@ -181,15 +181,15 @@ class Ticket(commands.GroupCog, name="ticket"):
         if ticket_data is None: return await interaction.response.send_message("This is not a ticket channel", ephemeral=True)
 
         if isinstance(target, discord.Role):
-            if target.id in ticket_data['roles']: return await interaction.response.send_message("This role is already added to the ticket", ephemeral=True)
+            if target.id in ticket_data['added_roles']: return await interaction.response.send_message("This role is already added to the ticket", ephemeral=True)
             else:
-                ticket_data['roles'].append(target.id)
+                ticket_data['added_roles'].append(target.id)
                 return await interaction.response.send_message(embed=discord.Embed(description=f"<:octane_yes:1019957051721535618> | Added {target.mention} to the ticket", color=0x2b2d31))
 
         elif isinstance(target, discord.Member):
-            if target.id in ticket_data['members']: return await interaction.response.send_message("This member is already added to the ticket", ephemeral=True)
+            if target.id in ticket_data['added_users']: return await interaction.response.send_message("This member is already added to the ticket", ephemeral=True)
             else:
-                ticket_data['members'].append(target.id)
+                ticket_data['added_users'].append(target.id)
 
         await interaction.channel.set_permissions(target, read_messages=True, send_messages=True, view_channel=True)
         await self.bot.tickets.tickets.update(ticket_data)
@@ -203,15 +203,15 @@ class Ticket(commands.GroupCog, name="ticket"):
         if ticket_data is None: return await interaction.response.send_message("This is not a ticket channel", ephemeral=True)
 
         if isinstance(target, discord.Role):
-            if target.id not in ticket_data['roles']: return await interaction.response.send_message("This role is not added to the ticket", ephemeral=True)
+            if target.id not in ticket_data['added_roles']: return await interaction.response.send_message("This role is not added to the ticket", ephemeral=True)
             else:
-                ticket_data['roles'].remove(target.id)
+                ticket_data['added_roles'].remove(target.id)
                 return await interaction.response.send_message(embed=discord.Embed(description=f"<:octane_yes:1019957051721535618> | Removed {target.mention} from the ticket", color=0x2b2d31))
 
         elif isinstance(target, discord.Member):
-            if target.id not in ticket_data['members']: return await interaction.response.send_message("This member is not added to the ticket", ephemeral=True)
+            if target.id not in ticket_data['added_users']: return await interaction.response.send_message("This member is not added to the ticket", ephemeral=True)
             else:
-                ticket_data['members'].remove(target.id)
+                ticket_data['added_users'].remove(target.id)
 
         await interaction.channel.set_permissions(target, read_messages=False, send_messages=False, view_channel=False)
         ticket_data = await self.bot.tickets.tickets.find(interaction.channel.id)
