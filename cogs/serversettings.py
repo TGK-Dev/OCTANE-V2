@@ -204,6 +204,7 @@ class serversettings(commands.Cog):
                     view.message = await interaction.original_response()
             case _:
                 await interaction.response.send_message("Invalid option", ephemeral=True)
+            
 
 
 class JoinGateBackEnd(commands.Cog):
@@ -314,3 +315,4 @@ class JoinGateBackEnd(commands.Cog):
 
 async def setup(bot):
     await bot.add_cog(serversettings(bot))
+    await bot.add_cog(JoinGateBackEnd(bot))

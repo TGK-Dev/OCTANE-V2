@@ -97,19 +97,21 @@ class Games_BackEnd(commands.Cog):
             else:
                 data = self.bot.gtn_cache[m.channel.id]
                 if data != None:
-                    try:
-                        int(m.content)
-                        if m.content == str(self.bot.gtn_cache[m.channel.id]["right_number"]) and m.author.id != self.bot.user.id:
-                            self.bot.dispatch("gtn_end", data, m, m.channel)
-                            return True
-                        else:
-                            self.bot.gtn_cache[m.channel.id]["guesses"] += 1
-                            if int(m.content) > self.bot.gtn_cache[m.channel.id]["max_number"]:                        
-                                self.bot.dispatch("gtn_out_of_range", m, data)
+                    if data['status'] != "ended":
+                        try:
+                            int(m.content)
+                            if m.content == str(self.bot.gtn_cache[m.channel.id]["right_number"]) and m.author.id != self.bot.user.id:
+                                self.bot.dispatch("gtn_end", data, m, m.channel)
+                                data['status'] = "ended"
+                                return True
                             else:
-                                self.bot.dispatch("gtn_update", self.bot.gtn_cache[m.channel.id])
-                    except ValueError:
-                        pass
+                                self.bot.gtn_cache[m.channel.id]["guesses"] += 1
+                                if int(m.content) > self.bot.gtn_cache[m.channel.id]["max_number"]:                        
+                                    self.bot.dispatch("gtn_out_of_range", m, data)
+                                else:
+                                    self.bot.dispatch("gtn_update", self.bot.gtn_cache[m.channel.id])
+                        except ValueError:
+                            pass
     
     @commands.Cog.listener()
     async def on_gtn_start(self, thread: discord.Thread, data: dict):
@@ -184,6 +186,7 @@ class Games_BackEnd(commands.Cog):
     @commands.Cog.listener()
     async def on_ready(self):
         for data in await self.bot.gtn.get_all():
+            if data['status'] == "ended": continue
             self.bot.gtn_cache[data["_id"]] = data
             guild = self.bot.get_guild(data["guild_id"])
             thread = guild.get_thread(data["_id"])

@@ -56,7 +56,8 @@ class GuessTheNumber(View):
             'channel_id': thread.parent.id,
             'guild_id': thread.parent.guild.id,
             'hints': 0,
-            'guesses': 0
+            'guesses': 0,
+            'status': 'started'
         }
 
         timestamp = round((datetime.datetime.now() + datetime.timedelta(seconds=18)).timestamp())
