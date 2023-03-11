@@ -249,7 +249,7 @@ class Staff(commands.GroupCog, name="staff", description="Staff management comma
         if leave_role is not None: await user.add_roles(leave_role, reason=f"Leave from {interaction.guild.name} by {interaction.user}")
         leave_channel = interaction.guild.get_channel(guild_config['leave_channel'])
         time = round((datetime.datetime.now() + datetime.timedelta(seconds=time)).timestamp())
-        embed = discord.Embed(color=self.bot.default_color,description=f"Staff: {user.mention}|`{user.id}` \m**Reason:** {reason}\n**Post:**{', '.join(user_data['positions'].keys())}\n**Time:** <t:{time}:R>")
+        embed = discord.Embed(color=self.bot.default_color,description=f"Staff: {user.mention}|`{user.id}` \n**Reason:** {reason}\n**Post:**{', '.join(user_data['positions'].keys())}\n**Time:** <t:{time}:R>")
         if leave_channel is not None: 
             msg = await leave_channel.send(embed=embed)
             user_data['leave']['message_id'] = msg.id
