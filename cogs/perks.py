@@ -207,11 +207,20 @@ class Perks(commands.GroupCog, name="perks", description="manage your custom per
                 if not perks_config: return await interaction.response.send_message("This server doesn't have any perks.", ephemeral=True)
 
                 await interaction.response.send_message(embed=discord.Embed(description="Creating your custom channel...", color=0x2b2d31))
-                overwrites = {
-                    interaction.guild.default_role: discord.PermissionOverwrite(view_channel=False, send_messages=True, use_external_emojis=True, use_application_commands=True, attach_files=True),
-                    interaction.user: discord.PermissionOverwrite(view_channel=True),
-                    interaction.guild.me: discord.PermissionOverwrite(read_messages=True, manage_channels=True, manage_permissions=True, manage_webhooks=True, manage_messages=True, manage_roles=True)
-                }
+                robot_role = interaction.guild.get_role(810153515610537994)
+                if robot_role is not None:
+                    overwrites = {
+                        interaction.guild.default_role: discord.PermissionOverwrite(view_channel=False, send_messages=True, use_external_emojis=True, use_application_commands=True, attach_files=True),
+                        interaction.user: discord.PermissionOverwrite(view_channel=True),
+                        robot_role: discord.PermissionOverwrite(view_channel=True),
+                        interaction.guild.me: discord.PermissionOverwrite(read_messages=True, manage_channels=True, manage_permissions=True, manage_webhooks=True, manage_messages=True, manage_roles=True)
+                    }
+                else:
+                    overwrites = {
+                        interaction.guild.default_role: discord.PermissionOverwrite(view_channel=False, send_messages=True, use_external_emojis=True, use_application_commands=True, attach_files=True),
+                        interaction.user: discord.PermissionOverwrite(view_channel=True),
+                        interaction.guild.me: discord.PermissionOverwrite(read_messages=True, manage_channels=True, manage_permissions=True, manage_webhooks=True, manage_messages=True, manage_roles=True)
+                    }
                 channel = await interaction.guild.create_text_channel(name=name, overwrites=overwrites, reason=f"Custom channel perk for {interaction.user}", category=interaction.guild.get_channel(perks_config['custom_category'] if perks_config['custom_category'] else None))
                 await interaction.edit_original_response(embed=discord.Embed(description="Your custom channel has been created.", color=0x2b2d31))
                 await channel.send(f"Welcome to your custom channel, {interaction.user.mention}!")
