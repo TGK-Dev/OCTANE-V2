@@ -67,8 +67,10 @@ async def ping(interaction):
     await interaction.edit_original_response(content=None, embed=discord.Embed(description=f"Ping {bot.latency*1000.0:.2f}ms"))
 
 @bot.event
-async def on_messae(message):
+async def on_message(message):
     if message.author.bot:
+        return
+    if message.author.id == 461441940496580622:
         return
     await bot.process_commands(message)
 
