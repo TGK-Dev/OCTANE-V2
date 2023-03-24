@@ -218,7 +218,7 @@ class Payout_claim(discord.ui.View):
 
         await interaction.edit_original_response(embed=discord.Embed(description="<:octane_yes:1019957051721535618> | Sucessfully claimed payout, you will be paid in 24hrs", color=interaction.client.default_color))
 
-        msg = await queue_channel.send(embed=queue_embed, view=Payout_Buttton(), content=f"{interaction.user.mention} You will be paid in 24hrs, if not please contact a staff member through tickets")
+        msg = await queue_channel.send(embed=queue_embed, view=Payout_Buttton(), content=f"> Payouts will be done within 24h.\n> Else make ticket from <#785901543349551104>.\n> {interaction.user.mention}")
         pending_data = data
         pending_data['_id'] = msg.id
         delete_queue_data = {'_id': interaction.message.id,'channel': interaction.message.channel.id,'now': datetime.datetime.utcnow(),'delete_after': 1800, 'reason': 'payout_claim'}
