@@ -181,7 +181,7 @@ class Payout(commands.GroupCog, name="payout", description="Payout commands"):
         #     if claim_time < 3600:
         #         return await interaction.response.send_message("Claim time must be at least 1 hour!", ephemeral=True)
 
-        claim_time = 43200
+        claim_time = 86400
 
         loading_embed = discord.Embed(description=f"<a:loading:998834454292344842> | Setting up the payout for total of `{len(winners)}` winners!")
         finished_embed = discord.Embed(description=f"")        
