@@ -169,7 +169,7 @@ class Payout(commands.GroupCog, name="payout", description="Payout commands"):
     @app_commands.describe(event="event name", message_id="winner message id", winners="winner of the event", prize="what did they win?", item="what item did they win?", claim_time="how long do they have to claim their prize?")
     @app_commands.autocomplete(event=event_auto_complete)
     @app_commands.autocomplete(item=item_autocomplete)
-    async def payout_set(self, interaction: discord.Interaction, event: str, message_id: str, winners: app_commands.Transform[discord.Member, MultipleMember], prize: str, item: str=None): # claim_time: app_commands.Transform[int, TimeConverter]= None):
+    async def payout_set(self, interaction: discord.Interaction, event: str, message_id: str, winners: app_commands.Transform[discord.Member, MultipleMember], prize: str, item: str=None, claim_time: app_commands.Transform[int, TimeConverter]= None):
         data = await self.bot.payout_config.find(interaction.guild.id)
         user_roles = [role.id for role in interaction.user.roles]
         if (set(user_roles) & set(data['event_manager_roles'])):
@@ -177,11 +177,9 @@ class Payout(commands.GroupCog, name="payout", description="Payout commands"):
         else:
             return await interaction.response.send_message("You are not allowed to use this command!", ephemeral=True)
         
-        # if claim_time is not None:
-        #     if claim_time < 3600:
-        #         return await interaction.response.send_message("Claim time must be at least 1 hour!", ephemeral=True)
-        
-        claim_time = 43200
+        if claim_time is not None:
+            if claim_time < 3600:
+                return await interaction.response.send_message("Claim time must be at least 1 hour!", ephemeral=True)
 
         loading_embed = discord.Embed(description=f"<a:loading:998834454292344842> | Setting up the payout for total of `{len(winners)}` winners!")
         finished_embed = discord.Embed(description=f"")        
