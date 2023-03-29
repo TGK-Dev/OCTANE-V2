@@ -261,7 +261,7 @@ class Payout(commands.GroupCog, name="payout", description="Payout commands"):
                 self.bot.dispatch("payout_queue", interaction.user, event, winner_message, msg, winner, prize)
 
         if first_message is None:
-            return await interaction.edit_original_response("No valid winners were found!", embed=None)
+            return await interaction.edit_original_response(content="No valid winners were found!", embed=None)
         link_view = discord.ui.View()
         link_view.add_item(discord.ui.Button(label="Go to Payout-Queue", url=first_message.jump_url))
         finished_embed.description += f"\n**<:nat_reply_cont:1011501118163013634> Successfully queued {len(winners)}**"
