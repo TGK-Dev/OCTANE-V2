@@ -621,8 +621,8 @@ class Antinuke_Events(commands.Cog):
                 if user.id == self.bot.user.id or user.id in config['owner_ids'] or user.id == guild.owner_id: 
                     return print("whitelisted")
                 else:
-                    await self.do_punishment(guild, user, "quarantine", reason=f"Added role {role.mention} with dengerous permission to {before.mention}", log_channel=guild.get_channel(config['log_channel']))
-                    await self.do_punishment(guild, before, "quarantine", reason=f"Gain role {role.mention} with dengerous permission", log_channel=guild.get_channel(config['log_channel']))
+                    await self.do_punishment(guild, user, "quarantine", reason=f"Added role **{role.name}** with dangerous permission to {before.mention}", log_channel=guild.get_channel(config['log_channel']))
+                    await self.do_punishment(guild, before, "quarantine", reason=f"Gained role **{role.mention}** with dangerous permission", log_channel=guild.get_channel(config['log_channel']))
     
     @app_commands.command(name="quarantine", description="quarantine a user")
     @app_commands.default_permissions(manage_guild=True)
