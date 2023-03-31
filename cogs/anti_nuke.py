@@ -460,12 +460,12 @@ class Antinuke_Events(commands.Cog):
             top_role = user.guild.me.top_role
             top_role_position = top_role.position
             roles = []
+            quarantine_role = discord.utils.get(guild.roles, name="Quarantined")
             roles = [role for role in user.roles if role != user.guild.default_role]
             roles_to_keep = [role for role in roles if role.position >= top_role_position or role.managed]
             roles_to_remove = [role for role in roles if role.position < top_role_position and not role.managed]
             roles_to_remove_id = [role.id for role in roles_to_remove if role != quarantine_role]
             data = {"_id": user.id, "roles": roles_to_remove_id, "guild": guild.id, reason: reason}
-            quarantine_role = discord.utils.get(guild.roles, name="Quarantined")
             if quarantine_role is None:
                 quarantine_role = await guild.create_role(name="Quarantined", reason="Antinuke-System")
                 await quarantine_role.edit(position=guild.me.top_role.position - 1, reason="Antinuke-System")
