@@ -245,7 +245,7 @@ class Anti_Nuke(commands.GroupCog, name="antinuke", description="Manage the anti
     @app_commands.check(is_me)
     @app_commands.choices(
         option=[app_commands.Choice(name="create", value="create"), app_commands.Choice(name="delete", value="delete"), app_commands.Choice(name="edit", value="edit")],
-        punishment=[app_commands.Choice(name="ban", value="ban"), app_commands.Choice(name="kick", value="kick"), app_commands.Choice(name="timeout", value="timeout"), app_commands.Choice(name="qurantine", value="qurantine")]
+        punishment=[app_commands.Choice(name="ban", value="ban"), app_commands.Choice(name="kick", value="kick"), app_commands.Choice(name="timeout", value="timeout"), app_commands.Choice(name="quarantine", value="quarantine")]
     )
     async def role_punishment(self, interaction: Interaction, option: app_commands.Choice[str],punishment: app_commands.Choice[str]):
         config = await self.bot.antinuke.find(interaction.guild.id)
@@ -301,7 +301,7 @@ class Anti_Nuke(commands.GroupCog, name="antinuke", description="Manage the anti
     @app_commands.default_permissions(administrator=True)
     @app_commands.choices(
         option=[app_commands.Choice(name="create", value="create"), app_commands.Choice(name="delete", value="delete"), app_commands.Choice(name="edit", value="edit")],
-        punishment=[app_commands.Choice(name="ban", value="ban"), app_commands.Choice(name="kick", value="kick"), app_commands.Choice(name="timeout", value="timeout"), app_commands.Choice(name="qurantine", value="qurantine")]
+        punishment=[app_commands.Choice(name="ban", value="ban"), app_commands.Choice(name="kick", value="kick"), app_commands.Choice(name="timeout", value="timeout"), app_commands.Choice(name="quarantine", value="quarantine")]
     )
     async def channel_punishment(self, interaction: Interaction, option: app_commands.Choice[str],punishment: app_commands.Choice[str]):
         config = await self.bot.antinuke.find(interaction.guild.id)
@@ -423,7 +423,7 @@ class Antinuke_Events(commands.Cog):
     async def on_ready(self):
         await self.bot.wait_until_ready()
         self.bot.master_config = await self.bot.antinuke.find(785839283847954433)
-        self.bot.qurantine = Document(self.bot.db, "qurantine")
+        self.bot.quarantine = Document(self.bot.db, "quarantine")
         #self.role_lock_system = self.bot.master_config['role']['lock']
     
     async def do_punishment(self, guild: discord.Guild, user: discord.Member, punishment: str, reason: str, log_channel: discord.TextChannel):
@@ -452,28 +452,33 @@ class Antinuke_Events(commands.Cog):
             await user.edit(timed_out_until=discord.utils.utcnow() + datetime.timedelta(seconds=5))
             embed = discord.Embed(description=f"Offender: {user.mention} ({user.id})\nAction: Timeout\nReason: {reason}, Moderator: Antinuke-System", color=discord.Color.red())
             await log_channel.send(embed=embed)
-        elif punishment == "qurantine":
+        elif punishment == "quarantine":
             try:
                 await user.send(f"You have been quarantined from {guild.name} for {reason}")
             except:
                 pass
-            roles = [role for role in user.roles if not role.managed]
-            roles.remove(user.guild.default_role)
-            data = {"_id": user.id, "roles": [role.id for role in user.roles], "guild": guild.id, reason: reason}
-            qurantine_role = discord.utils.get(guild.roles, name="Quarantined")
-            if qurantine_role is None:
-                qurantine_role = await guild.create_role(name="Quarantined", reason="Antinuke-System")
-                await qurantine_role.edit(position=guild.me.top_role.position - 1, reason="Antinuke-System")
+            top_role = user.guild.me.top_role
+            top_role_position = top_role.position
+            roles = []
+            roles = [role for role in user.roles if role != user.guild.default_role]
+            roles_to_keep = [role for role in roles if role.position >= top_role_position or role.managed]
+            roles_to_remove = [role for role in roles if role.position < top_role_position and not role.managed]
+            roles_to_remove_id = [role.id for role in roles_to_remove if role != quarantine_role]
+            data = {"_id": user.id, "roles": roles_to_remove_id, "guild": guild.id, reason: reason}
+            quarantine_role = discord.utils.get(guild.roles, name="Quarantined")
+            if quarantine_role is None:
+                quarantine_role = await guild.create_role(name="Quarantined", reason="Antinuke-System")
+                await quarantine_role.edit(position=guild.me.top_role.position - 1, reason="Antinuke-System")
                 for channel in guild.channels:
-                    await channel.set_permissions(qurantine_role, send_messages=False, read_messages=False, view_channel=False)
-                roles.append(qurantine_role)
-                await user.edit(roles=roles, reason=reason)
+                    await channel.set_permissions(quarantine_role, send_messages=False, read_messages=False, view_channel=False)
+                roles_to_keep.append(quarantine_role)
+                await user.edit(roles=roles_to_keep, reason=reason)
             else:
-                roles.append(qurantine_role)
-                await user.edit(roles=roles, reason=reason)
+                roles_to_keep.append(quarantine_role)
+                await user.edit(roles=roles_to_keep, reason=reason)
             embed = discord.Embed(description=f"Offender: {user.mention} ({user.id})\nAction: Quarantine\nReason: {reason}\nModerator: Antinuke-System", color=discord.Color.red())
             await log_channel.send(embed=embed)
-            await self.bot.qurantine.upsert(data)
+            await self.bot.quarantine.upsert(data)
         
         end = datetime.datetime.now()
         total_ms = (end - now).total_seconds() * 1000
@@ -616,34 +621,45 @@ class Antinuke_Events(commands.Cog):
                 if user.id == self.bot.user.id or user.id in config['owner_ids'] or user.id == guild.owner_id: 
                     return print("whitelisted")
                 else:
-                    await self.do_punishment(guild, user, "qurantine", reason=f"Added role {role.mention} with dengerous permission to {before.mention}", log_channel=guild.get_channel(config['log_channel']))
-                    await self.do_punishment(guild, before, "qurantine", reason=f"Gain role {role.mention} with dengerous permission", log_channel=guild.get_channel(config['log_channel']))
+                    await self.do_punishment(guild, user, "quarantine", reason=f"Added role {role.mention} with dengerous permission to {before.mention}", log_channel=guild.get_channel(config['log_channel']))
+                    await self.do_punishment(guild, before, "quarantine", reason=f"Gain role {role.mention} with dengerous permission", log_channel=guild.get_channel(config['log_channel']))
     
-    @app_commands.command(name="qurantine", description="Qurantine a user")
+    @app_commands.command(name="quarantine", description="quarantine a user")
     @app_commands.default_permissions(manage_guild=True)
-    @app_commands.describe(member="The member to qurantine", reason="The reason for qurantine")
-    async def qurantine(self, interaction: discord.Interaction, member: discord.Member, reason: str = None):
+    @app_commands.describe(member="The member to quarantine", reason="The reason for quarantine")
+    async def quarantine(self, interaction: discord.Interaction, member: discord.Member, reason: str = None):
         config = await self.bot.antinuke.find(interaction.guild.id)
         guild: discord.Guild = interaction.guild
         
-        await interaction.response.send_message(embed=discord.Embed(description=f"Qurantining {member.mention}...", color=interaction.client.default_color))
-        await self.do_punishment(guild, member, "qurantine", reason=f"Qurantine by {interaction.user.mention}", log_channel=guild.get_channel(config['log_channel']))
-        await interaction.edit_original_response(embed=discord.Embed(description=f"Qurantined {member.mention}", color=interaction.client.default_color))
+        await interaction.response.send_message(embed=discord.Embed(description=f"Quarantining {member.mention}...", color=interaction.client.default_color))
+        await self.do_punishment(guild, member, "quarantine", reason=f"quarantine by {interaction.user.mention}", log_channel=guild.get_channel(config['log_channel']))
+        await interaction.edit_original_response(embed=discord.Embed(description=f"quarantined {member.mention}", color=interaction.client.default_color))
     
-    @app_commands.command(name="unqurantine", description="Unqurantine a user")
+    @app_commands.command(name="unquarantine", description="Unquarantine a user")
     @app_commands.default_permissions(manage_guild=True)
-    @app_commands.describe(member="The member to unqurantine", reason="The reason for unqurantine")
-    async def unqurantine(self, interaction: discord.Interaction, member: discord.Member, reason: str = None):
-        data = await self.bot.qurantine.find(member.id)
-        if data == None: return await interaction.response.send_message(embed=discord.Embed(description=f"{member.mention} is not qurantined", color=interaction.client.default_color))
-        await interaction.response.send_message(embed=discord.Embed(description=f"Unqurantining {member.mention}...", color=interaction.client.default_color))
-        qurantine_role = discord.utils.get(member.guild.roles, name="Quarantined")
-        await member.remove_roles(qurantine_role, reason=reason)
-        roles = [interaction.guild.get_role(role) for role in data['roles']]
-        await member.edit(roles=roles, reason=reason)
-        await self.bot.qurantine.delete(member.id)
+    @app_commands.describe(member="The member to unquarantine", reason="The reason for unquarantine")
+    async def unquarantine(self, interaction: discord.Interaction, member: discord.Member, reason: str = None):
+        data = await self.bot.quarantine.find(member.id)
+        quarantine_role = discord.utils.get(member.guild.roles, name="Quarantined")
+        if data == None: 
+            if quarantine_role is not None and quarantine_role in member.roles and quarantine_role.position < member.guild.me.top_role.position:
+                await member.remove_roles(quarantine_role, reason=reason)
+                return await interaction.response.send_message(embed=discord.Embed(description=f"Unquarantined {member.mention}", color=interaction.client.default_color))
+            return await interaction.response.send_message(embed=discord.Embed(description=f"{member.mention} is not quarantined", color=interaction.client.default_color))
+        await interaction.response.send_message(embed=discord.Embed(description=f"Unquarantining {member.mention}...", color=interaction.client.default_color))
+        
+        roles = [member.guild.get_role(role_id) for role_id in data['roles']]
+        roles_to_add = [role for role in roles if role.position < member.guild.me.top_role.position]
+        if quarantine_role is not None and quarantine_role.position < member.guild.me.top_role.position:
+            user_roles = [role for role in member.roles if role not in [member.guild.default_role, quarantine_role]]
+        else:
+            user_roles = [role for role in member.roles if role not in [member.guild.default_role]]
+        roles_to_add.extend(user_roles)
+        await member.edit(roles=set(roles_to_add), reason=reason)
 
-        await interaction.edit_original_response(embed=discord.Embed(description=f"Unqurantined {member.mention}", color=interaction.client.default_color))
+        await self.bot.quarantine.delete(member.id)
+
+        await interaction.edit_original_response(embed=discord.Embed(description=f"Unquarantined {member.mention}", color=interaction.client.default_color))
 
 async def setup(bot):
     await bot.add_cog(Anti_Nuke(bot), guilds=[discord.Object(785839283847954433)])
