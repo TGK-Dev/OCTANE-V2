@@ -182,7 +182,7 @@ class Basic(commands.Cog):
         user_data = await self.bot.afk.find(user.id)
         user_data['pings'].append({
             "id":message.author.id, 
-            "name": message.author.display_name,
+            "last_nick": message.author.display_name,
             "message": message.content if len(message.content) <= 100 else f"{message.content[:100]}...",
             "jump_url": message.jump_url,
             "pinged_at": f'<t:{int(datetime.datetime.timestamp(datetime.datetime.now()))}:R>',
