@@ -6,6 +6,7 @@ import datetime
 import psutil
 from typing import Literal
 from utils.db import Document
+from utils.paginator import Contex_Paginator
 from utils.views.member_view import Member_view
 
 class Basic(commands.Cog):
@@ -143,14 +144,25 @@ class Basic(commands.Cog):
     @commands.Cog.listener()
     async def on_afk_return(self, message):
         user_data = await self.bot.afk.find(message.author.id)
-        embed = discord.Embed(description="**This is the list of the pepole that pinged you while you were afk**\n", color=0x2b2d31)
+        
         if len(user_data['pings']) != 0:
-            for user in user_data['pings']:
-                embed.description += f"**{user['name']}:** {user['message']} | [Jump To Message]({user['jump_url']})\n"
-        try:
-            await message.author.send(embed=embed)
-        except discord.Forbidden:
-            pass
+            embeds = []
+            for index,user_data in enumerate(user_data['pings']):
+                user = await self.bot.fetch_user(user_data['id'])
+                pinged_at = user_data['pinged_at']
+                jump_url = user_data['jump_url']
+                content = user_data['message']
+                channel = self.bot.get_channel(user_data['channel_id'])
+                embed = discord.Embed(color=0x2b2d31)
+                embed.set_author(name = f'{user.name}#{user.discriminator}', icon_url = user.avatar.url if user.avatar else user.default_avatar)
+                embed.description = f"<a:tgk_redSparkle:1072168821797965926> {user.mention} [`pinged you in`]{jump_url} {channel.mention} {pinged_at}"
+                embed.description += f"<a:tgk_redSparkle:1072168821797965926> **Message:** {content}"
+                embed.set_footer(text = f"Pings you received while you were AFK • Page ({index+1}/{len(user_data['pings'])})")
+                embeds.append(embed)
+            try:
+                await message.author.send(embeds=embeds)
+            except discord.Forbidden:
+                await message.reply("I couldn't send you the pings you received while you were AFK because you have DMs disabled.", delete_after=10, mention_author=False)
         await message.reply(f"Welcome back {message.author.mention}!", delete_after=10)
         try:
             await message.author.edit(nick=user_data['last_nick'])
@@ -165,8 +177,15 @@ class Basic(commands.Cog):
     @commands.Cog.listener()
     async def on_afk_ping(self, message:discord.Message, user:discord.Member):
         user_data = await self.bot.afk.find(user.id)
-        content = message.content if len(message.content) <= 100 else f"{message.content[:100]}..."
-        user_data['pings'].append({"id":message.author.id,"name": message.author.display_name,"message": message.content,"jump_url": message.jump_url})
+        user_data['pings'].append({
+            "id":message.author.id, 
+            "name": message.author.display_name,
+            "message": message.content if len(message.content) <= 100 else f"{message.content[:100]}...",
+            "jump_url": message.jump_url,
+            "pinged_at": f'<t:{int(datetime.datetime.timestamp(datetime.datetime.now()))}:R>',
+            "timestamp": datetime.datetime.now(),
+            "channel_id": f"{message.channel.id}"
+        })
         if len(user_data['pings']) > 10:
             while len(user_data['pings']) > 10:
                 user_data['pings'].pop(0)
