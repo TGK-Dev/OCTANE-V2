@@ -97,6 +97,8 @@ async def on_app_command_error(interaction: discord.Interaction, error):
     embed.add_field(name="Command", value=f"{interaction.command.name if interaction.command else 'None'}", inline=False)
 
     error_traceback = ""
+    #add whole trace back
+    error_traceback += f"{error.traceback.format()}\n"
     error_traceback += f"{type(error).__name__}: {error}\n"
     buffer = BytesIO(error_traceback.encode('utf-8'))
     file = discord.File(buffer, filename=f"Error-{interaction.command.name}.log")
