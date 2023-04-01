@@ -163,14 +163,15 @@ class Basic(commands.Cog):
                 embeds.append(embed)
             try:
                 await message.author.send(embeds=embeds)
-            except discord.Forbidden:
+            except:
                 await message.reply("I couldn't send you the pings you received while you were AFK because you have DMs disabled.", delete_after=10, mention_author=False)
+        await self.bot.afk.delete(message.author.id)
         await message.reply(f"Welcome back {message.author.mention}!", delete_after=10)
         try:
-            await message.author.edit(nick=user_data['last_nick'])
+            if user_data['last_nick'] is not None and user_data['last_nick'] < 32 and user_data['last_nick'] != message.author.display_name:
+                await message.author.edit(nick=user_data['last_nick'])
         except discord.Forbidden:
             pass
-        await self.bot.afk.delete(message.author.id)
         try:
             self.bot.current_afk.pop(message.author.id)
         except KeyError:
