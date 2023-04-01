@@ -149,7 +149,7 @@ class Basic(commands.Cog):
             embeds = []
             for index,user_data in enumerate(user_data['pings']):
                 guild = self.bot.get_guild(user_data['guild_id'])
-                user = guild.get_member(user_data['user_id'])
+                user = guild.get_member(user_data['id'])
                 pinged_at = user_data['pinged_at']
                 jump_url = user_data['jump_url']
                 content = user_data['message']
@@ -185,8 +185,8 @@ class Basic(commands.Cog):
             "jump_url": message.jump_url,
             "pinged_at": f'<t:{int(datetime.datetime.timestamp(datetime.datetime.now()))}:R>',
             "timestamp": datetime.datetime.now(),
-            "channel_id": f"{message.channel.id}",
-            "guild_id": f"{message.guild.id}"
+            "channel_id": message.channel.id,
+            "guild_id": message.guild.id
         })
         if len(user_data['pings']) > 10:
             while len(user_data['pings']) > 10:
