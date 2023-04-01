@@ -192,7 +192,7 @@ class Basic(commands.Cog):
             while len(user_data['pings']) > 10:
                 user_data['pings'].pop(0)
         await self.bot.afk.update(user_data)
-        await message.reply(f"`{user_data['last_nick']}` is afk: {user_data['reason']}", delete_after=10)
+        await message.reply(f"`{user_data['last_nick']}` is afk: {user_data['reason']}", delete_after=10, allowed_mentions=discord.AllowedMentions.none(), mention_author=False)
 
     @app_commands.command(name="afk", description="Set your afk status")
     @app_commands.describe(reason="The reason for your afk status")
