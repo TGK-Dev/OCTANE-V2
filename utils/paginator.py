@@ -180,10 +180,11 @@ class Paginator:
 		await self.interaction.edit_original_response(view=view)
 
 class Contex_Paginator:
-	def __init__(self, interaction: commands.Context, pages: list, custom_children: Optional[List[Union[Button, Select]]] = []):
+	def __init__(self, interaction: commands.Context, pages: list, custom_children: Optional[List[Union[Button, Select]]] = [], dm: bool = False):
 		self.custom_children = custom_children
 		self.interaction = interaction
 		self.pages = pages
+		self.dm = dm
 
 
 	async def start(self, embeded: Optional[bool] = False, quick_navigation: bool = True) -> None:
@@ -245,4 +246,7 @@ class Contex_Paginator:
 		kwargs = {'content': self.pages[view.current_page]} if not (embeded) else {'embed': self.pages[view.current_page]}
 		kwargs['view'] = view
 
-		await self.interaction.channel.send(**kwargs)
+		if self.dm:
+			await self.interaction.author.send(**kwargs)
+		else:
+			await self.interaction.channel.send(**kwargs)
