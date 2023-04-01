@@ -147,6 +147,7 @@ class Basic(commands.Cog):
         
         if len(user_data['pings']) != 0:
             embeds = []
+            pages = len(user_data['pings'])
             for index,user_data in enumerate(user_data['pings']):
                 guild = self.bot.get_guild(user_data['guild_id'])
                 user = guild.get_member(user_data['id'])
@@ -158,7 +159,7 @@ class Basic(commands.Cog):
                 embed.set_author(name = f'{user.name}#{user.discriminator}', icon_url = user.avatar.url if user.avatar else user.default_avatar)
                 embed.description = f"<a:tgk_redSparkle:1072168821797965926> {user.mention} [`pinged you in`]{jump_url} {channel.mention} {pinged_at}"
                 embed.description += f"<a:tgk_redSparkle:1072168821797965926> **Message:** {content}"
-                embed.set_footer(text = f"Pings you received while you were AFK • Page ({index+1}/{len(user_data['pings'])})")
+                embed.set_footer(text = f"Pings you received while you were AFK • Page ({index+1}/{pages})")
                 embeds.append(embed)
             try:
                 await message.author.send(embeds=embeds)
