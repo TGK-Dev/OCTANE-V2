@@ -9,6 +9,7 @@ import logging
 import logging.handlers
 import aiohttp
 
+from io import BytesIO
 from dotenv import load_dotenv
 from motor.motor_asyncio import AsyncIOMotorClient
 from utils.converters import dict_to_tree
@@ -84,19 +85,27 @@ async def on_app_command_error(interaction: discord.Interaction, error):
             await interaction.response.send_message(embed=embed, ephemeral=True)
         except:
             await interaction.followup.send(embed=embed, ephemeral=True)
-        
-    url = "https://canary.discord.com/api/webhooks/1076590771542708285/88D3SRMTYHPe4copSvTQ451KXx7Tk2WDsRYUPN4wtVI1qQbqDmyn0eAiUOhV7XW8SO3G"
-    embed = discord.Embed(title="Error", description=f"```\n{error}\n```", color=bot.default_color)
+
     tree_format = interaction.data.copy()
     tree_format = dict_to_tree(tree_format)
+
+    embed = discord.Embed(title="Error", color=bot.default_color)
     embed.add_field(name="Interaction Data Tree", value=f"```yaml\n{tree_format}\n```", inline=False)
     embed.add_field(name="Channel", value=f"{interaction.channel.mention} | {interaction.channel.id}", inline=False)
     embed.add_field(name="Guild", value=f"{interaction.guild.name} | {interaction.guild.id}", inline=False)
     embed.add_field(name="Author", value=f"{interaction.user.mention} | {interaction.user.id}", inline=False)
     embed.add_field(name="Command", value=f"{interaction.command.name if interaction.command else 'None'}", inline=False)
-    
+
+    error_traceback = ""
+    error_traceback += f"{type(error).__name__}: {error}\n"
+    buffer = BytesIO(error_traceback.encode('utf-8'))
+    file = discord.File(buffer, filename=f"Error-{interaction.command.name}.log")
+    buffer.close()
+
+    url = "https://canary.discord.com/api/webhooks/1076590771542708285/88D3SRMTYHPe4copSvTQ451KXx7Tk2WDsRYUPN4wtVI1qQbqDmyn0eAiUOhV7XW8SO3G"
+
     async with aiohttp.ClientSession() as session:
         webhook = discord.Webhook.from_url(url, session=session)
-        await webhook.send(embed=embed, avatar_url=interaction.client.user.avatar.url if interaction.client.user.avatar else interaction.client.user.default_avatar, username=f"{interaction.client.user.name}'s Error Logger")
+        await webhook.send(embed=embed, avatar_url=interaction.client.user.avatar.url if interaction.client.user.avatar else interaction.client.user.default_avatar, username=f"{interaction.client.user.name}'s Error Logger", file=file)
 
 asyncio.run(main())
