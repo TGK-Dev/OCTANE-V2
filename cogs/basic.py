@@ -20,7 +20,8 @@ class Basic(commands.Cog):
     @commands.Cog.listener()
     async def on_ready(self):
         current_afks = await self.bot.afk.get_all()
-        for afk in current_afks: self.bot.current_afk[afk["_id"]] = afk
+        for afk in current_afks: 
+            self.bot.current_afk[afk["_id"]] = afk
     
     @app_commands.command(name="stats")
     async def stats(self, interaction: Interaction):
@@ -123,12 +124,13 @@ class Basic(commands.Cog):
     
     @commands.Cog.listener()
     async def on_message(self, message):
-        if message.author.bot or message.guild is None or message.content is None: return
+        if message.author.bot or message.guild is None or message.content is None: 
+            return
         if message.author.id in self.bot.current_afk.keys():
             self.bot.dispatch("afk_return", message)
         if len(message.mentions) > 0:
             for user in message.mentions:
-                if user.id in self.bot.current_afk.keys():
+                if user.id in self.bot.current_afk.keys() and user in message.channel.members:
                    return self.bot.dispatch("afk_ping", message, user)
         if message.reference is not None:
             try:
@@ -142,9 +144,7 @@ class Basic(commands.Cog):
     async def on_afk_return(self, message):
         user_data = await self.bot.afk.find(message.author.id)
         embed = discord.Embed(description="**This is the list of the pepole that pinged you while you were afk**\n", color=0x2b2d31)
-        if len(user_data['pings']) == 0:
-            embed.description = "No one pinged you while you were afk"
-        else:
+        if len(user_data['pings']) != 0:
             for user in user_data['pings']:
                 embed.description += f"**{user['name']}:** {user['message']} | [Jump To Message]({user['jump_url']})\n"
         try:
@@ -165,25 +165,28 @@ class Basic(commands.Cog):
     @commands.Cog.listener()
     async def on_afk_ping(self, message:discord.Message, user:discord.Member):
         user_data = await self.bot.afk.find(user.id)
-        user_data['pings'].append({"name": message.author.display_name,"message": message.content,"jump_url": message.jump_url})
+        content = message.content if len(message.content) <= 100 else f"{message.content[:100]}..."
+        user_data['pings'].append({"id":message.author.id,"name": message.author.display_name,"message": message.content,"jump_url": message.jump_url})
+        if len(user_data['pings']) > 10:
+            while len(user_data['pings']) > 10:
+                user_data['pings'].pop(0)
         await self.bot.afk.update(user_data)
-        if len(user_data['pings']) == 10:
-            user_data['pings'].pop(len(user_data['pings']) - 1)
-        else:
-            content = message.content if len(message.content) <= 100 else f"{message.content[:100]}..."
-            user_data['pings'].append({"name": message.author.display_name,"message": content,"jump_url": message.jump_url})
         await message.reply(f"`{user_data['last_nick']}` is afk: {user_data['reason']}", delete_after=10)
 
     @app_commands.command(name="afk", description="Set your afk status")
     @app_commands.describe(reason="The reason for your afk status")
     async def afk(self, interaction: Interaction, reason: str=None):
         user_data = await self.bot.afk.find(interaction.user.id)
-        if user_data is not None: return await interaction.response.send_message(embed=discord.Embed(description="You are already afk", color=0x2b2d31), ephemeral=True)
+        if user_data is not None: 
+            await self.bot.afk.delete(interaction.user.id)
         user_data = {'_id': interaction.user.id,'guild_id': interaction.guild.id,'reason': reason,'last_nick': interaction.user.display_name,'pings': []}
         await self.bot.afk.insert(user_data)
         await interaction.response.send_message(f"`{interaction.user.display_name}` I set your status to {reason if reason else 'afk'}", ephemeral=True)
+        nick = f"[AFK] {interaction.user.display_name}"
+        if len(nick) > 32:
+            nick = nick[:32]
         try:
-            await interaction.user.edit(nick=f"[AFK] {interaction.user.display_name}")
+            await interaction.user.edit(nick=f"{nick}")
         except discord.Forbidden:
             pass
         self.bot.current_afk[interaction.user.id] = user_data
