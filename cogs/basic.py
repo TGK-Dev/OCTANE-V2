@@ -157,7 +157,7 @@ class Basic(commands.Cog):
                 channel = guild.get_channel(user_data['channel_id'])
                 embed = discord.Embed(color=0x2b2d31)
                 embed.set_author(name = f'{user.name}#{user.discriminator}', icon_url = user.avatar.url if user.avatar else user.default_avatar)
-                embed.description = f"<a:tgk_redSparkle:1072168821797965926> {user.mention} [`pinged you in`]{jump_url} {channel.mention} {pinged_at}"
+                embed.description = f"<a:tgk_redSparkle:1072168821797965926> {user.mention} [`pinged you in`]({jump_url}) {channel.mention} {pinged_at}\n"
                 embed.description += f"<a:tgk_redSparkle:1072168821797965926> **Message:** {content}"
                 embed.set_footer(text = f"Pings you received while you were AFK • Page ({index+1}/{pages})")
                 embeds.append(embed)
