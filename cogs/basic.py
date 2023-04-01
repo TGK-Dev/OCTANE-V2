@@ -148,11 +148,12 @@ class Basic(commands.Cog):
         if len(user_data['pings']) != 0:
             embeds = []
             for index,user_data in enumerate(user_data['pings']):
-                user = await self.bot.fetch_user(user_data['id'])
+                guild = self.bot.get_guild(user_data['guild_id'])
+                user = guild.get_member(user_data['user_id'])
                 pinged_at = user_data['pinged_at']
                 jump_url = user_data['jump_url']
                 content = user_data['message']
-                channel = self.bot.get_channel(user_data['channel_id'])
+                channel = guild.get_channel(user_data['channel_id'])
                 embed = discord.Embed(color=0x2b2d31)
                 embed.set_author(name = f'{user.name}#{user.discriminator}', icon_url = user.avatar.url if user.avatar else user.default_avatar)
                 embed.description = f"<a:tgk_redSparkle:1072168821797965926> {user.mention} [`pinged you in`]{jump_url} {channel.mention} {pinged_at}"
@@ -184,7 +185,8 @@ class Basic(commands.Cog):
             "jump_url": message.jump_url,
             "pinged_at": f'<t:{int(datetime.datetime.timestamp(datetime.datetime.now()))}:R>',
             "timestamp": datetime.datetime.now(),
-            "channel_id": f"{message.channel.id}"
+            "channel_id": f"{message.channel.id}",
+            "guild_id": f"{message.guild.id}"
         })
         if len(user_data['pings']) > 10:
             while len(user_data['pings']) > 10:
