@@ -87,9 +87,9 @@ class Payout(commands.GroupCog, name="payout", description="Payout commands"):
 
                 event_channel = guild.get_channel(payout['channel'])
                 try:
-                    event_message = await event_channel.fetch_message(payout['event_message'])
+                    event_message = await event_channel.fetch_message(payout['winner_message_id'])
                     loading_emoji = await self.bot.emoji_server.fetch_emoji(998834454292344842)
-                    event_message.remove_reaction(loading_emoji, event_message.guild.me)
+                    await event_message.remove_reaction(loading_emoji, event_message.guild.me)
                 except discord.NotFound:
                     pass
 
@@ -102,10 +102,9 @@ class Payout(commands.GroupCog, name="payout", description="Payout commands"):
                         pass
 
                 await self.bot.payout_queue.delete(payout['_id'])
-                    
             else:
                 pass
-            
+
     @check_unclaim.before_loop
     async def before_check_unclaim(self):
         await self.bot.wait_until_ready()
