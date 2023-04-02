@@ -390,12 +390,17 @@ class Perks(commands.GroupCog, name="perks", description="manage your custom per
                 role = interaction.guild.get_role(perk_data['role_id'])
                 if not role: return await interaction.response.send_message("Your role perk is invalid/missing.", ephemeral=True)
                 await interaction.response.send_message(embed=discord.Embed(description="Please wait while we edit your role perk", color=0x2b2d31))
-                if icon: 
-                    if not icon.filename.url.endswith(('png', 'jpg')): return await interaction.edit_original_response(embed=discord.Embed(description="Please provide a valid image for your role icon.", color=0x2b2d31))
-                    async with self.bot.session.get(icon.filename.url) as resp:
+                if icon:
+                    
+                    if not icon.filename.endswith(('png', 'jpg')): return await interaction.edit_original_response(embed=discord.Embed(description="Please provide a valid image for your role icon.", color=0x2b2d31))
+                    async with aiohttp.ClientSession() as session:
+                        resp = await session.get(icon.url)
                         if resp.status != 200: return await interaction.edit_original_response(embed=discord.Embed(description="Please provide a valid image for your role icon.", color=0x2b2d31))
                         icon = await resp.read()
+                        print(icon)
                 color = color.replace("#", "") if color else None
+                name = name if name else role.name
+                color = color if color else role.color
                 await role.edit(name=name, color=discord.Color(int(color, 16)) if color else role.color, reason=f"Custom role perk for {interaction.user}", display_icon=icon)
                 await interaction.edit_original_response(embed=discord.Embed(description="Your role has been edited.", color=0x2b2d31))
     
