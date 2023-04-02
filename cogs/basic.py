@@ -145,6 +145,16 @@ class Basic(commands.Cog):
     async def on_afk_return(self, message):
         user_data = await self.bot.afk.find(message.author.id)
         
+        if user_data is None:
+            if '[AFK]' in message.author.display_name:
+                try:
+                    await message.author.edit(nick=message.author.display_name.replace('[AFK]', ''))
+                except discord.Forbidden:
+                    pass
+            if message.author.id in self.bot.current_afk.keys():
+                self.bot.current_afk.pop(message.author.id)
+            return
+        
         if len(user_data['pings']) != 0:
             embeds = []
             pages = len(user_data['pings'])
@@ -155,34 +165,37 @@ class Basic(commands.Cog):
                 jump_url = user_data['jump_url']
                 content = user_data['message']
                 channel = guild.get_channel(user_data['channel_id'])
-                embed = discord.Embed(color=0x2b2d31)
+                embed = discord.Embed(color=0x2b2d31 , timestamp=user_data['timestamp'])
                 embed.set_author(name = f'{user.name}#{user.discriminator}', icon_url = user.avatar.url if user.avatar else user.default_avatar)
-                embed.description = f"<a:tgk_redSparkle:1072168821797965926> {user.mention} [`pinged you in`]({jump_url}) {channel.mention} {pinged_at}\n"
+                embed.description = f"<a:tgk_redSparkle:1072168821797965926> [`You were pinged here.`]({jump_url}) {pinged_at}\n"
                 embed.description += f"<a:tgk_redSparkle:1072168821797965926> **Message:** {content}"
-                embed.set_footer(text = f"Pings you received while you were AFK • Page ({index+1}/{pages})")
+                embed.set_footer(text = f"Pings you received while you were AFK • Page ({index+1}/{pages}) • Pinged at")
                 embeds.append(embed)
             try:
                 await message.author.send(embeds=embeds)
             except:
                 await message.reply("I couldn't send you the pings you received while you were AFK because you have DMs disabled.", delete_after=10, mention_author=False)
-        await self.bot.afk.delete(message.author.id)
-        await message.reply(f"Welcome back {message.author.mention}!", delete_after=10)
         try:
-            if user_data['last_nick'] is not None and user_data['last_nick'] < 32 and user_data['last_nick'] != message.author.display_name:
-                await message.author.edit(nick=user_data['last_nick'])
-        except discord.Forbidden:
-            pass
-        try:
+            await self.bot.afk.delete(message.author.id)
             self.bot.current_afk.pop(message.author.id)
         except KeyError:
             pass
-    
+        
+        try:
+            if "last_nick" in user_data.keys():
+                await message.author.edit(nick=user_data['last_nick'])
+            else:
+                await message.author.edit(nick=message.author.display_name.replace('[AFK]', ''))
+        except discord.Forbidden:
+            pass
+            
+        await message.reply(f"Welcome back {message.author.mention}!", delete_after=10)
+
     @commands.Cog.listener()
     async def on_afk_ping(self, message:discord.Message, user:discord.Member):
         user_data = await self.bot.afk.find(user.id)
         user_data['pings'].append({
-            "id":message.author.id, 
-            "last_nick": message.author.display_name,
+            "id":message.author.id,
             "message": message.content if len(message.content) <= 100 else f"{message.content[:100]}...",
             "jump_url": message.jump_url,
             "pinged_at": f'<t:{int(datetime.datetime.timestamp(datetime.datetime.now()))}:R>',
