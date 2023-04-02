@@ -165,11 +165,12 @@ class Basic(commands.Cog):
                 jump_url = user_data['jump_url']
                 content = user_data['message']
                 channel = guild.get_channel(user_data['channel_id'])
+                channel_name = channel.name if channel else "Unknown Channel"
                 embed = discord.Embed(color=0x2b2d31 , timestamp=user_data['timestamp'])
                 embed.set_author(name = f'{user.name}#{user.discriminator}', icon_url = user.avatar.url if user.avatar else user.default_avatar)
-                embed.description = f"<a:tgk_redSparkle:1072168821797965926> [`You were pinged here.`]({jump_url}) {pinged_at}\n"
+                embed.description = f"<a:tgk_redSparkle:1072168821797965926> [`You were pinged in #{channel_name}.`]({jump_url}) {pinged_at}\n"
                 embed.description += f"<a:tgk_redSparkle:1072168821797965926> **Message:** {content}"
-                embed.set_footer(text = f"Pings you received while you were AFK • Page ({index+1}/{pages}) • Pinged at")
+                embed.set_footer(text = f"Pings you received while you were AFK • Pinged at")
                 embeds.append(embed)
             try:
                 await message.author.send(embeds=embeds)
@@ -215,7 +216,8 @@ class Basic(commands.Cog):
         user_data = await self.bot.afk.find(interaction.user.id)
         if user_data is not None: 
             await self.bot.afk.delete(interaction.user.id)
-        user_data = {'_id': interaction.user.id,'guild_id': interaction.guild.id,'reason': reason,'last_nick': interaction.user.display_name,'pings': []}
+        last_nick = interaction.user.display_name if  not interaction.user.display_name.startswith('[AFK]') else interaction.user.display_name.replace('[AFK]', '')
+        user_data = {'_id': interaction.user.id,'guild_id': interaction.guild.id,'reason': reason,'last_nick': last_nick,'pings': []}
         await self.bot.afk.insert(user_data)
         await interaction.response.send_message(f"`{interaction.user.display_name}` I set your status to {reason if reason else 'afk'}", ephemeral=True)
         nick = f"[AFK] {interaction.user.display_name}"
