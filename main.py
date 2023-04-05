@@ -29,6 +29,9 @@ class Bot_base(commands.Bot):
         self.default_color = 0x2b2d31
         self.start_time = datetime.datetime.now()    
         self.sync = sync
+        self.token = os.environ.get("TOKEN")
+        self.secret = os.environ.get("SECRET")
+        self.connection_url = os.environ.get("MONGO")
     
     async def setup_hook(self):
         self.mongo = AsyncIOMotorClient(self.connection_url)
@@ -45,9 +48,6 @@ class Bot_base(commands.Bot):
 
 
 bot = Bot_base(816699167824281621, False)
-bot.secret = os.environ.get("SECRET")
-bot.token = os.environ.get("TOKEN")
-bot.connection_url = os.environ.get("MONGO") 
 
 tree = bot.tree
 async def main():
@@ -98,8 +98,7 @@ async def on_app_command_error(interaction: discord.Interaction, error):
 
     error_traceback = ""
     #add whole trace back
-    error_traceback += f"{error.traceback.format()}\n"
-    error_traceback += f"{type(error).__name__}: {error}\n"
+    error_traceback += f"{error}\n"
     buffer = BytesIO(error_traceback.encode('utf-8'))
     file = discord.File(buffer, filename=f"Error-{interaction.command.name}.log")
     buffer.close()
