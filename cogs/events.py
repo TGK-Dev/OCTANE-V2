@@ -81,7 +81,7 @@ class Events(commands.Cog):
         embed = message.embeds[0]
         if isinstance(embed, discord.Embed) == False: return
         if embed.description is None: return
-        if embed.description.startswith("Successfully paid") and embed.description.startswith("from the server's pool!"):
+        if embed.description.startswith("Successfully paid") and embed.description.endswith("from the server's pool!"):
             command_message = await message.channel.fetch_message(message.reference.message_id)
             if command_message.interaction is None: return
             if command_message.interaction.name != "serverevents payout": return
