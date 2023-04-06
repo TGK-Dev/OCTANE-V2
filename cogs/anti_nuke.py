@@ -611,6 +611,8 @@ class Antinuke_Events(commands.Cog):
                     await self.do_punishment(guild, user, config['role']['add']['punishment']['type'], reason=f"Unauthorized addition of role {role.name} to {before.mention}", log_channel=guild.get_channel(config['log_channel']))
                     await before.remove_roles(role, reason="Unauthorized role addition")
                     await self.do_punishment(guild, before, config['role']['add']['punishment']['type'], reason=f"Unauthorized addition of role {role.name}", log_channel=guild.get_channel(config['log_channel']))
+                    if user.bot and user.guild_permissions.administrator == True:
+                        await user.kick(reason="Unauthorized role addition")
 
             if role.permissions.administrator == True or role.permissions.manage_guild == True or role.permissions.manage_roles == True or role.permissions.manage_channels == True or role.permissions.ban_members == True or role.permissions.kick_members == True or role.permissions.manage_messages == True or role.permissions.manage_nicknames == True or role.permissions.manage_emojis == True or role.permissions.manage_webhooks == True or role.permissions.manage_emojis == True or role.permissions.manage_webhooks == True or role.permissions.manage_emojis == True or role.permissions.manage_webhooks == True:
                 server_audit_log = [log async for log in guild.audit_logs(limit=1, action=discord.AuditLogAction.member_role_update) if log.target.id == before.id]
