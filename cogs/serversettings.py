@@ -214,7 +214,7 @@ class JoinGateBackEnd(commands.Cog):
 
     @commands.Cog.listener()
     async def on_ready(self):
-        for guild in await self.bot.ss.join_gate.get_all():self.bot.joingate_cache[guild["_id"]] = guild["joingate"]
+        for guild in await self.bot.ss.join_gate.get_all():self.bot.joingate_cache[guild["_id"]] = guild
     
     @staticmethod
     def is_cancerous(text: str) -> bool:
