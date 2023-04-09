@@ -390,14 +390,14 @@ class donation(commands.Cog):
 		return pfp
 
 	async def create_winner_card(self, guild: discord.Guild, event_name:str, data: list):
-		template = Image.open('./utils/assets/leaderboard_template.png')
+		template = Image.open('./assets/leaderboard_template.png')
 		guild_icon = await self.round_pfp(guild)
 		template.paste(guild_icon, (15, 8), guild_icon)
 
 		draw = ImageDraw.Draw(template)
-		font = ImageFont.truetype('./utils/assets/fonts/DejaVuSans.ttf', 28)
-		winner_name_font = ImageFont.truetype('./utils/assets/fonts/Symbola.ttf', 24)
-		winner_exp_font = ImageFont.truetype('./utils/assets/fonts/DejaVuSans.ttf', 20)
+		font = ImageFont.truetype('./assets/fonts/DejaVuSans.ttf', 28)
+		winner_name_font = ImageFont.truetype('./assets/fonts/Symbola.ttf', 24)
+		winner_exp_font = ImageFont.truetype('./assets/fonts/DejaVuSans.ttf', 20)
 
 		winne_postions = {
 			#postions of the winners, pfp and name and donation
@@ -419,6 +419,7 @@ class donation(commands.Cog):
 		return template
 	
 	@app_commands.command(name="celeb-lb", description="Celeb Leaderboard 📈")
+	@app_commands.has_permissions(administrator=True)
 	async def _leaderboard(self, interaction: discord.Interaction):
 		await interaction.response.defer(thinking=True, ephemeral=False)
 
