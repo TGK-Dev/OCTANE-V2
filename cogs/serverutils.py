@@ -398,6 +398,7 @@ class donation(commands.Cog):
 		font = ImageFont.truetype('./assets/fonts/DejaVuSans.ttf', 24)
 		winner_name_font = ImageFont.truetype('./assets/fonts/Symbola.ttf', 28)
 		winner_exp_font = ImageFont.truetype('./assets/fonts/DejaVuSans.ttf', 20)
+		kaiji_font = ImageFont.truetype('./utils/assets/fonts/MSMINCHO.ttf', 28)
 
 		winne_postions = {
 			#postions of the winners, pfp and name and donation
@@ -413,7 +414,10 @@ class donation(commands.Cog):
 			index = data.index(i)
 			user_icon = await self.round_pfp(user)
 			template.paste(user_icon, winne_postions[index]['icon'], user_icon)
-			draw.text(winne_postions[index]['name'], f"👑 | {i['name']}", font=winner_name_font, fill="#9A9BD5")
+			if 'カ' in user.name:
+				draw.text(winne_postions[index]['name'], f"カ | {i['name']}", font=kaiji_font, fill="#9A9BD5")
+			else:
+				draw.text(winne_postions[index]['name'], f"👑 | {i['name']}", font=winner_name_font, fill="#9A9BD5")
 			draw.text(winne_postions[index]['donated'], f"⏣ {i['donated']:,}", font=winner_exp_font, fill="#A8A8C8")
 
 		return template
