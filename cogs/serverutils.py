@@ -396,7 +396,7 @@ class donation(commands.Cog):
 
 		draw = ImageDraw.Draw(template)
 		font = ImageFont.truetype('./assets/fonts/DejaVuSans.ttf', 28)
-		winner_name_font = ImageFont.truetype('./assets/fonts/Symbola.ttf', 24)
+		winner_name_font = ImageFont.truetype('./assets/fonts/Symbola.ttf', 28)
 		winner_exp_font = ImageFont.truetype('./assets/fonts/DejaVuSans.ttf', 20)
 
 		winne_postions = {
@@ -405,7 +405,7 @@ class donation(commands.Cog):
 			1: {'icon': (58, 265), 'name': (176, 273), 'donated': (176, 309)},
 			2: {'icon': (58, 380), 'name': (176, 392), 'donated': (176, 428)}}
 
-		draw.text((116, 28), f"{guild.name}", font=font, fill="#9A9BD5") #guild name 
+		draw.text((116, 28), f"Gambler's Kingdom", font=font, fill="#9A9BD5") #guild name 
 		draw.text((116, 61), f"{event_name}", font=winner_name_font, fill="#9A9BD5") #event name
 
 		for i in data[:3]:
@@ -413,19 +413,20 @@ class donation(commands.Cog):
 			index = data.index(i)
 			user_icon = await self.round_pfp(user)
 			template.paste(user_icon, winne_postions[index]['icon'], user_icon)
-			draw.text(winne_postions[index]['name'], f"👑 | {user.name}", font=winner_name_font, fill="#9A9BD5")
+			draw.text(winne_postions[index]['name'], f"👑 | {i['name']}", font=winner_name_font, fill="#9A9BD5")
 			draw.text(winne_postions[index]['donated'], f"⏣ {i['donated']:,}", font=winner_exp_font, fill="#A8A8C8")
 
 		return template
 	
 	@app_commands.command(name="celeb-lb", description="Celeb Leaderboard 📈")
+	@app_commands.checks.has_permissions(manage_guild=True)
 	async def _leaderboard(self, interaction: discord.Interaction):
 		await interaction.response.defer(thinking=True, ephemeral=False)
 
 		data = await self.bot.donorBank.find_many_by_custom( {"event" : { "$elemMatch": { "name": '8k',"bal":{"$gt":0} }}})
 		df = pd.DataFrame(data)
 		df['8k']  = df.event.apply(lambda x: x[-1]['bal'])
-		df = df.drop(['bal','grinder_record','event','name'], axis=1)
+		df = df.drop(['bal','grinder_record','event'], axis=1)
 		df = df.sort_values(by='8k',ascending=False)
 		top_3 = df.head(3)
 
@@ -433,9 +434,9 @@ class donation(commands.Cog):
 		leaderboard = []
 		for index in top_3.index:
 			user = interaction.guild.get_member(top_3['_id'][index])
-			leaderboard.append({'user': user, 'donated': top_3['8k'][index]}) 
+			leaderboard.append({'user': user,'name': top_3['name'][index],'donated': top_3['8k'][index]}) 
 		
-		image = await self.create_winner_card(interaction.guild, "8K Celeb's LB", leaderboard)
+		image = await self.create_winner_card(interaction.guild, "🎊 8K Celeb's LB 🎊", leaderboard)
 
 		with BytesIO() as image_binary:
 			image.save(image_binary, 'PNG')
