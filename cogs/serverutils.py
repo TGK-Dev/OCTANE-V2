@@ -419,8 +419,7 @@ class donation(commands.Cog):
 		return template
 	
 	@app_commands.command(name="celeb-lb", description="Celeb Leaderboard 📈")
-	@app_commands.has_permissions(manage_guild=True)
-	async def leaderboard(self, interaction: discord.Interaction):
+	async def _leaderboard(self, interaction: discord.Interaction):
 		await interaction.response.defer(thinking=True, ephemeral=False)
 
 		data = await self.bot.donorBank.find_many_by_custom( {"event" : { "$elemMatch": { "name": '8k',"bal":{"$gt":0} }}})
@@ -449,5 +448,5 @@ async def setup(bot):
 	await bot.add_cog(Payout(bot))
 	await bot.add_cog(
 		donation(bot),
-		guilds = [discord.Object(999551299286732871),discord.Object(785839283847954433)]
+		guilds = [discord.Object(785839283847954433)]
 	)
