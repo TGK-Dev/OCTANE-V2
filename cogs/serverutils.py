@@ -405,8 +405,8 @@ class donation(commands.Cog):
 			1: {'icon': (58, 265), 'name': (176, 273), 'donated': (176, 309)},
 			2: {'icon': (58, 380), 'name': (176, 392), 'donated': (176, 428)}}
 
-		draw.text((116, 28), f"Gambler's Kingdom", font=font, fill="#9A9BD5") #guild name 
-		draw.text((116, 61), f"{event_name}", font=winner_name_font, fill="#9A9BD5") #event name
+		draw.text((116, 28), f"{event_name}", font=winner_name_font, fill="#9A9BD5") #guild name 
+		draw.text((116, 61), f"GAMBLER's KINGDOM", font=winner_name_font, fill="#9A9BD5") #event name
 
 		for i in data[:3]:
 			user = i['user']
