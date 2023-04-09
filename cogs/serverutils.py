@@ -398,7 +398,7 @@ class donation(commands.Cog):
 		font = ImageFont.truetype('./assets/fonts/DejaVuSans.ttf', 24)
 		winner_name_font = ImageFont.truetype('./assets/fonts/Symbola.ttf', 28)
 		winner_exp_font = ImageFont.truetype('./assets/fonts/DejaVuSans.ttf', 20)
-		kaiji_font = ImageFont.truetype('./utils/assets/fonts/MSMINCHO.ttf', 28)
+		kaiji_font = ImageFont.truetype('./assets/fonts/MSMINCHO.ttf', 28)
 
 		winne_postions = {
 			#postions of the winners, pfp and name and donation
