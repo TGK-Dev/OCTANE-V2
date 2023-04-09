@@ -32,10 +32,14 @@ class Bot_base(commands.Bot):
         self.token = os.environ.get("TOKEN")
         self.secret = os.environ.get("SECRET")
         self.connection_url = os.environ.get("MONGO")
+        self.connection_url2 = os.environ.get("ACE_DB")
     
     async def setup_hook(self):
         self.mongo = AsyncIOMotorClient(self.connection_url)
         self.db = self.mongo["Database"]
+        
+        self.aceDb = AsyncIOMotorClient(self.connection_url2)
+        self.db2 = self.aceDb["TGK"]
         for file in os.listdir("./cogs"):
             if file.endswith(".py") and not file.startswith("_"):
                 await self.load_extension(f"cogs.{file[:-3]}")
