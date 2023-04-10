@@ -361,8 +361,8 @@ class Payout(commands.GroupCog, name="payout", description="Payout commands"):
 		await log_channel.send(embed=embed)
 
 utc = datetime.timezone.utc
-time = datetime.time(hour=8, minute=45, tzinfo=utc)
-time2 = datetime.time(hour=14, minute=25, tzinfo=utc)
+time = datetime.time(hour=9, minute=00, tzinfo=utc)
+time2 = datetime.time(hour=14, minute=40, tzinfo=utc)
 
 class donation(commands.Cog):
 	def __init__(self, bot):
@@ -390,7 +390,7 @@ class donation(commands.Cog):
 	async def celeb_lb2(self):
 		gk = self.bot.get_guild(785839283847954433)
 		leaderboard_channel = gk.get_channel(999557650364760144)
-		await leaderboard_channel.send(f'Sent from utc timezone')
+		await leaderboard_channel.send(f'Sent from ist timezone')
 		
 	@celeb_lb2.before_loop
 	async def before_celeb_lb2(self):
