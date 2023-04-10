@@ -642,7 +642,7 @@ class Perk_Config(commands.GroupCog, name="perk"):
     async def perk(self, interaction: Interaction, option: app_commands.Choice[str], perk: app_commands.Choice[str], member: discord.Member, duration: app_commands.Transform[int, TimeConverter]="permanent", friend_limit: app_commands.Range[int, 1, 10]=5):
         match option.value:
             case "add":
-                perk_data = await self.bot.perk.get_data(perk.value, member.id, interaction.guild.id)
+                perk_data = await self.bot.perk.get_data(perk.value, interaction.guild.id, member.id)
                 if perk_data: return await interaction.response.send_message(embed=discord.Embed(description=f"{member.mention} already has this perk.", color=interaction.client.default_color))
                 perk_data = await self.bot.perk.create(perk.value, member.id, interaction.guild.id, duration, friend_limit)
                 await interaction.response.send_message(embed=discord.Embed(description=f"Successfully added {perk.name} to {member.mention}", color=interaction.client.default_color))
@@ -655,23 +655,23 @@ class Perk_Config(commands.GroupCog, name="perk"):
                 if view.value:
                     match perk.value:
                         case "roles":
-                            user_data = await self.bot.perk.get_data(perk.value, member.id, interaction.guild.id)
+                            user_data = await self.bot.perk.get_data(perk.value, interaction.guild.id, member.id)
                             if not user_data: return await view.interaction.response.edit_message(embed=discord.Embed(description=f"{member.mention} does not have this perk.", color=interaction.client.default_color), view=None)
                             role = interaction.guild.get_role(user_data['role_id'])
                             if role is not None: await role.delete(reason=f"Perk Removed by {interaction.user}")
                             await self.bot.perk.delete("roles", user_data)
                         case "channel":
-                            user_data = await self.bot.perk.get_data(perk.value, member.id, interaction.guild.id)
+                            user_data = await self.bot.perk.get_data(perk.value, unteraction.guild.id, member.id)
                             if not user_data: return await view.interaction.response.edit_message(embed=discord.Embed(description=f"{member.mention} does not have this perk.", color=interaction.client.default_color), view=None)
                             channel = interaction.guild.get_channel(user_data['channel_id'])
                             if channel is not None: await channel.delete(reason=f"Perk Removed by {interaction.user}")
                             await self.bot.perk.delete("channel", user_data)
                         case "react":
-                            user_data = await self.bot.perk.get_data(perk.value, member.id, interaction.guild.id)
+                            user_data = await self.bot.perk.get_data(perk.value, interaction.guild.id, member.id)
                             if not user_data: return await view.interaction.response.edit_message(embed=discord.Embed(description=f"{member.mention} does not have this perk.", color=interaction.client.default_color), view=None)
                             await self.bot.perk.delete("react", user_data)
                         case "highlight":
-                            user_data = await self.bot.perk.get_data(perk.value, member.id, interaction.guild.id)
+                            user_data = await self.bot.perk.get_data(perk.value, interaction.guild.id, member.id)
                             if not user_data: return await view.interaction.response.edit_message(embed=discord.Embed(description=f"{member.mention} does not have this perk.", color=interaction.client.default_color), view=None)
                             await self.bot.perk.delete("highlight", user_data)
                     await view.interaction.response.edit_message(embed=discord.Embed(description=f"Successfully removed {perk.value} from {member.mention}", color=interaction.client.default_color), view=None)
