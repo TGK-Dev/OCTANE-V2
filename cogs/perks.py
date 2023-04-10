@@ -659,21 +659,21 @@ class Perk_Config(commands.GroupCog, name="perk"):
                             if not user_data: return await view.interaction.response.edit_message(embed=discord.Embed(description=f"{member.mention} does not have this perk.", color=interaction.client.default_color), view=None)
                             role = interaction.guild.get_role(user_data['role_id'])
                             if role is not None: await role.delete(reason=f"Perk Removed by {interaction.user}")
-                            await self.bot.perk.delete(user_data)
+                            await self.bot.perk.delete("roles", user_data)
                         case "channel":
                             user_data = await self.bot.perk.get_data(perk.value, member.id, interaction.guild.id)
                             if not user_data: return await view.interaction.response.edit_message(embed=discord.Embed(description=f"{member.mention} does not have this perk.", color=interaction.client.default_color), view=None)
                             channel = interaction.guild.get_channel(user_data['channel_id'])
                             if channel is not None: await channel.delete(reason=f"Perk Removed by {interaction.user}")
-                            await self.bot.perk.delete(user_data)
+                            await self.bot.perk.delete("channel", user_data)
                         case "react":
                             user_data = await self.bot.perk.get_data(perk.value, member.id, interaction.guild.id)
                             if not user_data: return await view.interaction.response.edit_message(embed=discord.Embed(description=f"{member.mention} does not have this perk.", color=interaction.client.default_color), view=None)
-                            await self.bot.perk.delete(user_data)
+                            await self.bot.perk.delete("react", user_data)
                         case "highlight":
                             user_data = await self.bot.perk.get_data(perk.value, member.id, interaction.guild.id)
                             if not user_data: return await view.interaction.response.edit_message(embed=discord.Embed(description=f"{member.mention} does not have this perk.", color=interaction.client.default_color), view=None)
-                            await self.bot.perk.delete(user_data)
+                            await self.bot.perk.delete("highlight", user_data)
                     await view.interaction.response.edit_message(embed=discord.Embed(description=f"Successfully removed {perk.value} from {member.mention}", color=interaction.client.default_color), view=None)
             case "list":
                         user_data = await self.bot.perk.get_data('all', interaction.guild.id, member.id)
