@@ -1,3 +1,4 @@
+import asyncio
 import discord
 import aiohttp
 import json
@@ -160,6 +161,7 @@ class Linked_Roles(commands.GroupCog, name="linkedroles"):
 					embed.set_footer(text="Thank you for supporting TGK")
 					try:
 						await user.send(embed=embed)
+						await asyncio.sleep(1)
 					except:
 						await log_channel.send(content = f'Unable to dm {user.mention}(ID: `{user.id}`)', embed=embed)
 		
