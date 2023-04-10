@@ -361,8 +361,8 @@ class Payout(commands.GroupCog, name="payout", description="Payout commands"):
 		await log_channel.send(embed=embed)
 
 utc = datetime.timezone.utc
-time = datetime.time(hour=8, minute=30, tzinfo=utc)
-time2 = datetime.time(hour=14, minute=10, tzinfo=utc)
+time = datetime.time(hour=8, minute=45, tzinfo=utc)
+time2 = datetime.time(hour=14, minute=25, tzinfo=utc)
 
 class donation(commands.Cog):
 	def __init__(self, bot):
