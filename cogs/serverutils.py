@@ -361,8 +361,7 @@ class Payout(commands.GroupCog, name="payout", description="Payout commands"):
 		await log_channel.send(embed=embed)
 
 utc = datetime.timezone.utc
-time = datetime.time(hour=9, minute=00, tzinfo=utc)
-time2 = datetime.time(hour=14, minute=40, tzinfo=utc)
+time = datetime.time(hour=4, minute=30, tzinfo=utc)
 
 class donation(commands.Cog):
 	def __init__(self, bot):
@@ -370,30 +369,40 @@ class donation(commands.Cog):
 		self.db2 = bot.aceDb["TGK"]
 		self.bot.donorBank = Document(self.db2, "donorBank")
 		self.celeb_lb = self.celeb_lb.start()
-		self.celeb_lb2 = self.celeb_lb2.start()
 
 	def cog_unload(self):
 		self.celeb_lb.cancel()
-		self.celeb_lb2.cancel()
 
 	@tasks.loop(time=time)
 	async def celeb_lb(self):
 		gk = self.bot.get_guild(785839283847954433)
-		leaderboard_channel = gk.get_channel(999557650364760144)
-		await leaderboard_channel.send(f'Sent from utc timezone')
+		leaderboard_channel = gk.get_channel(1094701054232375376)
+
+		if leaderboard_channel is None: 
+			return
+
+		data = await self.bot.donorBank.find_many_by_custom( {"event" : { "$elemMatch": { "name": '8k',"bal":{"$gt":0} }}})
+		df = pd.DataFrame(data)
+		df['8k']  = df.event.apply(lambda x: x[-1]['bal'])
+		df = df.drop(['bal','grinder_record','event'], axis=1)
+		df = df.sort_values(by='8k',ascending=False)
+		top_3 = df.head(3)
+
+		leaderboard = []
+		for index in top_3.index:
+			user = gk.get_member(top_3['_id'][index])
+			leaderboard.append({'user': user,'name': top_3['name'][index],'donated': top_3['8k'][index]}) 
+		
+		image = await self.create_winner_card(gk, "🎊 8K Celeb's LB 🎊", leaderboard)
+
+		with BytesIO() as image_binary:
+			image.save(image_binary, 'PNG')
+			image_binary.seek(0)
+			await leaderboard_channel.send(file=discord.File(fp=image_binary, filename=f'{gk.name}_celeb_lb_card.png'))
+			image_binary.close()
 		
 	@celeb_lb.before_loop
 	async def before_celeb_lb(self):
-		await self.bot.wait_until_ready()
-
-	@tasks.loop(time=time2)
-	async def celeb_lb2(self):
-		gk = self.bot.get_guild(785839283847954433)
-		leaderboard_channel = gk.get_channel(999557650364760144)
-		await leaderboard_channel.send(f'Sent from ist timezone')
-		
-	@celeb_lb2.before_loop
-	async def before_celeb_lb2(self):
 		await self.bot.wait_until_ready()
 	
 	async def round_pfp(self, pfp: Union[discord.Member, discord.Guild]):
@@ -460,7 +469,6 @@ class donation(commands.Cog):
 		df = df.sort_values(by='8k',ascending=False)
 		top_3 = df.head(3)
 
-		mok_data = [301657045248114690, 488614633670967307, self.bot.user.id]
 		leaderboard = []
 		for index in top_3.index:
 			user = interaction.guild.get_member(top_3['_id'][index])
