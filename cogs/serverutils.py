@@ -360,11 +360,41 @@ class Payout(commands.GroupCog, name="payout", description="Payout commands"):
 		if log_channel is None: return
 		await log_channel.send(embed=embed)
 
+utc = datetime.timezone.utc
+time = datetime.time(hour=8, minute=30, tzinfo=utc)
+time2 = datetime.time(hour=14, minute=10, tzinfo=utc)
+
 class donation(commands.Cog):
 	def __init__(self, bot):
 		self.bot = bot
 		self.db2 = bot.aceDb["TGK"]
 		self.bot.donorBank = Document(self.db2, "donorBank")
+		self.celeb_lb = self.celeb_lb.start()
+		self.celeb_lb2 = self.celeb_lb2.start()
+
+	def cog_unload(self):
+		self.celeb_lb.cancel()
+		self.celeb_lb2.cancel()
+
+	@tasks.loop(time=time)
+	async def celeb_lb(self):
+		gk = self.bot.get_guild(785839283847954433)
+		leaderboard_channel = gk.get_channel(999557650364760144)
+		await leaderboard_channel.send(f'Sent from utc timezone')
+		
+	@celeb_lb.before_loop
+	async def before_celeb_lb(self):
+		await self.bot.wait_until_ready()
+
+	@tasks.loop(time=time2)
+	async def celeb_lb2(self):
+		gk = self.bot.get_guild(785839283847954433)
+		leaderboard_channel = gk.get_channel(999557650364760144)
+		await leaderboard_channel.send(f'Sent from utc timezone')
+		
+	@celeb_lb2.before_loop
+	async def before_celeb_lb2(self):
+		await self.bot.wait_until_ready()
 	
 	async def round_pfp(self, pfp: Union[discord.Member, discord.Guild]):
 		if isinstance(pfp, discord.Member):
