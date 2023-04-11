@@ -131,7 +131,7 @@ class Linked_Roles(commands.GroupCog, name="linkedroles"):
 				# code to deassign role
 				new_medata = await self.bot.linked_roles.verify(user, 'beast', 0)
 				if isinstance(new_medata, bool):
-					await log_channel.send(embed=discord.Embed(description="{user.mention}(ID: `{user.id}`) have not connected their account yet, please ask them to connect and changes will be applied automatically", color=0x2b2d31))
+					await log_channel.send(embed=discord.Embed(description=f"{user.mention}(ID: `{user.id}`) have not connected their account yet, please ask them to connect and changes will be applied automatically", color=0x2b2d31))
 				new_medata = await new_medata.json()
 				if 'code' in new_medata.keys():
 					await log_channel.send(embed=discord.Embed(description=f"Failed to verify role connection for {user.mention}: \n```json\n{new_medata}\n```", color=0x2b2d31))           
@@ -144,7 +144,7 @@ class Linked_Roles(commands.GroupCog, name="linkedroles"):
 				# code to assign role
 				new_medata = await self.bot.linked_roles.verify(user, 'beast', 1)
 				if isinstance(new_medata, bool):
-					await log_channel.send(embed=discord.Embed(description="{user.mention}(ID: `{user.id}`) have not connected their account yet, please ask them to connect and changes will be applied automatically", color=0x2b2d31))
+					await log_channel.send(embed=discord.Embed(description=f"{user.mention}(ID: `{user.id}`) have not connected their account yet, please ask them to connect and changes will be applied automatically", color=0x2b2d31))
 				new_medata = await new_medata.json()
 				if 'code' in new_medata.keys():
 					await log_channel.send(embed=discord.Embed(description=f"Failed to verify role connection for {user.mention}: \n```json\n{new_medata}\n```", color=0x2b2d31))           
