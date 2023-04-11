@@ -126,50 +126,48 @@ class Linked_Roles(commands.GroupCog, name="linkedroles"):
 		df = df.sort_values(by='8k',ascending=False)
 		top_3 = df.head(3)
 
-		await log_channel.send('Logg: Refreshing beast role for top 3 donators')
 		for user in beast_role.members:
 			if user.id not in top_3['_id'].values:
 				# code to deassign role
 				new_medata = await self.bot.linked_roles.verify(user, 'beast', 0)
 				if isinstance(new_medata, bool):
 					await log_channel.send(embed=discord.Embed(description=f"{user.mention}(ID: `{user.id}`) have not connected their account yet, please ask them to connect and changes will be applied automatically", color=0x2b2d31))
+					continue
 				new_medata = await new_medata.json()
 				if 'code' in new_medata.keys():
 					await log_channel.send(embed=discord.Embed(description=f"Failed to verify role connection for {user.mention}: \n```json\n{new_medata}\n```", color=0x2b2d31))           
 				else:
 					await log_channel.send(embed=discord.Embed(description=f"Successfully removed {user.mention}'s {beast_role.mention}", color=0x2b2d31))
 		
-		await log_channel.send('Logg: Adding role to top 3 donators')
 		for index in top_3.index:
 			user = gk.get_member(top_3['_id'][index])
-			await log_channel.send(f'Logg: Adding to {user.name} (`{user.id}`)')
+			if user == None: continue
 			if beast_role not in user.roles:
 				# code to assign role
-				await log_channel.send(f'Logg: Veryfying {user.name} (`{user.id}`) connection')
 				new_medata = await self.bot.linked_roles.verify(user, 'beast', 1)
-				await log_channel.send(f'Logg: Connection for {user.name} (`{user.id}`) verified')
+				
+				embed = discord.Embed(
+					title="Congratulations Beast Donor!",
+					description=f"<a:tgk_redheart:1005361530122022922> Check Leaderboard [`here`]({(await leaderboard_channel.fetch_message(leaderboard_channel.last_message_id)).jump_url}) .\n"
+								f"<a:tgk_redheart:1005361530122022922> **Grab role:** `server settings > linked roles`.\n"
+								f"<a:tgk_redheart:1005361530122022922> Reach out to <#785901543349551104> for any queries.\n"
+								f"<a:tgk_redheart:1005361530122022922> [`Perks`](https://discord.com/channels/785839283847954433/1094511770514755584/1094524085289111593) are claimable after <#1051387593318740009> closes.\n", 
+					color=0x2b2d31,
+					timestamp=datetime.datetime.utcnow()
+				)
+				embed.set_footer(text="Thank you for supporting TGK")
+
 				if isinstance(new_medata, bool):
 					await log_channel.send(embed=discord.Embed(description=f"{user.mention}(ID: `{user.id}`) have not connected their account yet, please ask them to connect and changes will be applied automatically", color=0x2b2d31))
+					await user.send(embed=embed)
+					continue
 				new_medata = await new_medata.json()
 				await log_channel.send(embed=discord.Embed(description=f"Meta data for {user.mention}: \n```json\n{new_medata}\n```", color=0x2b2d31))
 				if 'code' in new_medata.keys():
 					await log_channel.send(embed=discord.Embed(description=f"Failed to verify role connection for {user.mention}: \n```json\n{new_medata}\n```", color=0x2b2d31))
 				else:
-					embed = discord.Embed(
-						title="Congratulations Beast Donor!",
-						description=#f"<a:tgk_redheart:1005361530122022922> Check Leaderboard [`here`]({(await leaderboard_channel.fetch_message(leaderboard_channel.last_message_id)).jump_url}) .\n"
-									f"<a:tgk_redheart:1005361530122022922> **Grab role:** `server settings > linked roles`.\n"
-									f"<a:tgk_redheart:1005361530122022922> Reach out to <#785901543349551104> for any queries.\n"
-									f"<a:tgk_redheart:1005361530122022922> [`Perks`](https://discord.com/channels/785839283847954433/1094511770514755584/1094524085289111593) are claimable after <#1051387593318740009> closes.\n", 
-						color=0x2b2d31,
-						timestamp=datetime.datetime.utcnow()
-					)
-					embed.set_footer(text="Thank you for supporting TGK")
-					await log_channel.send(f'Logg: Embed ready for {user.mention} (`{user.id}`)')
 					try:
-						await log_channel.send(f'Logg: trying to dm {user.mention} (`{user.id}`)')
 						await user.send(embed=embed)
-						await log_channel.send(f'Logg: dm sent to {user.mention} (`{user.id}`)')
 						await asyncio.sleep(1)
 					except:
 						await log_channel.send(content = f'Unable to dm {user.mention}(ID: `{user.id}`)', embed=embed)
@@ -244,7 +242,7 @@ class Linked_Roles(commands.GroupCog, name="linkedroles"):
 		await interaction.response.send_message(embed=discord.Embed(description="Verifying role connection...", color=0x2b2d31))
 		new_medata = await self.bot.linked_roles.verify(user, key.value, value.value)
 		if isinstance(new_medata, bool):
-			await interaction.edit_original_response(embed=discord.Embed(description="User have not connected their account yet, please ask them to connect their and changes will be applied automatically", color=0x2b2d31))
+			return await interaction.edit_original_response(embed=discord.Embed(description="User have not connected their account yet, please ask them to connect their and changes will be applied automatically", color=0x2b2d31))
 		new_medata = await new_medata.json()
 		if 'code' in new_medata.keys():
 			await interaction.edit_original_response(embed=discord.Embed(description=f"Failed to verify role connection: \n```json\n{new_medata}\n```", color=0x2b2d31))           
