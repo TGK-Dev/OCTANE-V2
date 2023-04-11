@@ -86,19 +86,21 @@ async def on_app_command_error(interaction: discord.Interaction, error):
     else:
         embed = discord.Embed(description=f"```\n{error}\n```", color=bot.default_color)
         try:
-            await interaction.response.send_message(embed=embed, ephemeral=True)
+            await interaction.response.send_message(embed=embed, ephemeral=False)
         except:
-            await interaction.followup.send(embed=embed, ephemeral=True)
+            await interaction.followup.send(embed=embed, ephemeral=False)
 
     tree_format = interaction.data.copy()
     tree_format = dict_to_tree(tree_format)
+    message = await interaction.original_response()
 
-    embed = discord.Embed(title="Error", color=bot.default_color)
-    embed.add_field(name="Interaction Data Tree", value=f"```yaml\n{tree_format}\n```", inline=False)
+    embed = discord.Embed(title="Error", color=bot.default_color, description="")
+    embed.description += f"**Interaction Data Tree**\n```yaml\n{tree_format}\n```"
     embed.add_field(name="Channel", value=f"{interaction.channel.mention} | {interaction.channel.id}", inline=False)
     embed.add_field(name="Guild", value=f"{interaction.guild.name} | {interaction.guild.id}", inline=False)
     embed.add_field(name="Author", value=f"{interaction.user.mention} | {interaction.user.id}", inline=False)
     embed.add_field(name="Command", value=f"{interaction.command.name if interaction.command else 'None'}", inline=False)
+    embed.add_field(name="Message", value=f"[Jump]({message.jump_url})", inline=False)
 
     error_traceback = ""
     #add whole trace back
