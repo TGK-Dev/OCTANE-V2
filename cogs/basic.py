@@ -136,7 +136,7 @@ class Basic(commands.Cog):
         if message.reference is not None:
             try:
                 reference_message = await message.channel.fetch_message(message.reference.message_id)
-            except discord.NotFound:
+            except:
                 return
             if reference_message.author.id in self.bot.current_afk.keys():
                 self.bot.dispatch("afk_ping", message, reference_message.author)
