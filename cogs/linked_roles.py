@@ -159,7 +159,6 @@ class Linked_Roles(commands.GroupCog, name="linkedroles"):
 
 				if isinstance(new_medata, bool):
 					await log_channel.send(embed=discord.Embed(description=f"{user.mention}(ID: `{user.id}`) have not connected their account yet, please ask them to connect and changes will be applied automatically", color=0x2b2d31))
-					await user.send(embed=embed)
 					continue
 				new_medata = await new_medata.json()
 				await log_channel.send(embed=discord.Embed(description=f"Meta data for {user.mention}: \n```json\n{new_medata}\n```", color=0x2b2d31))
