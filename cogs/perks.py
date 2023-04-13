@@ -661,7 +661,7 @@ class Perk_Config(commands.GroupCog, name="perk"):
                             if role is not None: await role.delete(reason=f"Perk Removed by {interaction.user}")
                             await self.bot.perk.delete("roles", user_data)
                         case "channel":
-                            user_data = await self.bot.perk.get_data(perk.value, unteraction.guild.id, member.id)
+                            user_data = await self.bot.perk.get_data(perk.value, interaction.guild.id, member.id)
                             if not user_data: return await view.interaction.response.edit_message(embed=discord.Embed(description=f"{member.mention} does not have this perk.", color=interaction.client.default_color), view=None)
                             channel = interaction.guild.get_channel(user_data['channel_id'])
                             if channel is not None: await channel.delete(reason=f"Perk Removed by {interaction.user}")
