@@ -458,7 +458,6 @@ class donation(commands.Cog):
 		return template
 	
 	@app_commands.command(name="celeb-lb", description="Celeb Leaderboard 📈")
-	@app_commands.checks.has_permissions(manage_guild=True)
 	async def _leaderboard(self, interaction: discord.Interaction):
 		await interaction.response.defer(thinking=True, ephemeral=False)
 
