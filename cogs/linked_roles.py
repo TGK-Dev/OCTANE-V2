@@ -240,8 +240,8 @@ class Linked_Roles(commands.GroupCog, name="linkedroles"):
 	async def verify(self, interaction: Interaction, user: discord.User, key: app_commands.Choice[str], value: app_commands.Choice[int]):
 		await interaction.response.send_message(embed=discord.Embed(description="Verifying role connection...", color=0x2b2d31))
 		new_medata = await self.bot.linked_roles.verify(user, key.value, value.value)
-		if isinstance(new_medata, bool):
-			return await interaction.edit_original_response(embed=discord.Embed(description="User have not connected their account yet, please ask them to connect their and changes will be applied automatically", color=0x2b2d31))
+		if new_medata not in [None,False,True]:
+			return await interaction.edit_original_response(embed=discord.Embed(description=f"User have not connected their account yet, please ask them to connect their and changes will be applied automatically\n```\npy\n{new_medata}\n```", color=0x2b2d31))
 		new_medata = await new_medata.json()
 		if 'code' in new_medata.keys():
 			await interaction.edit_original_response(embed=discord.Embed(description=f"Failed to verify role connection: \n```json\n{new_medata}\n```", color=0x2b2d31))           
