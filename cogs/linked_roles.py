@@ -164,12 +164,11 @@ class Linked_Roles(commands.GroupCog, name="linkedroles"):
 				await log_channel.send(embed=discord.Embed(description=f"Meta data for {user.mention}: \n```json\n{new_medata}\n```", color=0x2b2d31))
 				if 'code' in new_medata.keys():
 					await log_channel.send(embed=discord.Embed(description=f"Failed to verify role connection for {user.mention}: \n```json\n{new_medata}\n```", color=0x2b2d31))
-				else:
-					try:
-						await user.send(embed=embed)
-						await asyncio.sleep(1)
-					except:
-						await log_channel.send(content = f'Unable to dm {user.mention}(ID: `{user.id}`)', embed=embed)
+				try:
+					await user.send(embed=embed)
+					await asyncio.sleep(1)
+				except:
+					await log_channel.send(content = f'Unable to dm {user.mention}(ID: `{user.id}`)', embed=embed)
 		
 		
 		
