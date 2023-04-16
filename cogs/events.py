@@ -273,21 +273,21 @@ class Dank_Events(commands.GroupCog, name="dank"):
         item = await self.bot.dank_items.find(item)
         if not item: return await interaction.response.send_message("Item not found", ephemeral=True)
         embed = discord.Embed(title=item["_id"], color=interaction.client.default_color, description="")
-        embed.description += f"**Price:** `⏣ {item['price']}`\n"
+        embed.description += f"**Price:** `⏣ {item['price']:,}`\n"
         embed.description += f"**Last Updated:** <t:{round(item['last_updated'].timestamp())}:R> | `{item['last_updated'].strftime('%d/%m/%Y %H:%M:%S')}`\n"
-        embed.description += f"**Price History:**\n"
-        price_history = "```diff\n"
-        if len(item['last_prices']) == 0:
-            price_history += "No price history found\n"
-        else:
-            for price in item['last_prices']:
-                history = f"{price['day']} | ⏣ {price['old_price']} -> ⏣ {price['new_price']}"
-                if price['new_price'] > price['old_price']:
-                    price_history += f"+ {history}\n"
-                else:
-                    price_history += f"- {history}\n"
-        price_history += "\n```"
-        embed.description += price_history
+        # embed.description += f"**Price History:**\n"
+        # price_history = "```diff\n"
+        # if len(item['last_prices']) == 0:
+        #     price_history += "No price history found\n"
+        # else:
+        #     for index,price in enumerate(item['last_prices']):
+        #         history = f"⏣ {price['old_price']} -> ⏣ {price['new_price']}"
+        #         if price['new_price'] > price['old_price']:
+        #             price_history += f"+ {history}\n"
+        #         else:
+        #             price_history += f"- {history}\n"
+        # price_history += "\n```"
+        # embed.description += price_history
         await interaction.response.send_message(embed=embed)
     
     @item.command(name="update", description="Update an items price")
