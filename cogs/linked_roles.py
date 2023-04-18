@@ -129,46 +129,53 @@ class Linked_Roles(commands.GroupCog, name="linkedroles"):
 		for user in beast_role.members:
 			if user.id not in top_3['_id'].values:
 				# code to deassign role
-				new_medata = await self.bot.linked_roles.verify(user, 'beast', 0)
-				if isinstance(new_medata, bool):
-					await log_channel.send(embed=discord.Embed(description=f"{user.mention}(ID: `{user.id}`) have not connected their account yet, please ask them to connect and changes will be applied automatically", color=0x2b2d31))
-					continue
-				new_medata = await new_medata.json()
-				if 'code' in new_medata.keys():
-					await log_channel.send(embed=discord.Embed(description=f"Failed to verify role connection for {user.mention}: \n```json\n{new_medata}\n```", color=0x2b2d31))           
-				else:
-					await log_channel.send(embed=discord.Embed(description=f"Successfully removed {user.mention}'s {beast_role.mention}", color=0x2b2d31))
-		
+				# new_medata = await self.bot.linked_roles.verify(user, 'beast', 0)
+				# if isinstance(new_medata, bool):
+				# 	await log_channel.send(embed=discord.Embed(description=f"{user.mention}(ID: `{user.id}`) have not connected their account yet, please ask them to connect and changes will be applied automatically", color=0x2b2d31))
+				# 	continue
+				# new_medata = await new_medata.json()
+				# if 'code' in new_medata.keys():
+				# 	await log_channel.send(embed=discord.Embed(description=f"Failed to verify role connection for {user.mention}: \n```json\n{new_medata}\n```", color=0x2b2d31))           
+				# else:
+				# 	await log_channel.send(embed=discord.Embed(description=f"Successfully removed {user.mention}'s {beast_role.mention}", color=0x2b2d31))
+				await user.remove_roles(beast_role, reason="No longer a beast donor")
+
 		for index in top_3.index:
 			user = gk.get_member(top_3['_id'][index])
 			if user == None: continue
 			if beast_role not in user.roles:
 				# code to assign role
-				new_medata = await self.bot.linked_roles.verify(user, 'beast', 1)
+				# new_medata = await self.bot.linked_roles.verify(user, 'beast', 1)
 				
 				embed = discord.Embed(
 					title="Congratulations Beast Donor!",
 					description=f"<a:tgk_redheart:1005361530122022922> Check Leaderboard [`here`]({(await leaderboard_channel.fetch_message(leaderboard_channel.last_message_id)).jump_url}) .\n"
-								f"<a:tgk_redheart:1005361530122022922> **Grab role:** `server settings > linked roles`.\n"
+								# f"<a:tgk_redheart:1005361530122022922> **Grab role:** `server settings > linked roles`.\n"
 								f"<a:tgk_redheart:1005361530122022922> Reach out to <#785901543349551104> for any queries.\n"
+								f"<a:tgk_redheart:1005361530122022922> Will be a linked role once we resolve technical difficulties.\n"
 								f"<a:tgk_redheart:1005361530122022922> [`Perks`](https://discord.com/channels/785839283847954433/1094511770514755584/1094524085289111593) are claimable after <#1051387593318740009> closes.\n", 
 					color=0x2b2d31,
 					timestamp=datetime.datetime.utcnow()
 				)
 				embed.set_footer(text="Thank you for supporting TGK")
-
-				if isinstance(new_medata, bool):
-					await log_channel.send(embed=discord.Embed(description=f"{user.mention}(ID: `{user.id}`) have not connected their account yet, please ask them to connect and changes will be applied automatically", color=0x2b2d31))
-					continue
-				new_medata = await new_medata.json()
-				await log_channel.send(embed=discord.Embed(description=f"Meta data for {user.mention}: \n```json\n{new_medata}\n```", color=0x2b2d31))
-				if 'code' in new_medata.keys():
-					await log_channel.send(embed=discord.Embed(description=f"Failed to verify role connection for {user.mention}: \n```json\n{new_medata}\n```", color=0x2b2d31))
 				try:
-					await user.send(embed=embed)
+					await user.add_roles(beast_role, reason="Beast donor")
 					await asyncio.sleep(1)
 				except:
 					await log_channel.send(content = f'Unable to dm {user.mention}(ID: `{user.id}`)', embed=embed)
+
+				# if isinstance(new_medata, bool):
+				# 	await log_channel.send(embed=discord.Embed(description=f"{user.mention}(ID: `{user.id}`) have not connected their account yet, please ask them to connect and changes will be applied automatically", color=0x2b2d31))
+				# 	continue
+				# new_medata = await new_medata.json()
+				# await log_channel.send(embed=discord.Embed(description=f"Meta data for {user.mention}: \n```json\n{new_medata}\n```", color=0x2b2d31))
+				# if 'code' in new_medata.keys():
+				# 	await log_channel.send(embed=discord.Embed(description=f"Failed to verify role connection for {user.mention}: \n```json\n{new_medata}\n```", color=0x2b2d31))
+				# try:
+				# 	await user.send(embed=embed)
+				# 	await asyncio.sleep(1)
+				# except:
+				# 	await log_channel.send(content = f'Unable to dm {user.mention}(ID: `{user.id}`)', embed=embed)
 		
 		
 		
