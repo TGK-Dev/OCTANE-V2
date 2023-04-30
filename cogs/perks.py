@@ -493,7 +493,7 @@ class Perk_BackEND(commands.Cog):
                 user_data['last_react'] = datetime.datetime.utcnow()
                 await self.bot.perk.update_cache('react', mention.id, message.guild.id, user_data)
                 await self.bot.perk.update('react', user_data)
-            elif (datetime.datetime.utcnow() - user_data['last_react']).total_seconds() > 30:
+            elif (datetime.datetime.utcnow() - user_data['last_react']).total_seconds() > 1:
                 try:
                     await message.add_reaction(user_data['emoji'])
                 except:
