@@ -264,6 +264,7 @@ class Perks(commands.GroupCog, name="perks", description="manage your custom per
                     else:
                         user_data['friend_list'].append(traget.id)
                         await traget.add_roles(role, reason=f"Custom role perk for {interaction.user}")
+                        await self.bot.perk.update(perk.value, user_data)
                         await interaction.response.send_message(embed=discord.Embed(description=f"{traget.mention} has been added to your friend list.", color=0x2b2d31))
                 elif option.value == "remove":
                     if traget is None: return await interaction.response.send_message("You need to provide a member.", ephemeral=True)
