@@ -482,8 +482,125 @@ class donation(commands.Cog):
 			image_binary.close()
 
 
+class Seggestions_db:
+	def __init__(self, bot):
+		self.db = bot.mongo['Suggestion']
+		self.config = Document(self.db, 'config')
+		self.suggestions = Document(self.db, 'suggestions')
+
+
+class Suggestions(commands.Cog):
+	def __init__(self, bot):
+		self.bot = bot
+		self.suggestions = Seggestions_db(bot)
+
+	
+	@commands.command(name="suggest", description="Suggest something for the server")
+	async def _suggest(self, ctx: commands.Context, *, suggestion: str):
+		config = await self.suggestions.config.find(ctx.guild.id)
+		if config is None:
+			return await ctx.send("Suggestions are disabled in this server")
+		if config['channel'] is None:
+			return await ctx.send("Suggestions are disabled in this server")
+		channel = ctx.guild.get_channel(config['channel'])
+		if channel is None:
+			return await ctx.send("Suggestions are disabled in this server")
+		
+		embed = discord.Embed(title=f"Suggestion #{config['count']}", description=suggestion, color=discord.Color.blurple())
+		embed.set_author(name=ctx.author, icon_url=ctx.author.avatar.url if ctx.author.avatar else ctx.author.default_avatar)
+		embed.set_footer(text=f"ID: {ctx.author.id}")
+		msg = await channel.send(embed=embed)
+		await msg.add_reaction('<a:ace_upvote:1004650954118942812>')
+		await msg.add_reaction('<a:ace_downvote:1004651017427755058>')
+		data = {
+			'_id': config['count'],
+			'author': ctx.author.id,
+			'channel': channel.id,
+			'message': msg.id,
+			'suggestion': suggestion,
+			'status': 'pending'
+		}
+		await self.suggestions.suggestions.insert(data)
+		config['count'] += 1
+		await self.suggestions.config.update(config)
+
+		await ctx.send("Suggestion sent successfully")
+		await ctx.message.delete()
+		await msg.create_thread(name=f"Suggestion #{config['count']}", auto_archive_duration=1440)
+
+	@commands.command(name="deny", description="Deny a suggestion")
+	@commands.has_permissions(manage_guild=True)
+	async def _deny(self, ctx: commands.Context, id: int, *, reason: str):
+
+		data = await self.suggestions.suggestions.find(id)
+		if data is None:
+			return await ctx.send("Invalid suggestion id")
+		if data['status'] != 'pending':
+			return await ctx.send("This suggestion is already processed")
+		
+		channel = ctx.guild.get_channel(data['channel'])
+		if channel is None:
+			return await ctx.send("Invalid suggestion id")
+		try:
+			msg = await channel.fetch_message(data['message'])
+		except discord.NotFound:
+			return await ctx.send("Invalid suggestion id")
+		
+		embed = msg.embeds[0]
+		embed.color = discord.Color.red()
+		embed.title += " (Denied)"
+		embed.add_field(name=f"Reason by {ctx.author.name}", value=reason)
+
+		await msg.edit(embed=embed)
+		data['status'] = 'denied'
+		await self.suggestions.suggestions.update(data)
+		await ctx.send("Suggestion denied successfully")
+
+	@commands.command(name="accept", description="Accept a suggestion")
+	@commands.has_permissions(manage_guild=True)
+	async def _accept(self, ctx: commands.Context, id: int, *, reason: str):
+		
+		data = await self.suggestions.suggestions.find(id)
+		if data is None:
+			return await ctx.send("Invalid suggestion id")
+		if data['status'] != 'pending':
+			return await ctx.send("This suggestion is already processed")
+		
+		channel = ctx.guild.get_channel(data['channel'])
+		if channel is None:
+			return await ctx.send("Invalid suggestion id")
+		try:
+			msg = await channel.fetch_message(data['message'])
+		except discord.NotFound:
+			return await ctx.send("Invalid suggestion id")
+		
+		embed = msg.embeds[0]
+		embed.color = discord.Color.green()
+		embed.title += " (Accepted)"
+		embed.add_field(name=f"Reason by {ctx.author.name}", value=reason)
+
+		await msg.edit(embed=embed)
+		data['status'] = 'accepted'
+		await self.suggestions.suggestions.update(data)
+		await ctx.send("Suggestion accepted successfully")
+	
+	@commands.command(name="suggestion-channel", description="Set the suggestion channel", aliases=['suggestc'])
+	@commands.has_permissions(administrator=True)
+	async def _suggestion_channel(self, ctx: commands.Context, channel: discord.TextChannel):
+		config = await self.suggestions.config.find(ctx.guild.id)
+		if config is None:
+			config = {
+				'_id': ctx.guild.id,
+				'channel': None,
+				'count': 1
+			}
+		config['channel'] = channel.id
+		await self.suggestions.config.update(config)
+		await ctx.send(f"Suggestion channel set to {channel.mention}")
+
 async def setup(bot):
 	await bot.add_cog(Payout(bot))
+	await bot.add_cog(Suggestions(bot))
 	await bot.add_cog(
 		donation(bot),
 		guilds = [discord.Object(785839283847954433)]
