@@ -76,7 +76,7 @@ class Linked_Roles(commands.GroupCog, name="linkedroles"):
 		self.bot.linked_roles = Link_Backend(self.bot, Document, 'http://tgk-api.vercel.app/api/linked-role/auth')
 		self.refresh_task = self.refresh.start()
 		self.refresh_progress = False
-		self.refresh_beast_donor = self.refresh_beast_donor.start()
+		# self.refresh_beast_donor = self.refresh_beast_donor.start()
 	
 	def cog_unload(self):
 		self.refresh_task.cancel()

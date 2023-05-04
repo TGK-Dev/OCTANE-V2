@@ -368,7 +368,7 @@ class donation(commands.Cog):
 		self.bot = bot
 		self.db2 = bot.aceDb["TGK"]
 		self.bot.donorBank = Document(self.db2, "donorBank")
-		self.celeb_lb = self.celeb_lb.start()
+		# self.celeb_lb = self.celeb_lb.start()
 
 	def cog_unload(self):
 		self.celeb_lb.cancel()
