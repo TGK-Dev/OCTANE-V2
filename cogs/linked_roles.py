@@ -106,13 +106,14 @@ class Linked_Roles(commands.GroupCog, name="linkedroles"):
 					"platform_name": "The Gaming's Kingdom", "platform_username": user.name, "metadata": {}
 				}
 			}
+			data['metadata']['metadata'][link.value] = 1 if value == True else 0
 			await self.bot.auth.upsert(data)
 			embed = discord.Embed(description=f"User {user.mention} is not linked with OCTANE but metadata has been created for them", color=discord.Color.red())
 			return await interaction.response.send_message(embed=embed, ephemeral=True)
 		
 		metadata = await self.get_metadata(data["access_token"])
 		if metadata == "Error":
-			embed = discord.Embed(description=f"```py\n{await metadata.json()}\n```", color=discord.Color.red())
+			embed = discord.Embed(description=f"```py\n{await metadata}\n```", color=discord.Color.red())
 			return await interaction.response.send_message(embed=embed, ephemeral=True)
 		
 		if metadata != data['metadata']:
