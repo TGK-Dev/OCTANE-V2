@@ -252,8 +252,41 @@ class Basic(commands.Cog):
         else:
             await interaction.response.send_message(embed=embed)
 
+
+class Appeal_server(commands.GroupCog, name="appeal"):
+    def __init__(self, bot):
+        self.bot = bot
+    
+
+    @app_commands.command(name="reason", description="Get the reason for your ban")
+    @app_commands.describe(member="The member to get the reason for")
+    @app_commands.checks.has_permissions(ban_members=True)
+    async def reason(self, interaction: Interaction, member: discord.Member):
+        main_server = self.bot.get_guild(785839283847954433)
+        try:
+            ban = await main_server.fetch_ban(member)
+        except discord.NotFound:
+            return await interaction.response.send_message(f"{member.mention} is not banned", ephemeral=True)
+        
+        await interaction.response.send_message(f"The reason for {member.mention}'s ban is: {ban.reason if ban.reason else 'No reason provided'}", ephemeral=False)
+    
+    @app_commands.command(name="aproove", description="Aproove an appeal")
+    @app_commands.describe(member="The member to aproove", reason="The reason for aprooving the appeal")
+    @app_commands.checks.has_permissions(ban_members=True)
+    async def aproove(self, interaction: Interaction, member: discord.Member, reason: str):
+        main_server = self.bot.get_guild(785839283847954433)
+        try:
+            ban = await main_server.fetch_ban(member)
+        except discord.NotFound:
+            return await interaction.response.send_message(f"{member.mention} is not banned", ephemeral=True)
+        
+        await main_server.unban(member, reason=reason)
+
+        await interaction.response.send_message(f"{member.mention} You have been unbanned from {main_server.name} for the reason: {reason}\nYou can now rejoin the server at https://discord.gg/tgk", ephemeral=False)
+
 async def setup(bot):
     await bot.add_cog(Basic(bot), guilds=[discord.Object(785839283847954433)])
+    await bot.add_cog(Appeal_server(bot), guilds=[discord.Object(988761284956799038)])
 
 
 
