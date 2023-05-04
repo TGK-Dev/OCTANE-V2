@@ -373,37 +373,37 @@ class donation(commands.Cog):
 	def cog_unload(self):
 		self.celeb_lb.cancel()
 
-	@tasks.loop(time=time)
-	async def celeb_lb(self):
-		gk = self.bot.get_guild(785839283847954433)
-		leaderboard_channel = gk.get_channel(1094701054232375376)
+	# @tasks.loop(time=time)
+	# async def celeb_lb(self):
+	# 	gk = self.bot.get_guild(785839283847954433)
+	# 	leaderboard_channel = gk.get_channel(1094701054232375376)
 
-		if leaderboard_channel is None: 
-			return
+	# 	if leaderboard_channel is None: 
+	# 		return
 
-		data = await self.bot.donorBank.find_many_by_custom( {"event" : { "$elemMatch": { "name": '8k',"bal":{"$gt":0} }}})
-		df = pd.DataFrame(data)
-		df['8k']  = df.event.apply(lambda x: x[-1]['bal'])
-		df = df.drop(['bal','grinder_record','event'], axis=1)
-		df = df.sort_values(by='8k',ascending=False)
-		top_3 = df.head(3)
+	# 	data = await self.bot.donorBank.find_many_by_custom( {"event" : { "$elemMatch": { "name": '8k',"bal":{"$gt":0} }}})
+	# 	df = pd.DataFrame(data)
+	# 	df['8k']  = df.event.apply(lambda x: x[-1]['bal'])
+	# 	df = df.drop(['bal','grinder_record','event'], axis=1)
+	# 	df = df.sort_values(by='8k',ascending=False)
+	# 	top_3 = df.head(3)
 
-		leaderboard = []
-		for index in top_3.index:
-			user = gk.get_member(top_3['_id'][index])
-			leaderboard.append({'user': user,'name': top_3['name'][index],'donated': top_3['8k'][index]}) 
+	# 	leaderboard = []
+	# 	for index in top_3.index:
+	# 		user = gk.get_member(top_3['_id'][index])
+	# 		leaderboard.append({'user': user,'name': top_3['name'][index],'donated': top_3['8k'][index]}) 
 		
-		image = await self.create_winner_card(gk, "🎊 8K Celeb's LB 🎊", leaderboard)
+	# 	image = await self.create_winner_card(gk, "🎊 8K Celeb's LB 🎊", leaderboard)
 
-		with BytesIO() as image_binary:
-			image.save(image_binary, 'PNG')
-			image_binary.seek(0)
-			await leaderboard_channel.send(file=discord.File(fp=image_binary, filename=f'{gk.name}_celeb_lb_card.png'))
-			image_binary.close()
+	# 	with BytesIO() as image_binary:
+	# 		image.save(image_binary, 'PNG')
+	# 		image_binary.seek(0)
+	# 		await leaderboard_channel.send(file=discord.File(fp=image_binary, filename=f'{gk.name}_celeb_lb_card.png'))
+	# 		image_binary.close()
 		
-	@celeb_lb.before_loop
-	async def before_celeb_lb(self):
-		await self.bot.wait_until_ready()
+	# @celeb_lb.before_loop
+	# async def before_celeb_lb(self):
+	# 	await self.bot.wait_until_ready()
 	
 	async def round_pfp(self, pfp: Union[discord.Member, discord.Guild]):
 		if isinstance(pfp, discord.Member):
