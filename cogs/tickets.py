@@ -15,10 +15,6 @@ class Ticket_DB():
         self.config = Document(self.db, "Config")
         self.tickets = Document(self.db, "Tickets")
 
-panel_templates = {
-    "partnership": { 'key': 'partnership', 'support_roles': [], 'color': 'blurple', 'emoji':'<a:Partner:1000335814481416202>', 'ping_role': None, 'created_by': None, 'description': 'Used for heist partnership deals only!\nMake sure to checkout requirements first.' },
-}
-
 class Ticket(commands.GroupCog, name="ticket"):
     def __init__(self, bot):
         self.bot = bot
@@ -47,7 +43,11 @@ class Ticket(commands.GroupCog, name="ticket"):
                 elif panel['color'] == "green": style = discord.ButtonStyle.green
                 elif panel['color'] == "red": style = discord.ButtonStyle.red
                 emoji = panel['emoji'] if panel['emoji'] is not None else None
-                button = ticket_system.Panel_Button(label=panel['key'], style=style, emoji=emoji, custom_id=f"{ticket_config['_id']}-{panel['key']}")
+
+                if panel['key'].lower() == "partnership":
+                    button = ticket_system.ParterShip_Button(label=panel['key'], style=style, emoji=emoji, custom_id=f"{ticket_config['_id']}-{panel['key']}")
+                else:
+                    button = ticket_system.Panel_Button(label=panel['key'], style=style, emoji=emoji, custom_id=f"{ticket_config['_id']}-{panel['key']}")
                 panel_view.add_item(button)
                 self.bot.add_view(panel_view)
                 
@@ -57,19 +57,14 @@ class Ticket(commands.GroupCog, name="ticket"):
     @panel.command(name="create", description="Create a ticket panel")
     @app_commands.checks.has_permissions(manage_guild=True)
     @app_commands.describe(name="name")
-    @app_commands.describe(template="Select a template to use")
-    @app_commands.choices(template=[app_commands.Choice(name="Partnership", value="partnership")])
-    async def create_panel(self, interaction: discord.Interaction, name: str, template: app_commands.Choice[str]=None):
+    async def create_panel(self, interaction: discord.Interaction, name: str):
         ticket_config = await self.bot.tickets.config.find(interaction.guild.id)
         if ticket_config is None:
             ticket_config = {'_id': interaction.guild.id,'category': None,'channel': None,'logging': None,'panels': {},'last_panel_message_id': None, 'transcript': None}
             await self.bot.tickets.config.insert(ticket_config)
         if name in ticket_config['panels'].keys(): return await interaction.response.send_message("This panel already exists", ephemeral=True, delete_after=5)        
-        
-        if template is None:
-            panel_data = {'key': name, 'support_roles': [], "ping_role": None, 'created_by': interaction.user.id, 'description': None, 'emoji': None, 'color': None, 'modal': {'type': 'short', 'question': "Please describe your issue"}}
-        else:
-            panel_data = panel_templates[template.value]
+
+        panel_data = {'key': name, 'support_roles': [], "ping_role": None, 'created_by': interaction.user.id, 'description': None, 'emoji': None, 'color': None, 'modal': {'type': 'short', 'question': "Please describe your issue"}}
 
         embed = discord.Embed(title=f"Settings for Panel: {name}", color=0x2b2d31, description="")
         embed.description += f"**Support Roles:** {', '.join([f'<@&{role}>' for role in panel_data['support_roles']]) if len(panel_data['support_roles']) > 0 else '`None`'}\n"

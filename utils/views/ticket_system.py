@@ -5,7 +5,7 @@ import io
 from discord import Interaction, TextStyle
 from discord.ui import View, Button, button, TextInput, Item
 from .selects import Channel_select, Role_select, Color_Select
-from .modal import Question_Modal, Panel_Description_Modal, Panel_emoji, Panel_Question
+from .modal import Question_Modal, Panel_Description_Modal, Panel_emoji, Panel_Question, General_Modal
 from .buttons import Confirm
 from typing import Any
 class Config_Edit(View):
@@ -319,6 +319,90 @@ class Panel_Edit(View):
         embed = self.update_embed(self.data)
         await interaction.response.send_message("Panel reset!", ephemeral=True, delete_after=5)
         await interaction.message.edit(embed=embed ,view=self)
+
+class ParterShip_Button(Button):
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+    
+    async def callback(self, interaction: Interaction):
+        ticket_config = await interaction.client.tickets.config.find(interaction.guild.id)
+        if ticket_config is None: await interaction.response.send_message("No ticket config found", ephemeral=True, delete_after=5)
+        try:panel = ticket_config["panels"][self.label]
+        except KeyError: return await interaction.response.send_message("Invalid panel", ephemeral=True, delete_after=5)
+
+        if "partnership" not in panel["key"].lower(): return await interaction.response.send_message("Invalid panel", ephemeral=True, delete_after=5)
+
+        modal = General_Modal(title="Partnership form for "+interaction.guild.name, interaction=interaction)
+        modal.server_name = TextInput(label="Server name", max_length=100, placeholder="Enter your server name", style=TextStyle.short, required=True)
+        modal.partnership_type = TextInput(label="Partnership type", max_length=100, placeholder="Enter your partnership type [Normal, Heist, Event]", style=TextStyle.short, required=True)
+        modal.server_link = TextInput(label="Server link", max_length=100, placeholder="Enter your server valid invite link", style=TextStyle.short, required=True)
+
+        modal.add_item(modal.server_name)
+        modal.add_item(modal.partnership_type)
+        modal.add_item(modal.server_link)
+
+        await interaction.response.send_modal(modal)
+        await modal.wait()
+        if modal.value == False:
+            return
+        await modal.interaction.response.send_message("Please wait while we create your ticket", ephemeral=True)
+        invite = modal.server_link.value.split("/")[-1]
+        try: invite = await interaction.client.fetch_invite(invite)
+        except discord.errors.NotFound: 
+            embed = discord.Embed(description="Invite link you provided is invalid or expired", color=interaction.client.default_color)
+            return await modal.interaction.edit_original_response(embed=embed, content=None)
+
+        Content = f"**Server Name:** {invite.guild.name}\n**Server Aproximate Members:** {invite.approximate_member_count}\n**Server ID:** `{invite.guild.id}`\n**Server Invite:** {invite}"
+
+        over_write = {
+                interaction.guild.default_role: discord.PermissionOverwrite(view_channel=False),
+                interaction.guild.me: discord.PermissionOverwrite(view_channel=True, manage_channels=True, manage_roles=True, manage_messages=True, manage_webhooks=True, manage_permissions=True),
+                interaction.user: discord.PermissionOverwrite(view_channel=True, send_messages=True, read_message_history=True, attach_files=True, embed_links=True, add_reactions=True)
+        }
+
+        for i in panel['support_roles']:
+                role = interaction.guild.get_role(i)
+                if role is not None: over_write[role] = discord.PermissionOverwrite(view_channel=True, send_messages=True, read_message_history=True, attach_files=True, embed_links=True, add_reactions=True)
+        
+        ticket = await interaction.guild.create_text_channel(f"ticket-{interaction.user.display_name}", overwrites=over_write, category=interaction.guild.get_channel(ticket_config["category"]), topic=f"Ticket for {interaction.user.mention} ({interaction.user.id})")
+        ticket_embed = discord.Embed(title=f"Ticket for {interaction.user.display_name}", description="",color=0x2b2d31)
+        ticket_embed.description += "Kindly wait patiently. A staff member will assist you shortly.If you're looking to approach a specific staff member, ping the member once. Do not spam ping any member or role."
+        ticket_embed.set_footer(text=f"Developers: JAY#0138 & utki007#0007")
+        ticket_embed.set_thumbnail(url=interaction.guild.icon.url)
+        content = f"{interaction.user.mention}"
+        if panel['ping_role'] is not None: content += f"|<@&{panel['ping_role']}>"
+        await ticket.send(embed=ticket_embed, content=content, view=Ticket_controll())
+        msg = await ticket.send(content=Content)
+        await msg.pin()
+        
+        ticket_data = {
+            "_id": ticket.id,
+            "user": interaction.user.id,
+            "panel": panel["key"],
+            "added_roles": [],
+            "status": "open",
+            "added_users": [],
+            "log_message_id": None,
+        }
+        if ticket_config['logging'] is not None:
+            log_embed = discord.Embed(description="", color=0x2b2d31)
+            log_embed.description += f"**Ticket created by {interaction.user.mention}**\n"
+            log_embed.description += f"**Channel:** {ticket.mention}({ticket.name}|{ticket.id})\n"
+            log_embed.description += f"**Panel:** {panel['key']}\n"
+            log_embed.description += f"**Ticket ID:** {ticket.id}\n"
+            log_embed.set_footer(text=f"Developers: JAY#0138 & utki007#0007")
+            log_embed.set_thumbnail(url=interaction.guild.icon.url)
+            log_channel = interaction.guild.get_channel(ticket_config['logging'])
+            if log_channel is not None: 
+                message = await log_channel.send(embed=log_embed)
+                ticket_data["log_message_id"] = message.id
+        
+        await interaction.client.tickets.tickets.insert(ticket_data)
+        embed = discord.Embed(description=f"Ticket created at {ticket.mention}", color=interaction.client.default_color)
+        view = discord.ui.View()
+        view.add_item(discord.ui.Button(label="Jump to ticket", url=ticket.jump_url, style=discord.ButtonStyle.url))
+        await modal.interaction.edit_original_response(embed=embed, view=view)
+
 
 class Panel_Button(Button):
     def __init__(self, **kwargs):
