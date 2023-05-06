@@ -6,7 +6,7 @@ import datetime
 import psutil
 from typing import Literal
 from utils.db import Document
-from utils.paginator import Contex_Paginator
+from utils.paginator import Paginator
 from utils.views.member_view import Member_view
 
 class Basic(commands.Cog):
@@ -40,47 +40,72 @@ class Basic(commands.Cog):
         await interaction.edit_original_response(content=None, embed=embed)
     
     @app_commands.command(name="snipe", description="Snipe a deleted/edited message from the channel")
-    @app_commands.describe(type="The type of snipe", number="Which # of message do you want to snipe?", hidden="Whether the snipe should be hidden or not")
+    @app_commands.describe(type="The type of snipe", index="Which # of message do you want to snipe?", hidden="Whether the snipe should be hidden or not")
     @app_commands.checks.cooldown(1, 10, key=lambda i:(i.guild_id, i.user.id))
-    async def snipe(self, interaction: Interaction, type: Literal['delete', 'edit'], number: app_commands.Range[int, 1, 10]=1, hidden:bool=False):    
-        index = number
-        if type == "delete":
-            try:
-                message = self.bot.snipes[interaction.channel.id]
-                message.reverse()
-                message = message[index - 1]
-            except KeyError:
-                return await interaction.response.send_message("No snipes found in this channel", ephemeral=True)
-            except IndexError:
-                return await interaction.response.send_message("No snipes found on that index", ephemeral=True)
+    @app_commands.rename(index="number")
+    async def snipe(self, interaction: Interaction, type: Literal['delete', 'edit'], index: app_commands.Range[int, 1, 10]=None, hidden:bool=False):    
+        match type:
+            case "delete":
+                if index is None:
+                    messages = self.bot.snipes[interaction.channel.id]
+                    messages.reverse()
+                    pages = []
+                    for message in messages:
+                        author = interaction.guild.get_member(message['author'])
+                        embed = discord.Embed(description=message['content'], color=author.color)
+                        embed.set_author(name=author, icon_url=author.avatar.url if author.avatar else author.default_avatar)
+                        embed.set_footer(text=f"Sniped by {interaction.user}", icon_url=interaction.user.avatar.url if interaction.user.avatar else interaction.user.default_avatar)
+                        if message['attachments']:
+                            embed.set_image(url=message['attachments'])
+                        pages.append(embed)
+                    
+                    await Paginator(interaction, pages).start(embeded=True, quick_navigation=False, hidden=hidden)
+                else:
+                    try:
+                        message = self.bot.snipes[interaction.channel.id]
+                        message.reverse()
+                        message = message[index - 1]
+                    except:
+                        return await interaction.response.send_message("That message doesn't exist!", ephemeral=True)
+                    
+                    author = interaction.guild.get_member(message['author'])
+                    embed = discord.Embed(description=message['content'], color=author.color)
+                    embed.set_author(name=author, icon_url=author.avatar.url if author.avatar else author.default_avatar)
+                    embed.set_footer(text=f"Sniped by {interaction.user}", icon_url=interaction.user.avatar.url if interaction.user.avatar else interaction.user.default_avatar)
+                    if message['attachments']:
+                        embed.set_image(url=message['attachments'])
+                    embed.timestamp = datetime.datetime.now()
 
-            author = interaction.guild.get_member(message['author'])
-            embed = discord.Embed(description=message['content'], color=author.color)
-            embed.set_author(name=author, icon_url=author.avatar.url if author.avatar else author.default_avatar)
-            embed.set_footer(text=f"Sniped by {interaction.user}", icon_url=interaction.user.avatar.url if interaction.user.avatar else interaction.user.default_avatar)
-            embed.timestamp = datetime.datetime.now()
+                    await interaction.response.send_message(embed=embed, ephemeral=hidden)
 
-            await interaction.response.send_message(embed=embed, ephemeral=hidden)
+            case "edit":
+                if index is None:
+                    messages = self.bot.esnipes[interaction.channel.id]
+                    messages.reverse()
+                    pages = []
+                    for message in messages:
 
-        elif type == "edit":
-            try:
-                message = self.bot.esnipes[interaction.channel.id]
-                message.reverse()
-                message = message[index - 1]
-            except KeyError:
-                return await interaction.response.send_message("No snipes found in this channel", ephemeral=True)
-            except IndexError:
-                return await interaction.response.send_message("No snipes found on that index", ephemeral=True)
-            
-            author = interaction.guild.get_member(message['author'])
-            embed = discord.Embed(description=f"**Before:** {message['before']}\n**After:** {message['after']}", color=author.color)
-            embed.set_author(name=author, icon_url=author.avatar.url if author.avatar else author.default_avatar)
-            embed.set_footer(text=f"Sniped by {interaction.user}", icon_url=interaction.user.avatar.url if interaction.user.avatar else interaction.user.default_avatar)
-            embed.timestamp = datetime.datetime.now()
-
-            await interaction.response.send_message(embed=embed, ephemeral=hidden)
-        else:
-            return await interaction.response.send_message("Invalid type of snipe provided", ephemeral=True)
+                        author = interaction.guild.get_member(message['author'])
+                        embed = discord.Embed(description=f"**Before:**\n{message['before']}\n\n**After:**\n{message['after']}", color=author.color)
+                        embed.set_author(name=author, icon_url=author.avatar.url if author.avatar else author.default_avatar)
+                        embed.set_footer(text=f"Sniped by {interaction.user}", icon_url=interaction.user.avatar.url if interaction.user.avatar else interaction.user.default_avatar)
+                        
+                        pages.append(embed)
+                        await Paginator(interaction, pages).start(embeded=True, quick_navigation=False, hidden=hidden)
+                else:
+                    try:
+                        message = self.bot.esnipes[interaction.channel.id]
+                        message.reverse()
+                        message = message[index - 1]
+                    except:
+                        return await interaction.response.send_message("That message doesn't exist!", ephemeral=True)
+                    
+                    author = interaction.guild.get_member(message['author'])
+                    embed = discord.Embed(description=f"**Before:**\n{message['before']}\n\n**After:**\n{message['after']}", color=author.color)
+                    embed.set_author(name=author, icon_url=author.avatar.url if author.avatar else author.default_avatar)
+                    embed.set_footer(text=f"Sniped by {interaction.user}", icon_url=interaction.user.avatar.url if interaction.user.avatar else interaction.user.default_avatar)
+                    
+                    await interaction.response.send_message(embed=embed, ephemeral=hidden)
         
     @app_commands.command(name="enter", description="Tell everyone that you enter the chat")
     @app_commands.checks.cooldown(1, 10, key=lambda i:(i.guild_id, i.user.id))
@@ -101,11 +126,15 @@ class Basic(commands.Cog):
         
         if len(self.bot.snipes[message.channel.id]) == 10:
             self.bot.snipes[message.channel.id].pop(0)
-        
-        self.bot.snipes[message.channel.id].append({
+        data = {
             "author": message.author.id,
-            "content": message.content
-        })
+            "content": message.content,
+            "attachments": []
+        }
+        if len(message.attachments) > 0:
+            if message.attachments[0].url.endswith((".png", ".jpg", ".jpeg", ".gif", ".webp")):
+                data["attachments"] = message.attachments[0].url
+        self.bot.snipes[message.channel.id].append(data)
 
     @commands.Cog.listener()
     async def on_message_edit(self, before, after):
