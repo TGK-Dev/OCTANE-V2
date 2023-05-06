@@ -556,6 +556,12 @@ class Suggestions(commands.Cog):
 		await self.suggestions.suggestions.update(data)
 		await ctx.send("Suggestion denied successfully")
 
+		author = ctx.guild.get_member(data['author'])
+		try:
+			await author.send(f"Your suggestion `{data['suggestion']}` was denied by {ctx.author.name} for the following reason:\n{reason}")
+		except discord.Forbidden:
+			pass
+
 	@commands.command(name="accept", description="Accept a suggestion")
 	@commands.has_permissions(manage_guild=True)
 	async def _accept(self, ctx: commands.Context, id: int, *, reason: str):
@@ -583,6 +589,14 @@ class Suggestions(commands.Cog):
 		data['status'] = 'accepted'
 		await self.suggestions.suggestions.update(data)
 		await ctx.send("Suggestion accepted successfully")
+
+		author = ctx.guild.get_member(data['author'])
+		if author is None:
+			return
+		try:
+			await author.send(f"Your #{data['_id']} suggestion has been accepted by {ctx.author.name}.\nReason: {reason}")
+		except discord.Forbidden:
+			pass
 	
 	@commands.command(name="suggestion-channel", description="Set the suggestion channel", aliases=['suggestc'])
 	@commands.has_permissions(administrator=True)
