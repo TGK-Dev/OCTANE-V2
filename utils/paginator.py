@@ -68,20 +68,20 @@ class _view(View):
 		await interaction.response.edit_message(**kwargs)
 
 
-	@button(label="<<", style=ButtonStyle.gray, row=1)
+	@button(style=ButtonStyle.gray, row=1, emoji="<:tgk_backforward:1088526999288565833>")
 	async def first(self, interaction: Interaction, button: Button):
 		self.current_page = 0
 
 		await self.update_children(interaction)
 
-	@button(label="<", style=ButtonStyle.gray, row=1)
+	@button(style=ButtonStyle.gray, row=1, emoji="<:tgk_leftarrow:1088526575781285929>")
 	async def previous(self, interaction: Interaction, button: Button):
 		self.current_page -= 1
 
 		await self.update_children(interaction)
 
 	
-	@button(label="◼", style=ButtonStyle.gray, row=1,custom_id='stop')
+	@button(style=ButtonStyle.gray, row=1,custom_id='stop', emoji="<:tgk_stop:1088526796221317150>")
 	async def quit(self, interaction: Interaction, button: Button):
 		kwargs = {'content': self.pages[self.current_page]} if not (self.embeded) else {'embed': self.pages[self.current_page]}
 
@@ -93,13 +93,13 @@ class _view(View):
 		await interaction.response.edit_message(**kwargs)
 		self.stop()
 
-	@button(label=">", style=ButtonStyle.gray, row=1)
+	@button(style=ButtonStyle.gray, row=1, emoji="<:tgk_rightarrow:1088526714205917325>")
 	async def next(self, interaction: Interaction, button: Button):
 		self.current_page += 1
 
 		await self.update_children(interaction)
 
-	@button(label=">>", style=ButtonStyle.gray, row=1)
+	@button(style=ButtonStyle.gray, row=1, emoji="<:tgk_frontforward:1088526942422180003>")
 	async def last(self, interaction: Interaction, button: Button):
 		self.current_page = len(self.pages) - 1
 
@@ -112,7 +112,7 @@ class Paginator:
 		self.pages = pages
 
 
-	async def start(self, embeded: Optional[bool] = False, quick_navigation: bool = True) -> None:
+	async def start(self, embeded: Optional[bool] = False, quick_navigation: bool = True, hidden: bool = True) -> None:
 		"""Starts the paginator.
 
 		Parameters
@@ -170,6 +170,7 @@ class Paginator:
 
 		kwargs = {'content': self.pages[view.current_page]} if not (embeded) else {'embed': self.pages[view.current_page]}
 		kwargs['view'] = view
+		kwargs['hidden'] = hidden
 
 		await self.interaction.response.send_message(**kwargs)
 
