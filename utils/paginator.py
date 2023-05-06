@@ -170,7 +170,7 @@ class Paginator:
 
 		kwargs = {'content': self.pages[view.current_page]} if not (embeded) else {'embed': self.pages[view.current_page]}
 		kwargs['view'] = view
-		kwargs['hidden'] = hidden
+		kwargs['ephemeral'] = hidden
 
 		await self.interaction.response.send_message(**kwargs)
 
