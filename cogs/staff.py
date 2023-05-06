@@ -188,10 +188,11 @@ class Staff(commands.GroupCog, name="staff", description="Staff management comma
         base_role = interaction.guild.get_role(guild_config['base_role'])
         if post_role is None:
             return await interaction.edit_original_response(embed=discord.Embed(description=f"`{post['name'].capitalize()}` role does not exist", color=self.bot.default_color))
-        await user.remove_roles(post_role, base_role,reason=f"Revoked from {post['name'].capitalize()} by {interaction.user}")
+        await user.remove_roles(post_role,reason=f"Revoked from {post['name'].capitalize()} by {interaction.user}")
         del user_data['positions'][post['name']]
         if len(user_data['positions'].keys()) == 0:
             await self.bot.staff_db.staff_collection.delete(user.id)
+            await user.remove_roles(base_role, reason=f"Revoked from all positions by {interaction.user}")
             await interaction.edit_original_response(embed=discord.Embed(description=f"{user.mention} is now not appointed to any position", color=self.bot.default_color))
         else:
             await self.bot.staff_db.staff_collection.update(user.id, user_data)
@@ -246,6 +247,8 @@ class Staff(commands.GroupCog, name="staff", description="Staff management comma
             await user.remove_roles(post_role, reason=f"Leave from {post['name'].capitalize()} by {interaction.user}")
         
         leave_role = interaction.guild.get_role(guild_config['leave_role'])
+        base_role = interaction.guild.get_role(guild_config['base_role'])
+        if base_role is not None: await user.remove_roles(base_role, reason=f"Leave from {interaction.guild.name} by {interaction.user}")
         if leave_role is not None: await user.add_roles(leave_role, reason=f"Leave from {interaction.guild.name} by {interaction.user}")
         leave_channel = interaction.guild.get_channel(guild_config['leave_channel'])
         time = round((datetime.datetime.now() + datetime.timedelta(seconds=time)).timestamp())
@@ -280,6 +283,8 @@ class Staff(commands.GroupCog, name="staff", description="Staff management comma
             await user.add_roles(post_role, reason=f"Removed leave from {post['name'].capitalize()} by {interaction.user}")
 
         leave_role = interaction.guild.get_role(guild_config['leave_role'])
+        base_role = interaction.guild.get_role(guild_config['base_role'])
+        if base_role is not None: await user.add_roles(base_role, reason=f"Removed leave from {interaction.guild.name} by {interaction.user}")
         if leave_role is not None: await user.remove_roles(leave_role, reason=f"Removed leave from {interaction.guild.name} by {interaction.user}")
         leave_channel = interaction.guild.get_channel(guild_config['leave_channel'])
         try:
