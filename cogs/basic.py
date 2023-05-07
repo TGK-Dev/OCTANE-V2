@@ -86,7 +86,7 @@ class Basic(commands.Cog):
                     for message in messages:
 
                         author = interaction.guild.get_member(message['author'])
-                        embed = discord.Embed(description=f"**Before:**\n{message['before']}\n\n**After:**\n{message['after']}", color=author.color)
+                        embed = discord.Embed(description=f"**Before:**\n{message['before']}\n\n**After:**\n{message['after']}", color=author.color if author != None else self.bot.default_color)
                         embed.set_author(name=author, icon_url=author.avatar.url if author.avatar else author.default_avatar)
                         embed.set_footer(text=f"Sniped by {interaction.user}", icon_url=interaction.user.avatar.url if interaction.user.avatar else interaction.user.default_avatar)
                         
@@ -101,7 +101,7 @@ class Basic(commands.Cog):
                         return await interaction.response.send_message("That message doesn't exist!", ephemeral=True)
                     
                     author = interaction.guild.get_member(message['author'])
-                    embed = discord.Embed(description=f"**Before:**\n{message['before']}\n\n**After:**\n{message['after']}", color=author.color)
+                    embed = discord.Embed(description=f"**Before:**\n{message['before']}\n\n**After:**\n{message['after']}", color=author.color if author != None else self.bot.default_color)
                     embed.set_author(name=author, icon_url=author.avatar.url if author.avatar else author.default_avatar)
                     embed.set_footer(text=f"Sniped by {interaction.user}", icon_url=interaction.user.avatar.url if interaction.user.avatar else interaction.user.default_avatar)
                     
