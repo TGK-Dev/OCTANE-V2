@@ -243,6 +243,7 @@ class Payout(commands.GroupCog, name="payout", description="Payout commands"):
 					'event': event,
 					'winner': winner.id,
 					'prize': prize,
+					'item': item or None,
 					'claimed': False,
 					'set_by': interaction.user.id,
 					'winner_message_id': winner_message.id,
