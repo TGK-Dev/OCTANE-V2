@@ -169,13 +169,13 @@ class Payout(commands.GroupCog, name="payout", description="Payout commands"):
 		self.bot.dispatch("payout_queue", message.guild.me, f"{auto_payout[message.channel.id]['event']}", message, msg, winner, auto_payout[message.channel.id]['prize'])
 
 	@app_commands.command(name="set", description="configur the payout system settings")
-	@app_commands.describe(event="event name", message_id="winner message id", winners="winner of the event", amount="what did they win?", item="what item did they win?")#, claim_time="how long do they have to claim their prize?")
+	@app_commands.describe(event="event name", message_id="winner message id", winners="winner of the event", quantity='A constant number like "123" or a shorthand like "5m"', item="what item did they win?")#, claim_time="how long do they have to claim their prize?")
 	@app_commands.autocomplete(event=event_auto_complete)
 	@app_commands.autocomplete(item=item_autocomplete)
-	async def payout_set(self, interaction: discord.Interaction, event: str, message_id: str, winners: app_commands.Transform[discord.Member, MultipleMember], amount: str, item: str=None):#, claim_time: app_commands.Transform[int, TimeConverter]= None):
+	async def payout_set(self, interaction: discord.Interaction, event: str, message_id: str, winners: app_commands.Transform[discord.Member, MultipleMember], quantity: str, item: str=None):#, claim_time: app_commands.Transform[int, TimeConverter]= None):
 		
 		try:
-			prize = amount.lower()
+			prize = quantity.lower()
 			prize = prize.replace("k", "e3",100)
 			prize = prize.replace("m", "e6",100)
 			prize = prize.replace(" mil", "e6",100)
@@ -183,7 +183,7 @@ class Payout(commands.GroupCog, name="payout", description="Payout commands"):
 			prize = prize.replace("b", "e9",100)
 			prize = int(float(prize))
 		except:
-			return await interaction.response.send("Incorrect amount mentioned.", ephemeral=True)
+			return await interaction.response.send_message(content="Incorrect amount mentioned.", ephemeral=True)
 			
 		
 		data = await self.bot.payout_config.find(interaction.guild.id)
