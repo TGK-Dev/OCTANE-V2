@@ -1,3 +1,4 @@
+import traceback
 import discord
 from discord.ext import commands
 from discord import app_commands
@@ -80,7 +81,7 @@ async def on_message(message):
     await bot.process_commands(message)
 
 @tree.error
-async def on_app_command_error(interaction: discord.Interaction, error):
+async def on_app_command_error(interaction: discord.Interaction, error: Exception):
     if isinstance(error, app_commands.errors.CommandOnCooldown):
         return await interaction.response.send_message(f"Please wait {error.retry_after:.2f} seconds before trying again.", ephemeral=True, delete_after=10)
     else:
@@ -102,9 +103,7 @@ async def on_app_command_error(interaction: discord.Interaction, error):
     embed.add_field(name="Command", value=f"{interaction.command.name if interaction.command else 'None'}", inline=False)
     embed.add_field(name="Message", value=f"[Jump]({message.jump_url})", inline=False)
 
-    error_traceback = ""
-    #add whole trace back
-    error_traceback += f"{error}\n"
+    error_traceback = "".join(traceback.format_exception(type(error), error, error.__traceback__, 4))
     buffer = BytesIO(error_traceback.encode('utf-8'))
     file = discord.File(buffer, filename=f"Error-{interaction.command.name}.log")
     buffer.close()
