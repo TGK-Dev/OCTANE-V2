@@ -52,14 +52,14 @@ class Basic(commands.Cog):
                     pages = []
                     for message in messages:
                         author = interaction.guild.get_member(message['author'])
-                        embed = discord.Embed(description=message['content'], color=author.color)
+                        embed = discord.Embed(description=message['content'], color=author.color if author != None else self.bot.default_color)
                         embed.set_author(name=author, icon_url=author.avatar.url if author.avatar else author.default_avatar)
                         embed.set_footer(text=f"Sniped by {interaction.user}", icon_url=interaction.user.avatar.url if interaction.user.avatar else interaction.user.default_avatar)
                         if message['attachments']:
                             embed.set_image(url=message['attachments'])
                         pages.append(embed)
                     
-                    await Paginator(interaction, pages).start(embeded=True, quick_navigation=False, hidden=hidden)
+                    return await Paginator(interaction, pages).start(embeded=True, quick_navigation=False, hidden=hidden)
                 else:
                     try:
                         message = self.bot.snipes[interaction.channel.id]
@@ -69,14 +69,14 @@ class Basic(commands.Cog):
                         return await interaction.response.send_message("That message doesn't exist!", ephemeral=True)
                     
                     author = interaction.guild.get_member(message['author'])
-                    embed = discord.Embed(description=message['content'], color=author.color)
+                    embed = discord.Embed(description=message['content'], color=author.color if author != None else self.bot.default_color)
                     embed.set_author(name=author, icon_url=author.avatar.url if author.avatar else author.default_avatar)
                     embed.set_footer(text=f"Sniped by {interaction.user}", icon_url=interaction.user.avatar.url if interaction.user.avatar else interaction.user.default_avatar)
                     if message['attachments']:
                         embed.set_image(url=message['attachments'])
                     embed.timestamp = datetime.datetime.now()
 
-                    await interaction.response.send_message(embed=embed, ephemeral=hidden)
+                    return await interaction.response.send_message(embed=embed, ephemeral=hidden)
 
             case "edit":
                 if index is None:
@@ -91,7 +91,7 @@ class Basic(commands.Cog):
                         embed.set_footer(text=f"Sniped by {interaction.user}", icon_url=interaction.user.avatar.url if interaction.user.avatar else interaction.user.default_avatar)
                         
                         pages.append(embed)
-                        await Paginator(interaction, pages).start(embeded=True, quick_navigation=False, hidden=hidden)
+                        return await Paginator(interaction, pages).start(embeded=True, quick_navigation=False, hidden=hidden)
                 else:
                     try:
                         message = self.bot.esnipes[interaction.channel.id]
@@ -105,7 +105,7 @@ class Basic(commands.Cog):
                     embed.set_author(name=author, icon_url=author.avatar.url if author.avatar else author.default_avatar)
                     embed.set_footer(text=f"Sniped by {interaction.user}", icon_url=interaction.user.avatar.url if interaction.user.avatar else interaction.user.default_avatar)
                     
-                    await interaction.response.send_message(embed=embed, ephemeral=hidden)
+                    return await interaction.response.send_message(embed=embed, ephemeral=hidden)
         
     @app_commands.command(name="enter", description="Tell everyone that you enter the chat")
     @app_commands.checks.cooldown(1, 10, key=lambda i:(i.guild_id, i.user.id))
