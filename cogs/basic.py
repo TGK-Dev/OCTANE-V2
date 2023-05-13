@@ -47,8 +47,13 @@ class Basic(commands.Cog):
         match type:
             case "delete":
                 if index is None:
-                    messages = self.bot.snipes[interaction.channel.id]
-                    messages.reverse()
+                    try:
+                        messages = self.bot.snipes[interaction.channel.id]
+                        messages.reverse()
+                    except Exception as e:
+                        embed = discord.Embed(description=f"That message doesn't exist!", color=interaction.client.default_color)
+                        return await interaction.response.send_message(embed=embed, ephemeral=True)
+                    
                     pages = []
                     for message in messages:
                         author = interaction.guild.get_member(message['author'])
@@ -66,7 +71,8 @@ class Basic(commands.Cog):
                         message.reverse()
                         message = message[index - 1]
                     except:
-                        return await interaction.response.send_message("That message doesn't exist!", ephemeral=True)
+                        embed = discord.Embed(description=f"That message doesn't exist!", color=interaction.client.default_color)
+                        return await interaction.response.send_message(embed=embed, ephemeral=True)
                     
                     author = interaction.guild.get_member(message['author'])
                     embed = discord.Embed(description=message['content'], color=author.color if author != None else self.bot.default_color)
@@ -80,9 +86,14 @@ class Basic(commands.Cog):
 
             case "edit":
                 if index is None:
-                    messages = self.bot.esnipes[interaction.channel.id]
-                    messages.reverse()
-                    pages = []
+                    try:
+                        message = self.bot.esnipes[interaction.channel.id]
+                        message.reverse()
+                        message = message[index - 1]
+                    except:
+                        embed = discord.Embed(description=f"That message doesn't exist!", color=interaction.client.default_color)
+                        return await interaction.response.send_message(embed=embed, ephemeral=True)
+                    
                     for message in messages:
 
                         author = interaction.guild.get_member(message['author'])
@@ -98,7 +109,8 @@ class Basic(commands.Cog):
                         message.reverse()
                         message = message[index - 1]
                     except:
-                        return await interaction.response.send_message("That message doesn't exist!", ephemeral=True)
+                        embed = discord.Embed(description=f"That message doesn't exist!", color=interaction.client.default_color)
+                        return await interaction.response.send_message(embed=embed, ephemeral=True)
                     
                     author = interaction.guild.get_member(message['author'])
                     embed = discord.Embed(description=f"**Before:**\n{message['before']}\n\n**After:**\n{message['after']}", color=author.color if author != None else self.bot.default_color)
