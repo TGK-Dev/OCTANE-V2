@@ -10,6 +10,7 @@ from utils.transformer import TimeConverter
 from utils.transformer import MultipleMember
 import random
 import string
+import aiohttp
 
 class Staff_DB():
     def __init__(self, bot, Document):
@@ -26,7 +27,7 @@ class Staff_DB():
         return config
         
     async def create_config(self, guild: discord.Guild) -> dict:
-        data = {'_id': guild.id,'owners': [guild.owner.id],'positions': {},'last_edit': datetime.datetime.utcnow(),'max_positions': 10, 'staff_manager': [], 'leave_role': None, 'base_role': None, 'leave_channel': None}
+        data = {'_id': guild.id,'owners': [guild.owner.id],'positions': {},'last_edit': datetime.datetime.utcnow(),'max_positions': 10, 'staff_manager': [], 'leave_role': None, 'base_role': None, 'leave_channel': None, 'webhook_url': None}
         await self.config_collection.insert(data)
         return data
 
@@ -55,6 +56,12 @@ class Staff(commands.GroupCog, name="staff", description="Staff management comma
         ]
     
     leave = app_commands.Group(name="leave", description="set leave for a staff member")
+
+    @commands.Cog.listener()
+    async def on_staff_update(self, webhook: str, embed: discord.Embed):
+        async with aiohttp.ClientSession() as session:
+            webhook = discord.Webhook.from_url(webhook, session=session)
+            await webhook.send(embed=embed, username=f"{self.bot.user.display_name} Staff System Loggings", avatar_url=self.bot.user.avatar.url if self.bot.user.avatar else self.bot.user.default_avatar)
 
     @app_commands.command(name="appoint", description="Appoint a user to a position")
     @app_commands.describe(user="The user to appoint", position="The position to appoint them to")
@@ -115,6 +122,11 @@ class Staff(commands.GroupCog, name="staff", description="Staff management comma
             await user.send(embed=discord.Embed(description=f"You have been appointed to `{post['name'].capitalize()}` by `{interaction.user}`", color=self.bot.default_color))
         except:
             pass
+
+        if guild_config['webhook_url'] != None:
+            embed = discord.Embed(title="Staff Update | Appointed", description=f"**New Staff:** {user.mention}\n**Position:** {post['name'].capitalize()}\n**Appointed By:** {interaction.user.mention}\n", color=self.bot.default_color)
+            embed.timestamp = datetime.datetime.utcnow()
+            self.bot.dispatch("staff_update", guild_config['webhook_url'], embed)
     
     # @app_commands.command(name="post-fix", description="Sync current staff members with the database")
     # @app_commands.describe(post="The position to fix")
@@ -164,7 +176,7 @@ class Staff(commands.GroupCog, name="staff", description="Staff management comma
     @app_commands.command(name="revoke", description="Revoke a user's position")
     @app_commands.describe(user="The user to revoke", position="The position to revoke")
     @app_commands.autocomplete(position=staff_position_autocomplete)
-    async def revoke(self, interaction: discord.Interaction, user: discord.Member, position: str):
+    async def revoke(self, interaction: discord.Interaction, user: discord.Member, position: str, reason: str):
         guild_config = await self.bot.staff_db.get_config(interaction.guild)
         
         if interaction.user.id != interaction.guild.owner.id and interaction.user.id not in guild_config['owners'] and interaction.user.id not in guild_config['staff_manager']:
@@ -197,7 +209,12 @@ class Staff(commands.GroupCog, name="staff", description="Staff management comma
         else:
             await self.bot.staff_db.staff_collection.update(user.id, user_data)
             await interaction.edit_original_response(embed=discord.Embed(description=f"Successfully revoked {user.mention} from `{post['name'].capitalize()}`", color=self.bot.default_color))
-    
+
+        if guild_config['webhook_url'] is not None:
+            embed = discord.Embed(title="Staff Update | Revoked", color=self.bot.default_color, description=f"**Revoked Staff:** {user.mention}\n**Revoked By:** {interaction.user.mention}\n**Revoked From:** {post['name'].capitalize()}\n**Reason:** {reason}")
+            embed.timestamp = datetime.datetime.utcnow()
+            self.bot.dispatch("staff_update", guild_config['webhook_url'], embed)
+
     @app_commands.command(name="positions", description="View all positions")
     async def positions(self, interaction: discord.Interaction):
         guild_config = await self.bot.staff_db.get_config(interaction.guild)

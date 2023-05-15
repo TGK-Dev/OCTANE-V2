@@ -101,6 +101,7 @@ class serversettings(commands.Cog):
                 embed.description += f"**Base Role:**" + (f" <@&{guild_config['base_role']}>" if guild_config['base_role'] != None else "`None`") + "\n"
                 embed.description += f"**Leave Role:**" + (f" <@&{guild_config['leave_role']}>" if guild_config['leave_role'] != None else "`None`") + "\n"        
                 embed.description += f"**Leave Channel:**" + (f" <#{guild_config['leave_channel']}>" if guild_config['leave_channel'] != None else "`None`") + "\n"
+                embed.description += f"**Logging Channel:**" + (' **Webhook setup done**' if data['webhook_url'] != None else "`None`") + "\n"
                 embed.description += f"**Max Positions:** {guild_config['max_positions']}\n"
                 embed.description += f"**Last Edit:** <t:{round(guild_config['last_edit'].timestamp())}:R>\n"
                 embed.description += f"**Positions:** {', '.join([f'`{position.capitalize()}`' for position in guild_config['positions'].keys()])}\n"

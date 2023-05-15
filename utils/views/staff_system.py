@@ -20,6 +20,7 @@ class Staff_config_edit(View):
         embed.description += f"**Base Role:**" + (f" <@&{data['base_role']}>" if data['base_role'] != None else "`None`") + "\n"
         embed.description += f"**Leave Role:**" + (f" <@&{data['leave_role']}>" if data['leave_role'] != None else "`None`") + "\n"        
         embed.description += f"**Leave Channel:**" + (f" <#{data['leave_channel']}>" if data['leave_channel'] != None else "`None`") + "\n"
+        embed.description += f"**Logging Channel:**" + (' **Webhook setup done**' if data['webhook_url'] != None else "`None`") + "\n"
         embed.description += f"**Max Positions:** {data['max_positions']}\n"
         embed.description += f"**Last Edit:** " + f"<t:{round(data['last_edit'].timestamp())}:R>\n" if data['last_edit'] else "`None`\n"
         embed.description += f"**Positions:** {', '.join([f'`{position.capitalize()}`' for position in data['positions'].keys()])}\n"
@@ -123,9 +124,25 @@ class Staff_config_edit(View):
             await interaction.delete_original_response()
             await self.message.edit(embed=await self.update_embed(self.data, interaction))
             
-            
+    @button(label="Logging", style=discord.ButtonStyle.gray, emoji="<:tgk_logging:1107652646887759973>", row=2)
+    async def logging(self, interaction: Interaction, button: Button):
+        view = View()
+        view.value = False
+        view.select = Channel_select(placeholder="Please select the logging channel", min_values=1, max_values=1, channel_types=[discord.ChannelType.text])
+        view.add_item(view.select)
+        await interaction.response.send_message(view=view, ephemeral=True, delete_after=30)
+        await view.wait()
+        if view.value:
+            await view.select.interaction.response.defer()
+            channel = interaction.guild.get_channel(view.select.values[0].id)
+            webhook = await channel.create_webhook(name=f"{interaction.client.user.name} Logging")
+            self.data['webhook_url'] = webhook.url
+            self.data['last_edit'] = datetime.datetime.now()
+            await interaction.client.staff_db.config_collection.update(interaction.guild.id, self.data)
+            await interaction.delete_original_response()
+            await self.message.edit(embed=await self.update_embed(self.data, interaction))
     
-    @button(label="Positions", style=discord.ButtonStyle.gray, emoji="<:tgk_staff_post:1074264610015826030>", row=2)
+    @button(label="Positions", style=discord.ButtonStyle.gray, emoji="<:tgk_staff_post:1074264610015826030>", row=3)
     async def positions(self, interaction: Interaction, button: Button):
         view = View()
         view.value = False
