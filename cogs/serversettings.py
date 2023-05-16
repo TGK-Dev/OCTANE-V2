@@ -191,13 +191,14 @@ class serversettings(commands.Cog):
                     view.message = await interaction.original_response()
                     
             case "perks":
-                perk_data = await self.bot.perk.get_data('config', interaction.guild.id, interaction.user.id)
+                perk_data = await self.bot.Perk.get_data('config', interaction.guild.id, interaction.user.id)
                 if perk_data is None:
                     perk_data = {'_id': interaction.guild.id, 'custom_category': None, 'custom_roles_position': 0}
                     await self.bot.perk.config.insert(perk_data)
                 embed = discord.Embed(title=f"{interaction.guild.name} Perk Config", color=self.bot.default_color, description="")
                 embed.description += f"Custom Category: {interaction.guild.get_channel(perk_data['custom_category']).mention if perk_data['custom_category'] else '`None`'}\n"
                 embed.description += f"Custom Roles Position: `{perk_data['custom_roles_position']}`\n"
+                embed.description += f"Admin Roles: {', '.join([f'<@&{role}>' for role in perk_data['admin_roles']]) if len(perk_data['admin_roles']) > 0 else '`None`'}\n"
 
                 if option == "Show":
                     await interaction.response.send_message(embed=embed)
