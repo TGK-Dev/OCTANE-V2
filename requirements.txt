@@ -12,3 +12,4 @@ pandas
 chat_exporter
 unidecode
 stringcase
+colour==0.1.5
