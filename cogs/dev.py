@@ -20,7 +20,7 @@ class Dev(commands.Cog, name="dev", description="Dev commands"):
     def __init__(self, bot):
         self.bot = bot
         self.bot.misc = Document(self.bot.db, "misc")
-        self.check_beta_task = self.check_beta.start()
+        #self.check_beta_task = self.check_beta.start()
     
     def cog_unload(self):
         self.check_beta_task.cancel()
@@ -29,7 +29,7 @@ class Dev(commands.Cog, name="dev", description="Dev commands"):
     async def cog_auto_complete(self, interaction: discord.Interaction, current:str) -> List[app_commands.Choice[str]]:
         _list =  [
             app_commands.Choice(name=cog, value=cog)
-            for cog in interaction.client.extensions if current.lower() in cog.lower()
+            for cog in interaction.client.cogs.keys() if current.lower() in cog.lower()
         ]
         return _list[:24]
 
@@ -82,7 +82,7 @@ class Dev(commands.Cog, name="dev", description="Dev commands"):
     async def reload(self, interaction: discord.Interaction, cog: str):
         await interaction.response.send_message(embed=discord.Embed(description=f"Reloading cog `{cog}`...", color=interaction.client.default_color))
         try:
-            await self.bot.reload_extension(cog)
+            await self.bot.reload_extension(f"cogs.{cog}")
             await interaction.edit_original_response(embed=discord.Embed(description=f"Successfully reloaded cog `{cog}`", color=interaction.client.default_color))
         except Exception as e:
             await interaction.edit_original_response(content=None, embed=discord.Embed(description=f"Error while reloading cog `{cog}`: {e}", color=interaction.client.default_color))
@@ -102,6 +102,18 @@ class Dev(commands.Cog, name="dev", description="Dev commands"):
             await interaction.client.tree.sync(guild=guild)
             await interaction.edit_original_response(embed=discord.Embed(description=f"Successfully synced guild commands for `{guild.name}`", color=interaction.client.default_color))
     
+    @dev.command(name="restart", description="Restarts the bot")
+    @app_commands.check(is_dev)
+    async def restart(self, interaction: discord.Interaction):
+        view = Confirm(interaction.user, 30)
+        await interaction.response.send_message(embed=discord.Embed(description="Are you sure you want to restart the bot?", color=interaction.client.default_color), view=view)
+        view.message = await interaction.original_response()
+        await view.wait()
+        if view.value:
+            await view.interaction.response.edit_message(embed=discord.Embed(description="I should be back up in a few seconds", color=interaction.client.default_color), view=None)
+            self.bot.restart = True
+            await self.bot.close()
+
     @dev.command(name="get-logs", description="Gets the logs form console")
     @app_commands.check(is_dev)
     async def get_logs(self, interaction: discord.Interaction):

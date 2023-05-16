@@ -34,6 +34,7 @@ class Bot_base(commands.Bot):
         self.secret = os.environ.get("SECRET")
         self.connection_url = os.environ.get("MONGO")
         self.connection_url2 = os.environ.get("ACE_DB")
+        self.restart = False
     
     async def setup_hook(self):
         self.mongo = AsyncIOMotorClient(self.connection_url)
@@ -42,7 +43,7 @@ class Bot_base(commands.Bot):
         self.aceDb = AsyncIOMotorClient(self.connection_url2)
         self.db2 = self.aceDb["TGK"]
         for file in os.listdir("./cogs"):
-            if file.endswith(".py") and not file.startswith("_"):
+            if file.endswith(".py") and not file.startswith(("_")):
                 await self.load_extension(f"cogs.{file[:-3]}")
             
         if self.sync == True:
@@ -115,3 +116,5 @@ async def on_app_command_error(interaction: discord.Interaction, error: Exceptio
         await webhook.send(embed=embed, avatar_url=interaction.client.user.avatar.url if interaction.client.user.avatar else interaction.client.user.default_avatar, username=f"{interaction.client.user.name}'s Error Logger", file=file)
 
 asyncio.run(main())
+if bot.restart == True:
+    os.system("python main.py")
