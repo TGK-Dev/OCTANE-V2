@@ -89,7 +89,7 @@ class Linked_Roles(commands.GroupCog, name="linkedroles"):
 	@app_commands.command(name="update", description="Update your linked roles")
 	@app_commands.default_permissions(manage_guild=True)
 	@app_commands.describe(user="The user you want to update the roles for", link="The link you want to update", value="The value you want to set the link to")
-	@app_commands.choices(link=[app_commands.Choice(name="♡੭𓈒 Beast Donor ♡੭𓈒", value="top_dono"), app_commands.Choice(name="࿔･ﾟ♛ Weekly Topper ♛ ࿔･ﾟ", value="most_active")])
+	@app_commands.choices(link=[app_commands.Choice(name="♡੭𓈒 Beast Donor ♡੭𓈒", value="top_dono"), app_commands.Choice(name="࿔･ﾟ♛ Weekly Topper ♛ ࿔･ﾟ", value="most_active"), app_commands.Choice(name="Ex-Staff of TGK", value="ex_staff")])
 	async def _update(self, interaction: Interaction, user: discord.Member, link: app_commands.Choice[str], value: bool=False):
 		data = await self.bot.auth.find(user.id)
 		if data is None:
