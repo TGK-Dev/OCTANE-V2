@@ -114,11 +114,11 @@ class friends_manage(View):
     async def on_timeout(self):
         for child in self.children:child.disabled = True; await self.message.edit(view=self)
     
-    # async def on_error(self, interaction: Interaction, error: Exception, item: Item):
-    #     try:
-    #         await interaction.followup.send(embed=discord.Embed(description=f"```py\n{traceback.format_exception(traceback.format_exception(type(error), error, error.__traceback__, 4))}```", color=discord.Color.red()))
-    #     except discord.HTTPException:
-    #         raise error
+    async def on_error(self, interaction: Interaction, error: Exception, item: Item):
+        try:
+            await interaction.followup.send(embed=discord.Embed(description=f"```py\n{traceback.format_exception(type(error), error, error.__traceback__, 4)}\n```", color=discord.Color.red()), ephemeral=True)
+        except discord.HTTPException:
+            raise error
 
     @select(placeholder="Select a members to add/remove from your friends", max_values=10, cls=discord.ui.UserSelect, min_values=1)
     async def select(self, interaction: Interaction, select: Select):
@@ -137,7 +137,7 @@ class friends_manage(View):
                         except:
                             pass
                     else:
-                        if len(self.data['friend_limit']) >= self.data['friend_limit']:
+                        if len(self.data['friend_list']) >= self.data['friend_limit']:
                             break
                         add_friends.append(value)
                         await value.add_roles(role, reason=f"Added to {self.user.name}'s friends")
