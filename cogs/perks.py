@@ -578,7 +578,10 @@ class Perks(commands.GroupCog, name="perks", description="manage your custom per
             if perk == "channel":
                 channel = interaction.guild.get_channel(user_data['channel_id'])
                 if channel:
-                    await channel.delete()
+                    total_time = (datetime.datetime.utcnow() - datetime.datetime(channel.created_at.year, channel.created_at.month, channel.created_at.day)).total_seconds()
+                    duraction = user_data['duration'] - total_time
+                    user_data['duration'] = duraction
+                    await self.Perk.update(Perk_Type.channels, user_data)
                 try:
                     await interaction.user.send("Your has been deleted successfully")
                 except:
@@ -589,6 +592,10 @@ class Perks(commands.GroupCog, name="perks", description="manage your custom per
             elif perk == "role":
                 role = interaction.guild.get_role(user_data['role_id'])
                 if role:
+                    total_time = (datetime.datetime.utcnow() - datetime.datetime(role.created_at.year, role.created_at.month, role.created_at.day)).total_seconds()
+                    duraction = user_data['duration'] - total_time
+                    user_data['duration'] = duraction
+                    await self.Perk.update(Perk_Type.roles, user_data)
                     await role.delete()
                 try:
                     await interaction.user.send("Your has been deleted successfully")
@@ -754,6 +761,9 @@ class Perks(commands.GroupCog, name="perks", description="manage your custom per
                 word = str(word)
                 user_data = guild_data[user_data]
                 if word in user_data['triggers']:
+                    user = message.guild.get_member(user_data['user_id'])
+                    perm = message.channel.permissions_for(user)
+                    if not perm.view_channel or perm.view_channel == False: continue
                     self.bot.dispatch('highlight_found', message, user_data)
                     continue
     
