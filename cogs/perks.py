@@ -108,7 +108,7 @@ class Perks_DB:
                 return perk_data
             
             case Perk_Type.config | "config":
-                perk_config = {'_id': guild_id,'custom_category': None,'base_role_position': 0, 'admin_roles': []}
+                perk_config = {'_id': guild_id,'custom_category': None,'custom_roles_position': 0, 'admin_roles': []}
                 await self.config.insert(perk_config)
                 return perk_config
             
@@ -386,7 +386,7 @@ class Perks(commands.GroupCog, name="perks", description="manage your custom per
         color = discord.Color.from_rgb(*color)
 
         config = await self.Perk.get_data(Perk_Type.config, interaction.guild.id, interaction.user.id)
-        position_role = interaction.guild.get_role(config['base_role_position'])
+        position_role = interaction.guild.get_role(config['custom_roles_position'])
         position = position_role.position + 1
         role = await interaction.guild.create_role(name=name, color=color, display_icon=icon)
         await role.edit(position=position)
