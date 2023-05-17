@@ -510,7 +510,7 @@ class Perks(commands.GroupCog, name="perks", description="manage your custom per
             await role.edit(name=name)
         if color:
             if "#" not in color:
-                await interaction.edit_original_response(embed=discord.Embed(description="Invalid color make sure to add `#` before the hex code", color=interaction.client.default_color))
+                return await interaction.edit_original_response(embed=discord.Embed(description="Invalid color make sure to add `#` before the hex code", color=interaction.client.default_color))
             color = tuple(round(c*255) for c in Color(color).rgb)
             color = discord.Color.from_rgb(*color)
             await role.edit(color=color)
