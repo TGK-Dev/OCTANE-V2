@@ -783,8 +783,8 @@ class Perks(commands.GroupCog, name="perks", description="manage your custom per
             if bmessage.id == user_data['user_id']:
                 if not now > message.created_at + datetime.timedelta(minutes=5): return
                 pass
-            embed.description += f"**[{bmessage.created_at.strftime('%H:%M:%S')}] {bmessage.author.display_name}:** {bmessage.content}\n"        
-        embed.add_field(name="Trigger Message", value=f"[{message.created_at.strftime('%H:%M:%S')}] {message.author.display_name}: {message.content}", inline=False)
+            embed.description += f"**[<t:{round(bmessage.created_at.timestamp())}:T>] {bmessage.author.display_name}:** {bmessage.content}\n"        
+        embed.add_field(name="Trigger Message", value=f"[<t:{round(message.created_at.timestamp())}:T>] {message.author.display_name}: {message.content}", inline=False)
         embed.set_footer(text=f"Triggered by {user.display_name}#{user.discriminator}", icon_url=user.avatar.url if user.avatar else user.default_avatar)
         try:
             view = discord.ui.View()
