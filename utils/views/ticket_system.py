@@ -441,7 +441,8 @@ class Panel_Button(Button):
             ticket_embed.add_field(name=modal.answer.label, value=modal.answer.value, inline=False)
             content = f"{interaction.user.mention}"
             if panel['ping_role'] is not None: content += f"|<@&{panel['ping_role']}>"
-            await ticket.send(embed=ticket_embed, content=content, view=Ticket_controll())
+            msg = await ticket.send(embed=ticket_embed, content=content, view=Ticket_controll())
+            await msg.pin()
             ticket_data = {
                 "_id": ticket.id,
                 "user": interaction.user.id,
