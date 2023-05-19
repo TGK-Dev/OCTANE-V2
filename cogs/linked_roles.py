@@ -35,6 +35,7 @@ class Linked_Roles(commands.GroupCog, name="linkedroles"):
 
 		if response.status == 200:
 			return "Success"
+			
 		else:
 			print(await response.json())
 			return "Error"
@@ -103,7 +104,7 @@ class Linked_Roles(commands.GroupCog, name="linkedroles"):
 				"discriminator": user.discriminator,
 				"scope": None,
 				"metadata": {
-					"platform_name": "The Gaming's Kingdom", "platform_username": user.name, "metadata": {}
+					"platform_name": "The Gambler's Kingdom", "platform_username": user.name, "metadata": {}
 				}
 			}
 			data['metadata']['metadata'][link.value] = 1 if value == True else 0
