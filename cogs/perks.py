@@ -776,6 +776,9 @@ class Perks(commands.GroupCog, name="perks", description="manage your custom per
             if not now > user_data['last_trigger'] + datetime.timedelta(minutes=15):
                 return
         
+        if message.channel.id in user_data['ignore_channel'] or message.author.id in user_data['ignore_users']:
+            return
+
         before_messages = [message async for message in message.channel.history(limit=10, before=message)]
         embed = discord.Embed(title=f"Hightlight found in {message.guild.name}", color=self.bot.default_color, description="")
         before_messages.reverse()
