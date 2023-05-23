@@ -306,7 +306,7 @@ class Payout_Buttton(discord.ui.View):
             
             embed.add_field(name="Command", value=await self.get_command(winner, amount, item))
             embed.set_footer(text="This command will be deleted in 30 seconds")
-            payout_cmd = await payout_channel.send(embed=embed, delete_after=30)
+            payout_cmd = await payout_channel.send(embed=embed, delete_after=60)
 
             view = discord.ui.View()
             view.add_item(discord.ui.Button(label="Jump", style=discord.ButtonStyle.url, url=payout_cmd.jump_url))
