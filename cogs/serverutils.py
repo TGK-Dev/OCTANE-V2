@@ -17,8 +17,8 @@ from io import BytesIO
 from PIL import Image, ImageDraw, ImageFont, ImageChops
 
 auto_payout = {
-	1040975933772931172: {'prize': '10 MIl', 'event': 'Daily Rumble'},
-	1042408506181025842: {'prize': '25 Mil', 'event': 'Weekly Rumble'},
+	1040975933772931172: {'prize': '10m', 'event': 'Daily Rumble'},
+	1042408506181025842: {'prize': '25m', 'event': 'Weekly Rumble'},
 }	
 
 class Payout(commands.GroupCog, name="payout", description="Payout commands"):
@@ -62,7 +62,7 @@ class Payout(commands.GroupCog, name="payout", description="Payout commands"):
 		embed.description += f"**Event:** {event}\n"
 		embed.description += f"**Winner:** {winner.mention}\n"
 		if item:
-			embed.description += f"**Prize:** {prize} x {item}\n"
+			embed.description += f"**Prize:** {prize}x {item}\n"
 		else:
 			embed.description += f"**Prize:** {prize}\n"
 		embed.description += f"**Channel:** {channel.mention}\n"
@@ -234,7 +234,7 @@ class Payout(commands.GroupCog, name="payout", description="Payout commands"):
 		for winner in winners:
 			if isinstance(winner, discord.Member):
 				embed = await self.create_pending_embed(event, winner, prize, winner_message.channel, winner_message, claim_time_time, interaction.user, item)
-				msg = await queue_channel.send(f"<@{winner.id}> you have won {prize} in {event}! Please claim your prize within <t:{claim_time}:r> by clicking the button below.", embed=embed, view=Payout_claim())
+				msg = await queue_channel.send(f"<@{winner.id}> you have won {prize} in {event}!\n> Please claim your prize before <t:{claim_time_time}>.", embed=embed, view=Payout_claim())
 				if first_message is False:					
 					first_message = True
 					first_url = msg.jump_url
