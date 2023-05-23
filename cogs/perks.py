@@ -31,7 +31,7 @@ class Perks_DB:
         self.react = Document(self.db, "custom_react")
         self.highlight = Document(self.db, "custom_highlight")
         self.config = Document(self.db, "config")        
-        self.cach = {'react': {}, 'highlight': {}}
+        self.cach = {'react': {}, 'highlight': {}, 'channels': {}}
     
     async def get_data(self, type: Perk_Type | str, guild_id: int, user_id: int):
         match type:
@@ -93,7 +93,7 @@ class Perks_DB:
                 return perk_data
             
             case Perk_Type.channels | "channels":
-                perk_data = {'user_id': user_id,'guild_id': guild_id,'channel_id':None,'duration': duration,'created_at': None,'friend_limit': friend_limit,'friend_list': []}
+                perk_data = {'user_id': user_id,'guild_id': guild_id,'channel_id':None,'duration': duration,'created_at': None,'friend_limit': friend_limit,'friend_list': [], 'activity': {'messages': 0, 'rank': None, 'previous_rank': 0}}
                 await self.channel.insert(perk_data)
                 return perk_data
             
@@ -119,7 +119,19 @@ class Perks_DB:
         configs = await self.config.get_all()
         await self.setup_reacts(configs)
         await self.setup_highlights(configs)
+        await self.setup_channels(configs)
         return True
+    
+    async def setup_channels(self, configs: list[dict]):
+        channels = await self.channel.get_all()
+        self.cach['channels'] = {}
+        for data in configs:
+            if data['_id'] not in self.cach['channels'].keys():
+                self.cach['channels'][data['_id']] = {}
+        
+        for channel in channels:
+            if channel['channel_id'] == None: continue
+            self.cach['channels'][channel['guild_id']][channel['channel_id']] = channel
     
     async def setup_reacts(self, configs: list[dict]):
         reacts = await self.react.get_all()
@@ -160,6 +172,8 @@ class Perks(commands.GroupCog, name="perks", description="manage your custom per
         self.refresh_cache_task = self.refresh_cache.start()
         self.role_task_in_progress = False
         self.channel_task_in_progress = False
+        self.channel_rank_update = False
+        self.channel_rank_update_task = self.update_rank.start()
         self.Perk: Perks_DB = Perks_DB(bot, Document)
         self.bot.Perk = self.Perk
 
@@ -167,6 +181,7 @@ class Perks(commands.GroupCog, name="perks", description="manage your custom per
         self.role_perk_task.cancel()
         self.channel_perk_task.cancel()
         self.refresh_cache_task.cancel()
+        self.channel_rank_update_task.cancel()
     
     async def highlight_remove_auto(self, interaction: Interaction, current: str) -> List[app_commands.Choice[str]]:
         user_data = await self.Perk.get_data(Perk_Type.highlights, interaction.guild.id, interaction.user.id)
@@ -723,6 +738,40 @@ class Perks(commands.GroupCog, name="perks", description="manage your custom per
     async def refresh_cache(self):
         await self.Perk.create_cach()
     
+    @tasks.loop(hours=5)
+    async def update_rank(self):
+        if self.channel_rank_update: return
+        data = await self.Perk.channel.get_all()
+        data = sorted(data, key= lambda x: x['activity']['messages'], reverse=True)
+        mean_messages = sum([x['activity']['messages'] for x in data]) / len(data)
+        _str = ""
+        for channel in data:
+            channel['activity']['previous_rank'] = channel['activity']['rank'] if channel['activity']['rank']  != None else data.index(channel) + 1
+            channel['activity']['rank'] = data.index(channel) + 1
+            
+            if channel['activity']['previous_rank'] == channel['activity']['rank']: 
+                _str += (f"{data.index(channel) + 1}. <#{channel['channel_id']}> <:tgk_mid:1110528331742462002>\n")
+            if channel['activity']['previous_rank'] > channel['activity']['rank']:
+                _str += (f"{data.index(channel) + 1}. <#{channel['channel_id']}>") + (f"<:tgk_up:1110526823223275561> {channel['activity']['previous_rank'] - channel['activity']['rank']} \n")
+            if channel['activity']['previous_rank'] < channel['activity']['rank']:
+                _str += (f"{data.index(channel) + 1}. <#{channel['channel_id']}>") + (f"<:tgk_down:1110527094376644708> {channel['activity']['rank'] - channel['activity']['previous_rank']} \n")
+
+            #await self.Perk.channel.update(channel)
+
+        _str += f"\n\n**Average messages per channel:** {round(mean_messages, 2)}"
+
+        channel = self.bot.get_channel(999575712736497695)
+        embed = discord.Embed(title="Channel Leaderboard", description=_str, color=self.bot.default_color)
+        if channel is None: return
+        await channel.send(embed=embed)
+        self.channel_rank_update = False
+        self.update_rank.cancel()
+
+    @update_rank.before_loop
+    async def before_update_rank(self):
+        await self.bot.wait_until_ready()
+
+
     @check_perk_expire_channel.before_loop
     async def before_check_perk_expire_channel(self):
         await self.bot.wait_until_ready()
@@ -740,7 +789,6 @@ class Perks(commands.GroupCog, name="perks", description="manage your custom per
     async def on_ready(self):
         await self.Perk.create_cach()
 
-
     @commands.Cog.listener()
     async def on_message(self, message: discord.Message):
         if message.author.bot: return
@@ -748,7 +796,29 @@ class Perks(commands.GroupCog, name="perks", description="manage your custom per
             self.bot.dispatch('auto_react', message)
         if message.content is not None or message.content != "":
             self.bot.dispatch('auto_highlight', message)
-    
+        if message.guild.id in self.Perk.cach['channels'].keys():
+            if message.channel.id in self.Perk.cach['channels'][message.guild.id].keys():
+                self.bot.dispatch('check_activity', message, self.Perk.cach['channels'][message.guild.id][message.channel.id])
+
+    @commands.Cog.listener()
+    async def on_check_activity(self, message: discord.Message, data):
+        channel_data = await self.Perk.channel.find({'channel_id': message.channel.id})
+        if channel_data is None: return
+        if message.author.id != channel_data['user_id']: return
+        if data['activity']['cooldown'] == None:
+            data['activity']['messages'] += 1
+            data['activity']['cooldown'] = datetime.datetime.utcnow()
+            await self.Perk.channel.update(data)
+            self.Perk.cach['channels'][message.guild.id][message.channel.id] = data
+            return
+        now = datetime.datetime.utcnow()
+        if now > data['activity']['cooldown'] + datetime.timedelta(seconds=8):
+            data['activity']['messages'] += 1
+            data['activity']['cooldown'] = datetime.datetime.utcnow()
+            await self.Perk.channel.update(data)
+            self.Perk.cach['channels'][message.guild.id][message.channel.id] = data
+            return
+        
     @commands.Cog.listener()
     async def on_auto_highlight(self, message: discord.Message):
         if message.guild.id not in self.Perk.cach['highlight'].keys(): return
