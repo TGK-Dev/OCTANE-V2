@@ -19,6 +19,7 @@ from PIL import Image, ImageDraw, ImageFont, ImageChops
 auto_payout = {
 	1040975933772931172: {'prize': '10m', 'event': 'Daily Rumble'},
 	1042408506181025842: {'prize': '25m', 'event': 'Weekly Rumble'},
+	1110476759062827008: {'prize': '6.9m', 'event': '69-Players Rumble'},
 }	
 
 class Payout(commands.GroupCog, name="payout", description="Payout commands"):
