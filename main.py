@@ -28,6 +28,7 @@ class Bot_base(commands.Bot):
     def __init__(self, application_id, sync:bool=False):
         super().__init__(intents=discord.Intents.all(), command_prefix=commands.when_mentioned_or("-"),description="A Bot for server management", case_insensitive=False, owner_ids=[488614633670967307, 301657045248114690], activity=discord.Activity(type=discord.ActivityType.playing, name="Startup"),status=discord.Status.idle, help_command=None, application_id=application_id)
         self.default_color = 0x2b2d31
+        self.error_color = 0xFF0000 
         self.start_time = datetime.datetime.now()    
         self.sync = sync
         self.token = os.environ.get("TOKEN")
