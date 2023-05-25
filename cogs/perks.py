@@ -768,7 +768,7 @@ class Perks(commands.GroupCog, name="perks", description="manage your custom per
         if channel is None: return
         await channel.send(embed=embed)
         self.channel_rank_update = False
-        self.update_rank.cancel()
+
 
     @update_rank.before_loop
     async def before_update_rank(self):
