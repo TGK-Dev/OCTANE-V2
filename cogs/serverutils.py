@@ -151,7 +151,7 @@ class Payout(commands.GroupCog, name="payout", description="Payout commands"):
 		claim_time = data['default_claim_time'] if data['default_claim_time'] is not None else 86400
 		claim_timestamp = f"<t:{round((datetime.datetime.now() + datetime.timedelta(seconds=claim_time)).timestamp())}:R>"
 
-		embed = await self.create_pending_embed(event, winner, prize, message.channel, message.jump_url, claim_timestamp, message.guild.me, None)
+		embed = await self.create_pending_embed(event, winner, prize, message.channel, message, claim_timestamp, message.guild.me, None)
 
 		pendin_channel = message.guild.get_channel(data['pending_channel'])
 		if pendin_channel is None:return
