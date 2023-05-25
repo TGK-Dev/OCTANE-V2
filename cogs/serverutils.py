@@ -65,7 +65,7 @@ class Payout(commands.GroupCog, name="payout", description="Payout commands"):
 		if item:
 			embed.description += f"**Prize:** {prize}x {item}\n"
 		else:
-			embed.description += f"**Prize:** {prize}\n"
+			embed.description += f"**Prize:** ⏣ {prize}\n"
 		embed.description += f"**Channel:** {channel.mention}\n"
 		embed.description += f"**Message:** [Click Here]({message.jump_url})\n"
 		embed.description += f"**Claim Time:** <t:{claim_time}:R> (<t:{claim_time}:T>)\n"
@@ -151,15 +151,7 @@ class Payout(commands.GroupCog, name="payout", description="Payout commands"):
 		claim_time = data['default_claim_time'] if data['default_claim_time'] is not None else 86400
 		claim_timestamp = f"<t:{round((datetime.datetime.now() + datetime.timedelta(seconds=claim_time)).timestamp())}:R>"
 
-		embed = discord.Embed(title="Payout Queued", color=self.bot.default_color, timestamp=datetime.datetime.now(), description="")
-		embed.description += f"**Event:** {event}\n"
-		embed.description += f"**Winner:** {winner.mention} ({winner.name}#{winner.discriminator})\n"
-		embed.description += f"**Prize:** {prize}\n"
-		embed.description += f"**Channel:** {message.channel.mention}\n"
-		embed.description += f"**Message:** [Jump to Message]({message.jump_url})\n"
-		embed.description += f"**Claim Time:** {claim_timestamp}\n"
-		embed.description += f"**Set By:** AutoMatic Payout Queue System\n"
-		embed.description += f"**Status:** `Pending`\n"
+		embed = await self.create_pending_embed(event, winner, prize, message.channel, message.jump_url, claim_timestamp, message.guild.me, None)
 
 		pendin_channel = message.guild.get_channel(data['pending_channel'])
 		if pendin_channel is None:return
@@ -223,7 +215,7 @@ class Payout(commands.GroupCog, name="payout", description="Payout commands"):
 			winner_message = await interaction.channel.fetch_message(message_id)
 			await winner_message.add_reaction(loading_emoji)
 		except:
-			await interaction.edit_original_response(embed=discord.Embed(description=f"Could not find the winner message. Please make sure you have the correct message id and same channel as the winner message.", color=self.bot.error_color))
+			return await interaction.edit_original_response(embed=discord.Embed(description=f"Could not find the winner message. Please make sure you have the correct message id and same channel as the winner message.", color=self.bot.error_color))
 		
 		queue_channel = interaction.guild.get_channel(data['pending_channel'])
 		if queue_channel is None:
