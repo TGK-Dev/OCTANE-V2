@@ -745,18 +745,21 @@ class Perks(commands.GroupCog, name="perks", description="manage your custom per
         data = sorted(data, key= lambda x: x['activity']['messages'], reverse=True)
         mean_messages = sum([x['activity']['messages'] for x in data]) / len(data)
         _str = ""
+
         for channel in data:
-            channel['activity']['previous_rank'] = channel['activity']['rank'] if channel['activity']['rank']  != None else data.index(channel) + 1
+            channel['activity']['previous_rank'] = channel['activity']['rank']
             channel['activity']['rank'] = data.index(channel) + 1
             
-            if channel['activity']['previous_rank'] == channel['activity']['rank']: 
+            if channel['activity']['previous_rank'] == None:
+                _str += (f"{data.index(channel) + 1}. <#{channel['channel_id']}> <:tgk_new:1110527782020794880>\n")
+            if channel['activity']['previous_rank'] == channel['activity']['rank']:
                 _str += (f"{data.index(channel) + 1}. <#{channel['channel_id']}> <:tgk_mid:1110528331742462002>\n")
             if channel['activity']['previous_rank'] > channel['activity']['rank']:
                 _str += (f"{data.index(channel) + 1}. <#{channel['channel_id']}>") + (f"<:tgk_up:1110526823223275561> {channel['activity']['previous_rank'] - channel['activity']['rank']} \n")
             if channel['activity']['previous_rank'] < channel['activity']['rank']:
                 _str += (f"{data.index(channel) + 1}. <#{channel['channel_id']}>") + (f"<:tgk_down:1110527094376644708> {channel['activity']['rank'] - channel['activity']['previous_rank']} \n")
 
-            #await self.Perk.channel.update(channel)
+            await self.Perk.update(Perk_Type.channels, channel)
 
         _str += f"\n\n**Average messages per channel:** {round(mean_messages, 2)}"
 
