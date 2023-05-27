@@ -69,7 +69,7 @@ class Payout(commands.GroupCog, name="payout", description="Payout commands"):
 			embed.description += f"**Prize:** ⏣ {prize}\n"
 		embed.description += f"**Channel:** {channel.mention}\n"
 		embed.description += f"**Message:** [Click Here]({message.jump_url})\n"
-		embed.description += f"**Claim Time:** <t:{claim_time}:R> (<t:{claim_time}:T>)\n"
+		embed.description += f"**Claim Time:** {claim_time}\n"
 		embed.description += f"**Set By:** {host.mention}\n"
 		embed.description += f"**Status:** `Pending`"
 		embed.set_footer(text=f"ID: {message.id}")
