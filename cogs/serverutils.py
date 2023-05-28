@@ -236,7 +236,7 @@ class Payout(commands.GroupCog, name="payout", description="Payout commands"):
 			await view.interaction.response.edit_message(view=None, embed=loading_embed)
 		
 		for winner in winners:
-			embed = await self.create_pending_embed(event, winner, quantity, claim_channel, event_message, claim_time_timestamp, interaction.user, item)
+			embed = await self.create_pending_embed(event, winner, quantity, event_message.channel, event_message, claim_time_timestamp, interaction.user, item)
 			msg = await claim_channel.send(embed=embed, view=Payout_claim(), content=f"{winner.mention} Your prize has been queued for payout. Please claim it within <t:{claim_time_timestamp}:R> or it will rerolled.")
 
 			queue_data = {
