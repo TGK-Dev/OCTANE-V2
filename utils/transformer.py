@@ -1,4 +1,5 @@
 import discord
+from enum import Enum
 from discord import app_commands, Interaction
 from discord.ext import commands
 import re
@@ -24,6 +25,23 @@ class TimeConverter(app_commands.Transformer):
                 raise ValueError
         return time
 
+class DMCConverter(app_commands.Transformer):
+    async def transform(self, interaction: Interaction, value: str):
+
+        value = value.lower()
+        value = value.replace("k", "e3").replace("m", "e6").replace(" mil", "e6").replace("mil", "e6").replace("b", "e9")
+        if len(value) == 1:
+            return int(value)
+        value = value.split("e")
+
+        if len(value) > 2: raise Exception(f"Invalid number format try using 1e3 or 1k: {value}")
+
+        price = value[0]
+        multi = int(value[1])
+        price = float(price) * (10 ** multi)
+
+        return int(price)
+
 class MutipleRole(app_commands.Transformer):
     async def transform(self, interaction: Interaction, value: str,):
         value = value.split(" ")
@@ -34,7 +52,13 @@ class MultipleMember(app_commands.Transformer):
     async def transform(self, interaction: Interaction, value: str,):
         value = value.split(" ")
         value = [value.replace("<", "").replace(">", "").replace("@", "").replace("!", "") for value in value]
-        members = [interaction.guild.get_member(int(member)) for member in value if member is not None]
+        members = []
+        for i in value:
+            if i not in ["", " ", None, "None"]:
+                member = interaction.guild.get_member(int(i))
+                if member is not None:
+                    members.append(member)
+
         return members
 
 class MutipleChannel(app_commands.Transformer):
