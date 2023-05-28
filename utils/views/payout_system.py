@@ -259,6 +259,40 @@ class Payout_claim(discord.ui.View):
         interaction.client.dispatch("payout_claim", interaction.message, interaction.user)
         interaction.client.dispatch("payout_pending", msg)
 
+
+    @discord.ui.button(label="Cancel", style=discord.ButtonStyle.red, custom_id="payout:cancel")
+    async def payout_cancel(self, interaction: discord.Interaction, button: discord.ui.Button):
+        payout_data = await interaction.client.payout_queue.find(interaction.message.id)
+        if payout_data['set_by'] != interaction.user.id:
+            config = await interaction.client.payout_config.find(interaction.guild.id)
+            user_roles = [role.id for role in interaction.user.roles]
+            if (set(user_roles) & set(config['event_manager_roles'])):
+                pass
+            else:
+                return await interaction.response.send_message("You are not allowed to use this button!", ephemeral=True)        
+        else:
+            modal = General_Modal("Reason for cancelling payout?", interaction)
+            modal.reason = discord.ui.TextInput(label="Reason", placeholder="Reason for cancelling payout", min_length=3, max_length=100, required=True)
+            modal.add_item(modal.reason)
+            await interaction.response.send_modal(modal)
+
+            await modal.wait()
+            if modal.value:
+                loading_embed = discord.Embed(description="<a:loading:998834454292344842> | Processing claim...", color=discord.Color.yellow())
+                await modal.interaction.response.send_message(embed=loading_embed, ephemeral=True)
+
+                embed = interaction.message.embeds[0]
+                embed.title = "Payout Cancelled"
+                embed.description = embed.description.replace("`Pending`", "`Cancelled`")
+                embed.description += f"\n**Cancelled by:** {interaction.user.mention}\n**Reason:** {modal.reason.value}"
+
+                temp_view = discord.ui.View()
+                temp_view.add_item(discord.ui.Button(label="Payout Cancelled", style=discord.ButtonStyle.gray, emoji="<a:nat_cross:1010969491347357717>",disabled=True))
+                await interaction.message.edit(embed=embed, view=temp_view, content=None)
+                await interaction.client.payout_queue.delete(interaction.message.id)
+                
+                await modal.interaction.edit_original_response(embed=discord.Embed(description="Sucessfully cancelled payout", color=discord.Color.green()))
+
     async def on_error(self, interaction: Interaction, error: Exception, item: discord.ui.Item):
         try:
             await interaction.response.send_message(f"Error: {error}", ephemeral=True)
