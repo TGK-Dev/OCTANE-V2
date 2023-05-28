@@ -69,7 +69,7 @@ class Payout_Config_Edit(discord.ui.View):
         else:
             await interaction.edit_original_response(content="No channel selected", view=None)
     
-    @discord.ui.button(label="Clain Channel", style=discord.ButtonStyle.gray, emoji="<:channel:1017378607863181322>", row=0)
+    @discord.ui.button(label="Claim Channel", style=discord.ButtonStyle.gray, emoji="<:channel:1017378607863181322>", row=0)
     async def claim_channel(self, interaction: discord.Interaction, button: discord.ui.Button):
 
         view = discord.ui.View()
@@ -253,6 +253,7 @@ class Payout_claim(discord.ui.View):
         button.style = discord.ButtonStyle.gray
         button.emoji = "<a:nat_check:1010969401379536958>"
         button.disabled = True
+        self.children[1].disabled = True
         self.add_item(discord.ui.Button(label=f'Payout Queue Message', style=discord.ButtonStyle.url, disabled=False, url=msg.jump_url))
 
         await interaction.message.edit(embed=current_embed, view=self)
