@@ -738,7 +738,7 @@ class Perks(commands.GroupCog, name="perks", description="manage your custom per
     async def refresh_cache(self):
         await self.Perk.create_cach()
     
-    @tasks.loop(hours=5)
+    @tasks.loop(hours=10)
     async def update_rank(self):
         if self.channel_rank_update: return
         data = await self.Perk.channel.get_all()
@@ -749,14 +749,15 @@ class Perks(commands.GroupCog, name="perks", description="manage your custom per
         for channel in data:
             channel['activity']['previous_rank'] = channel['activity']['rank']
             channel['activity']['rank'] = data.index(channel) + 1
+
             
             if channel['activity']['previous_rank'] == None:
-                _str += (f"{data.index(channel) + 1}. <#{channel['channel_id']}> <:tgk_new:1110527782020794880>\n")
-            if channel['activity']['previous_rank'] == channel['activity']['rank']:
+                _str += (f"{data.index(channel) + 1}. <#{channel['channel_id']}> <:tgk_mid:1110528331742462002>\n")               
+            elif channel['activity']['previous_rank'] == channel['activity']['rank']:
                 _str += (f"{data.index(channel) + 1}. <#{channel['channel_id']}> <:tgk_mid:1110528331742462002>\n")
-            if channel['activity']['previous_rank'] > channel['activity']['rank']:
+            elif channel['activity']['previous_rank'] > channel['activity']['rank']:
                 _str += (f"{data.index(channel) + 1}. <#{channel['channel_id']}>") + (f"<:tgk_up:1110526823223275561> {channel['activity']['previous_rank'] - channel['activity']['rank']} \n")
-            if channel['activity']['previous_rank'] < channel['activity']['rank']:
+            elif channel['activity']['previous_rank'] < channel['activity']['rank']:
                 _str += (f"{data.index(channel) + 1}. <#{channel['channel_id']}>") + (f"<:tgk_down:1110527094376644708> {channel['activity']['rank'] - channel['activity']['previous_rank']} \n")
 
             await self.Perk.update(Perk_Type.channels, channel)

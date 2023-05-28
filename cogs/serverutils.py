@@ -16,10 +16,10 @@ from io import BytesIO
 from PIL import Image, ImageDraw, ImageFont, ImageChops
 
 auto_payout = {
-	1040975933772931172: {'prize': '10m', 'event': 'Daily Rumble'},
-	1042408506181025842: {'prize': '25m', 'event': 'Weekly Rumble'},
-	1110476759062827008: {'prize': '6.9m', 'event': '69-Players Rumble'},
-	1111603846943354930: {'prize': '5m', 'event': '30-Min Rumble'},
+	1040975933772931172: {'prize': '10000000', 'event': 'Daily Rumble'},
+	1042408506181025842: {'prize': '25000000', 'event': 'Weekly Rumble'},
+	1110476759062827008: {'prize': '6900000', 'event': '69-Players Rumble'},
+	1111603846943354930: {'prize': '5000000', 'event': '30-Min Rumble'},
 }		
 
 class Payout(commands.GroupCog, name="payout", description="Payout commands"):
@@ -119,7 +119,6 @@ class Payout(commands.GroupCog, name="payout", description="Payout commands"):
 					pass
 
 				self.bot.dispatch("payout_expired", message, user)
-				delete_queue_data = {'_id': message.id,'channel': message.channel.id,'now': datetime.datetime.utcnow(),'delete_after': 1800, 'reason': 'payout_expired'}
 				if host:
 					try:
 						await host.send(f"<@{payout['winner']}> has failed to claim within the deadline. Please reroll/rehost the event/giveaway.", view=dm_view)
@@ -128,7 +127,10 @@ class Payout(commands.GroupCog, name="payout", description="Payout commands"):
 
 				await self.bot.payout_queue.delete(payout['_id'])
 			else:
-				pass
+				continue
+
+			await asyncio.sleep(1)
+
 		self.claim_task_progress = False	
 
 	@check_unclaim.before_loop
@@ -152,35 +154,30 @@ class Payout(commands.GroupCog, name="payout", description="Payout commands"):
 		event = auto_payout[message.channel.id]['event']
 		data = await self.bot.payout_config.find(message.guild.id)
 		claim_time = data['default_claim_time'] if data['default_claim_time'] is not None else 86400
-		claim_timestamp = f"<t:{round((datetime.datetime.now() + datetime.timedelta(seconds=claim_time)).timestamp())}:R>"
-
-		embed = await self.create_pending_embed(event, winner, prize, message.channel, message, claim_timestamp, message.guild.me, None)
-
-		pendin_channel = message.guild.get_channel(data['pending_channel'])
-		if pendin_channel is None:return
-		msg = await pendin_channel.send(f"<@{winner.id}> you have won {prize} in {event}! Please claim your prize within {claim_timestamp} by clicking the button below.", embed=embed, view=Payout_claim())
+		claim_time_timestamp = int(round((datetime.datetime.utcnow() + datetime.timedelta(seconds=claim_time)).timestamp()))
+		claim_channel = message.guild.get_channel(data['pending_channel'])
+		if claim_channel is None: return
+		embed = await self.create_pending_embed(event, winner, prize, message.channel, message, claim_time_timestamp, message.guild.me, None)
+		
+		msg = await claim_channel.send(f"{winner.mention} Your prize has been queued for payout. Please claim it within <t:{claim_time_timestamp}:R> or it will rerolled.", embed=embed, view=Payout_claim())
 		queue_data = {
 			'_id': msg.id,
-			'channel': message.channel.id,
 			'guild': message.guild.id,
+			'channel': message.channel.id,
 			'event': event,
 			'winner': winner.id,
 			'prize': prize,
+			'item': None,
+			'queued_at': datetime.datetime.now(),
+			'claim_time': claim_time,
 			'claimed': False,
-			'set_by': "AutoMatic Payout Queue System",
 			'winner_message_id': message.id,
-			'queued_at': datetime.datetime.utcnow(),
-			'claim_time': claim_time or 3600,
+			'set_by': message.guild.me.id
 		}
-		await self.bot.payout_queue.insert(queue_data)
-		loading_emoji = await self.bot.emoji_server.fetch_emoji(998834454292344842)
-		try:
-			await message.add_reaction(loading_emoji)
-		except discord.HTTPException:
-			pass
 
-		await message.channel.send(f"{winner.mention}, your prize {prize} has been queued for payout. Please check <#{data['pending_channel']}> for more information.", allowed_mentions=discord.AllowedMentions(users=False, roles=False, everyone=False))
-		self.bot.dispatch("payout_queue", message.guild.me, f"{auto_payout[message.channel.id]['event']}", message, msg, winner, auto_payout[message.channel.id]['prize'])
+		await self.bot.payout_queue.insert(queue_data)
+		await message.add_reaction("<a:loading:998834454292344842>")
+		self.bot.dispatch("payout_queued", message.guild.me, f"Automatic payout", message, msg, winner, auto_payout[message.channel.id]['prize'])	
 
 	@app_commands.command(name="set", description="configur the payout system settings")
 	@app_commands.describe(event="event name", message_id="winner message id", winners="winner of the event", quantity='A constant number like "123" or a shorthand like "5m"', item="what item did they win?")
