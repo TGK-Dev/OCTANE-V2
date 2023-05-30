@@ -85,7 +85,7 @@ class Perks_DB:
             case _:
                 raise Exception("Invalid perk type")
 
-    async def create(self, type: Perk_Type | str, user_id: int, guild_id: int, duration: Union[int, str], friend_limit: int=None):
+    async def create(self, type: Perk_Type | str, user_id: int, guild_id: int, duration: Union[int, str]=None, friend_limit: int=None):
         match type:
             case Perk_Type.roles | "roles":
                 perk_data = {'user_id': user_id,'guild_id': guild_id,'role_id': None,'duration': duration,'created_at': None,'friend_limit': friend_limit,'friend_list': []}
@@ -575,10 +575,10 @@ class Perks(commands.GroupCog, name="perks", description="manage your custom per
     @app_commands.describe(perk="the perk you want to delete")
     @app_commands.choices(perk=[app_commands.Choice(name="Custom Channel", value="channel"), app_commands.Choice(name="Custom Role", value="role")])
     async def _delete(self, interaction: Interaction, perk: app_commands.Choice[str]):
-        if perk == "channel":
+        if perk.value == "channel":
             user_data = await self.Perk.get_data(Perk_Type.channels, interaction.guild.id, interaction.user.id)
             if not user_data: return await interaction.response.send_message("You don't have any custom channel perks", ephemeral=True)
-        elif perk == "role":
+        elif perk.value == "role":
             user_data = await self.Perk.get_data(Perk_Type.roles, interaction.guild.id, interaction.user.id)
             if not user_data: return await interaction.response.send_message("You don't have any custom role perks", ephemeral=True)
         else:
@@ -590,32 +590,26 @@ class Perks(commands.GroupCog, name="perks", description="manage your custom per
         await view.wait()
 
         if view.value:
-            if perk == "channel":
+            if perk.value == "channel":
                 channel = interaction.guild.get_channel(user_data['channel_id'])
                 if channel:
                     total_time = (datetime.datetime.utcnow() - datetime.datetime(channel.created_at.year, channel.created_at.month, channel.created_at.day)).total_seconds()
-                    duraction = user_data['duration'] - total_time
-                    user_data['duration'] = duraction
+                    if user_data['duration'] != "permanent":
+                        duraction = user_data['duration'] - total_time
+                        user_data['duration'] = duraction
                     await self.Perk.update(Perk_Type.channels, user_data)
-                try:
-                    await interaction.user.send("Your has been deleted successfully")
-                except:
-                    pass
                 user_data['channel_id'] = None
                 await self.Perk.update(Perk_Type.channels, user_data)
         
-            elif perk == "role":
+            elif perk.value == "role":
                 role = interaction.guild.get_role(user_data['role_id'])
                 if role:
                     total_time = (datetime.datetime.utcnow() - datetime.datetime(role.created_at.year, role.created_at.month, role.created_at.day)).total_seconds()
-                    duraction = user_data['duration'] - total_time
-                    user_data['duration'] = duraction
+                    if user_data['duration'] != "permanent":
+                        duraction = user_data['duration'] - total_time
+                        user_data['duration'] = duraction
                     await self.Perk.update(Perk_Type.roles, user_data)
                     await role.delete()
-                try:
-                    await interaction.user.send("Your has been deleted successfully")
-                except:
-                    pass
                 user_data['role_id'] = None
                 await self.Perk.update(Perk_Type.roles, user_data)
 
