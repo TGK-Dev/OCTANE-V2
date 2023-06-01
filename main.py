@@ -36,6 +36,21 @@ class Bot_base(commands.Bot):
         self.connection_url = os.environ.get("MONGO")
         self.connection_url2 = os.environ.get("ACE_DB")
         self.restart = False
+        self.tree.interaction_check = self.interaction_check
+    
+    async def interaction_check(self, interaction: discord.Interaction):
+        if not interaction.command: return True
+        if interaction.user.id in self.blacklist_cache.keys():
+            data = self.blacklist_cache[interaction.user.id]
+            await interaction.response.defer(ephemeral=True)
+            embed = discord.Embed(description=f"", color=self.default_color)
+            embed.set_author(name="Blacklist Manager", icon_url="https://cdn.discordapp.com/emojis/867400863822512148.webp?size=96&quality=lossless")
+            embed.description += f"### Hello {interaction.user.mention}\nUnfortunately, due to {data['reason']}, you have been blacklisted from using {interaction.client.user.mention} and will no longer be able to access any commands. \n"
+            embed.description += f"If you have any questions or concerns about why you are blacklisted or would like to appeal, please raise a ticket in the support channel.\n"
+            embed.timestamp = datetime.datetime.utcnow()
+            await interaction.followup.send(embed=embed)
+            return False
+        return True
     
     async def setup_hook(self):
         self.mongo = AsyncIOMotorClient(self.connection_url)

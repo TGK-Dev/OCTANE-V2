@@ -1,3 +1,4 @@
+import datetime
 import discord
 import io
 import contextlib
@@ -12,7 +13,9 @@ from typing import List
 from utils.views.buttons import Confirm
 from utils.checks import is_dev
 from utils.converters import clean_code
-from utils.paginator import Contex_Paginator
+from utils.paginator import Contex_Paginator, Paginator
+from utils.transformer import TimeConverter
+from humanfriendly import format_timespan
 from utils.db import Document
 
 
@@ -21,10 +24,6 @@ class Dev(commands.Cog, name="dev", description="Dev commands"):
         self.bot = bot
         self.bot.misc = Document(self.bot.db, "misc")
         #self.check_beta_task = self.check_beta.start()
-    
-    def cog_unload(self):
-        self.check_beta_task.cancel()
-
     
     async def cog_auto_complete(self, interaction: discord.Interaction, current:str) -> List[app_commands.Choice[str]]:
         _list =  [
@@ -169,5 +168,92 @@ class Dev(commands.Cog, name="dev", description="Dev commands"):
         
         await Contex_Paginator(ctx, page).start(embeded=True, quick_navigation=False)
 
+
+class Blacklist(commands.GroupCog, name="blacklist"):
+    def __init__(self, bot):
+        self.bot = bot
+        self.bot.blacklist = Document(self.bot.db, "blacklist")
+        self.bot.blacklist_cache = {}
+
+    
+    @commands.Cog.listener()
+    async def on_ready(self):
+        data = await self.bot.blacklist.get_all()
+        for i in data:
+            self.bot.blacklist_cache[i['_id']] = i
+
+    @app_commands.command(name="add", description="Adds a user to the blacklist")
+    @app_commands.describe(user="The user to blacklist", reason="The reason for blacklisting the user")
+    @app_commands.checks.has_any_role(785842380565774368, 785845265118265376, 787259553225637889)
+    async def add(self, interaction: discord.Interaction, user: discord.Member, reason: str):
+        data = await self.bot.blacklist.find(user.id)
+        if data: return await interaction.response.send_message(embed=discord.Embed(description=f"{user.mention} is already blacklisted for {data['reason']}", color=interaction.client.default_color), ephemeral=True)
+
+        data = {
+            '_id': user.id,
+            'reason': reason,
+            'banned_by': interaction.user.id,
+            'banne_at': datetime.datetime.utcnow()}
+
+        await self.bot.blacklist.insert(data)
+        self.bot.blacklist_cache[user.id] = data
+        await interaction.response.send_message(embed=discord.Embed(description=f"{user.mention} has been blacklisted for {reason}", color=interaction.client.default_color), ephemeral=False)
+
+        embed = discord.Embed(title="Blacklisted | Added", color=discord.Color.red(), description="")
+        embed.description += f"**User:** {user.mention}\n"
+        embed.description += f"**ID:** {user.id}\n"
+        embed.description += f"**Reason:** {reason}\n"
+        embed.description += f"**Banned By:** {interaction.user.mention}\n"
+        embed.description += f"**Banned At:** {datetime.datetime.utcnow().strftime('%a, %#d %B %Y, %I:%M %p UTC')}\n"
+        embed.set_thumbnail(url=user.avatar.url if user.avatar else user.default_avatar)
+        embed.set_footer(text=f"ID: {user.id}")
+        channel = self.bot.get_channel(1113847572981895310)
+        if channel:
+            await channel.send(embed=embed)
+
+
+    @app_commands.command(name="remove", description="Removes a user from the blacklist")
+    @app_commands.describe(user="The user to remove from the blacklist", reason="The reason for removing the user from the blacklist")
+    @app_commands.checks.has_any_role(785842380565774368, 785845265118265376)
+    async def remove(self, interaction: discord.Interaction, user: discord.Member, reason: str):
+        data = await self.bot.blacklist.find(user.id)
+        if not data: return await interaction.response.send_message(embed=discord.Embed(description=f"{user.mention} is not blacklisted", color=interaction.client.default_color), ephemeral=True)
+        await self.bot.blacklist.delete(user.id)
+        del self.bot.blacklist_cache[user.id]
+        await interaction.response.send_message(embed=discord.Embed(description=f"{user.mention} has been removed from the blacklist", color=interaction.client.default_color), ephemeral=False)
+    
+        embed = discord.Embed(title="Blacklisted | Removed", color=discord.Color.green(), description="")
+        embed.description += f"**User:** {user.mention}\n"
+        embed.description += f"**ID:** {user.id}\n"
+        embed.description += f"**Reason for Blacklist:** {data['reason']}\n"
+        embed.description += f"**Reason for Unblacklist:** {reason}\n"
+        embed.description += f"**Unbanned By:** {interaction.user.mention}\n"
+        embed.description += f"**Unbanned At:** {datetime.datetime.utcnow().strftime('%a, %#d %B %Y, %I:%M %p UTC')}\n"
+        embed.set_thumbnail(url=user.avatar.url if user.avatar else user.default_avatar)
+        embed.set_footer(text=f"ID: {user.id}")
+        channel = self.bot.get_channel(1113847572981895310)
+        if channel:
+            await channel.send(embed=embed)
+
+
+    @app_commands.command(name="list", description="Lists all the blacklisted users")
+    @app_commands.checks.has_any_role(785842380565774368, 785845265118265376, 787259553225637889)
+    async def list(self, interaction: discord.Interaction):
+        data = await self.bot.blacklist.get_all()
+        if not data: return await interaction.response.send_message(embed=discord.Embed(description="There are no blacklisted users", color=interaction.client.default_color), ephemeral=True)
+        page = []
+        for i in data:
+            user = interaction.guild.get_member(i['_id'])
+            if not user: continue
+            embed = discord.Embed(color=interaction.client.default_color, description="")
+            embed.description += f"**User:** {user.mention}\n"
+            embed.description += f"**Reason:** {i['reason']}\n"
+            embed.description += f"**Banned By:** {interaction.guild.get_member(i['banned_by']).mention}\n"
+            embed.description += f"**Banned At:** {i['banne_at'].strftime('%d/%m/%Y %H:%M:%S')}\n"
+            page.append(embed)
+        
+        await Paginator(interaction, page).start(embeded=True, quick_navigation=False)
+
 async def setup(bot):
+    await bot.add_cog(Blacklist(bot), guilds=[discord.Object(999551299286732871), discord.Object(785839283847954433)])
     await bot.add_cog(Dev(bot), guilds=[discord.Object(999551299286732871), discord.Object(785839283847954433)])

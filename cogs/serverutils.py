@@ -114,7 +114,13 @@ class Payout(commands.GroupCog, name="payout", description="Payout commands"):
 				try:
 					event_message = await event_channel.fetch_message(payout['winner_message_id'])
 					loading_emoji = await self.bot.emoji_server.fetch_emoji(998834454292344842)
-					await event_message.remove_reaction(loading_emoji, event_message.guild.me)
+					for reactions in event_message.reactions:
+						if reactions.emoji == loading_emoji:
+							async for user in reactions.users():
+								if user.id == self.bot.user.id:
+									await event_message.remove_reaction(loading_emoji, user)
+									break							
+							break
 				except discord.NotFound:
 					pass
 
@@ -195,7 +201,6 @@ class Payout(commands.GroupCog, name="payout", description="Payout commands"):
 		claim_time_seconds = data['default_claim_time'] if data['default_claim_time'] is not None else 86400
 		try:
 			event_message = await interaction.channel.fetch_message(message_id)
-			await event_message.add_reaction("<a:loading:998834454292344842>")
 		except discord.NotFound:
 			return await interaction.response.send_message("Error: Message not found! Please make sure you have the correct message id and in the same channel as this command.", ephemeral=True)
 		
@@ -272,6 +277,7 @@ class Payout(commands.GroupCog, name="payout", description="Payout commands"):
 
 		done_embed = discord.Embed(description=f"**Successfully queued payout for `{len(winners)}` winners!**", color=interaction.client.default_color)
 		done_embed.set_footer(text="You can view the queued payouts by clicking on the button below.")
+		await event_message.add_reaction("<a:loading:998834454292344842>")
 		await interaction.edit_original_response(embed=done_embed)
 
 	@commands.Cog.listener()

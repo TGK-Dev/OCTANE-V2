@@ -253,7 +253,7 @@ class Basic(commands.Cog):
 
     @app_commands.command(name="afk", description="Set your afk status")
     @app_commands.describe(reason="The reason for your afk status")
-    async def afk(self, interaction: Interaction, reason: str=None):
+    async def afk(self, interaction: Interaction, reason: app_commands.Range[str, 0, 32]):
         user_data = await self.bot.afk.find(interaction.user.id)
         if user_data is not None: 
             await self.bot.afk.delete(interaction.user.id)
