@@ -93,7 +93,7 @@ class Perks_DB:
                 return perk_data
             
             case Perk_Type.channels | "channels":
-                perk_data = {'user_id': user_id,'guild_id': guild_id,'channel_id':None,'duration': duration,'created_at': None,'friend_limit': friend_limit,'friend_list': [], 'activity': {'messages': 0, 'rank': None, 'previous_rank': 0}}
+                perk_data = {'user_id': user_id,'guild_id': guild_id,'channel_id':None,'duration': duration,'created_at': None,'friend_limit': friend_limit,'friend_list': [], 'activity': {'messages': 0, 'rank': None, 'previous_rank': 0, 'cooldown': None}}
                 await self.channel.insert(perk_data)
                 return perk_data
             
@@ -797,6 +797,29 @@ class Perks(commands.GroupCog, name="perks", description="manage your custom per
         if message.guild.id in self.Perk.cach['channels'].keys():
             if message.channel.id in self.Perk.cach['channels'][message.guild.id].keys():
                 self.bot.dispatch('check_activity', message, self.Perk.cach['channels'][message.guild.id][message.channel.id])
+        if message.interaction is not None:
+            if message.channel.id in self.Perk.cach['channels'][message.guild.id].keys():
+                self.bot.dispatch('check_cmd_activity', message, self.Perk.cach['channels'][message.guild.id][message.channel.id])
+
+    @commands.Cog.listener()
+    async def on_auto_react(self, message: discord.Message, data):
+        channel_data = await self.Perk.channel.find({'channel_id': message.channel.id})
+        if channel_data is None: return
+        user = message.interaction.user
+        if user.id != channel_data['user_id']: return
+        if data['activity']['cooldown'] == None:
+            data['activity']['messages'] += 1
+            data['activity']['cooldown'] = datetime.datetime.utcnow()
+            await self.Perk.channel.update(data)
+            self.Perk.cach['channels'][message.guild.id][message.channel.id] = data
+            return
+        now = datetime.datetime.utcnow()
+        if now > data['activity']['cooldown'] + datetime.timedelta(seconds=8):
+            data['activity']['messages'] += 1
+            data['activity']['cooldown'] = datetime.datetime.utcnow()
+            await self.Perk.channel.update(data)
+            self.Perk.cach['channels'][message.guild.id][message.channel.id] = data
+            return
 
     @commands.Cog.listener()
     async def on_check_activity(self, message: discord.Message, data):
