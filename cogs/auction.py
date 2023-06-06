@@ -12,11 +12,11 @@ from typing import List
 from copy import deepcopy
 
 
-class Auction(commands.GroupCog, name="autcions"):
+class Auction(commands.GroupCog, name="auction"):
     def __init__(self, bot):
         self.bot = bot
         self.bid_cache = {}
-        self.bot.autcions = Document(self.bot.db, "Autcions")
+        self.bot.autcions = Document(self.bot.db, "auction")
         self.auction_loop_progress = False
         self.auction_task = self.auction_loop.start()
 
