@@ -186,6 +186,8 @@ class Blacklist(commands.GroupCog, name="blacklist"):
     @app_commands.describe(user="The user to blacklist", reason="The reason for blacklisting the user")
     @app_commands.checks.has_any_role(785842380565774368, 785845265118265376, 787259553225637889)
     async def add(self, interaction: discord.Interaction, user: discord.Member, reason: str):
+        if user.id in [self.bot.user.id, 761834680395497484, 301657045248114690]:
+            return await interaction.response.send_message(embed=discord.Embed(description="You can't blacklist me or my developers", color=interaction.client.default_color), ephemeral=True)
         data = await self.bot.blacklist.find(user.id)
         if data: return await interaction.response.send_message(embed=discord.Embed(description=f"{user.mention} is already blacklisted for {data['reason']}", color=interaction.client.default_color), ephemeral=True)
 
