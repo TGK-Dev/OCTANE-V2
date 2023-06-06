@@ -16,11 +16,25 @@ class Events(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
         self.vote_remider_task = self.check_vote_reminders.start()
+        self.counter_task = self.update_member_counter.start()
         self.bot.votes = Document(self.bot.db, "votes")
         self.vote_task_progress = False
 
     def cog_unload(self):
         self.vote_remider_task.cancel()
+
+    @tasks.loop(minutes=1)
+    async def update_member_counter(self):
+        guild = self.bot.get_guild(785839283847954433)
+        member_count = guild.member_count
+        channel = guild.get_channel(821747332327931995)
+        number = re.findall(r'\d+', channel.name)
+        number = int(number[0])
+        if number != member_count:
+            new_name = f"{channel.name.replace(str(number), str(member_count))}"
+            await channel.edit(name=new_name)
+            print(f"Updated member counter to {member_count}")
+            print("New name: " + new_name)
     
     @tasks.loop(minutes=1)
     async def check_vote_reminders(self):
@@ -41,6 +55,10 @@ class Events(commands.Cog):
                 await self.bot.votes.delete(data['_id'])
         
         self.vote_task_progress = False
+
+    @update_member_counter.before_loop
+    async def before_update_member_counter(self):
+        await self.bot.wait_until_ready()
     
     @check_vote_reminders.before_loop
     async def before_check_vote_reminders(self):
