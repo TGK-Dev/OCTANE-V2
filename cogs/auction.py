@@ -1,6 +1,7 @@
 import discord
 import asyncio
 import datetime
+import re
 from discord.ext import commands
 from discord import app_commands
 from utils.transformer import DMCConverter
@@ -96,9 +97,13 @@ class Auction(commands.GroupCog, name="autcions"):
         await thread.send(embed=cembed)
         final_call = 0
         ammout = None
+        def check(m):
+            if m.channel == thread:
+                if re.match('^[0-9]+', m.content):
+                    return True
         while ammout == None:
             try:
-                msg = await self.bot.wait_for("message", check=lambda m: m.channel == thread, timeout=10)
+                msg = await self.bot.wait_for("message", check=check, timeout=10)
                 ammout = await DMCConverter_Ctx().convert(msg, msg.content)
                 if ammout is not None:
                     data['current_bid'] = ammout
