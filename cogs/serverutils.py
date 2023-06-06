@@ -126,10 +126,11 @@ class Payout(commands.GroupCog, name="payout", description="Payout commands"):
 
 				self.bot.dispatch("payout_expired", message, user)
 				if host:
-					try:
-						await host.send(f"<@{payout['winner']}> has failed to claim within the deadline. Please reroll/rehost the event/giveaway.", view=dm_view)
-					except discord.HTTPException:
-						pass
+					if host.id != self.bot.user.id:
+						try:
+							await host.send(f"<@{payout['winner']}> has failed to claim within the deadline. Please reroll/rehost the event/giveaway.", view=dm_view)
+						except discord.HTTPException:
+							pass
 
 				await self.bot.payout_queue.delete(payout['_id'])
 			else:
