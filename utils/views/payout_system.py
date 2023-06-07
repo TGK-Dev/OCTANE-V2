@@ -4,20 +4,17 @@ import re
 import humanfriendly
 from .selects import Channel_select, Role_select
 from .modal import General_Modal
-from discord import Interaction
+from discord import Interaction, app_commands
 from discord.ext import commands
 from utils.converters import TimeConverter
 from .buttons import Link_view
 import datetime
 from .buttons import Confirm
 
+class ButtonCooldown(app_commands.CommandOnCooldown):
+    def __init__(self, retry_after: float):
+        self.retry_after = retry_after
 
-class ButtonOnCooldown(commands.CommandError):
-  def __init__(self, retry_after: float):
-    self.retry_after = retry_after
-
-# you can also use a lambda if it's simple enough
-# this function works similarly to the `key` in functions `sorted` and `list.sort`
     def key(interaction: discord.Interaction):
         return interaction.user
 
@@ -219,20 +216,21 @@ class Payout_Config_Edit(discord.ui.View):
 class Payout_claim(discord.ui.View):
     def __init__(self):
         super().__init__(timeout=None)
-        self.cd = commands.CooldownMapping.from_cooldown(1.0, 5.0, commands.BucketType.user)
-    
-    async def interaction_check(self, interaction: discord.Interaction):
-        retry_after = self.cd.update_rate_limit(interaction)
-        if retry_after:
-            raise ButtonOnCooldown(retry_after)
-        return True
+        self.cd = app_commands.Cooldown(1, 10)
 
+    async def interaction_check(self, interaction: discord.Interaction):
+        retry_after = self.cd.update_rate_limit()
+        if retry_after:
+            raise ButtonCooldown(retry_after)
+        return True
+    
     async def on_error(self, interaction: discord.Interaction, error: Exception, item: discord.ui.Item):
-        if isinstance(error, ButtonOnCooldown):
+        if isinstance(error, ButtonCooldown):
             seconds = int(error.retry_after)
             unit = 'second' if seconds == 1 else 'seconds'
             await interaction.response.send_message(f"You're on cooldown for {seconds} {unit}!", ephemeral=True)
         else:
+            # call the original on_error, which prints the traceback to stderr
             await super().on_error(interaction, error, item)
     
     @discord.ui.button(label="Claim", style=discord.ButtonStyle.green, custom_id="payout:claim")
