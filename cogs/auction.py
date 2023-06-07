@@ -107,18 +107,21 @@ class Auction(commands.GroupCog, name="auction"):
                     msg = await self.bot.wait_for("message", check=check, timeout=10)
                     ammout = await DMCConverter_Ctx().convert(msg, msg.content)
                     if ammout is not None:
-                        data['current_bid'] = ammout
-                        data['current_bid_by'] = msg.author.id
-                        data['time_left'] = 10
-                        data['last_bid'] = datetime.datetime.now()
+                        if ammout > data['current_bid'] and ammout % data['bet_multiplier'] != 0:
+                            data['current_bid'] = ammout
+                            data['current_bid_by'] = msg.author.id
+                            data['time_left'] = 10
+                            data['last_bid'] = datetime.datetime.now()
 
-                        embed = await self.get_embed(data, False)
-                        await message.edit(embed=embed)
-                        await msg.add_reaction("✅")
-                        await msg.reply(f"You have bid ⏣ {ammout:,} on {data['item']}")
+                            embed = await self.get_embed(data, False)
+                            await message.edit(embed=embed)
+                            await msg.add_reaction("✅")
+                            await msg.reply(f"You have bid ⏣ {ammout:,} on {data['item']}")
 
-                        self.bid_cache[data['_id']] = data
-                        return
+                            self.bid_cache[data['_id']] = data
+                            return
+                        else:
+                            continue
                     else:
                         continue
                 except asyncio.TimeoutError:
