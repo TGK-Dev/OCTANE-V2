@@ -89,52 +89,54 @@ class Auction(commands.GroupCog, name="auction"):
     
     @commands.Cog.listener()
     async def on_auction_end_count(self, data):
-        message = data['message']
-        thread = data['thread']
-        await thread.send(f"No Bet was place in last 10 seconds, starting closing calls")
-        await asyncio.sleep(1)
-        cembed = discord.Embed(description=f"# Going Once...", color=self.bot.default_color)
-        await thread.send(embed=cembed)
-        final_call = 0
-        ammout = None
-        def check(m):
-            if m.channel == thread:
-                if re.match('^[0-9]+', m.content):
-                    return True
-        while ammout == None:
-            try:
-                msg = await self.bot.wait_for("message", check=check, timeout=10)
-                ammout = await DMCConverter_Ctx().convert(msg, msg.content)
-                if ammout is not None:
-                    data['current_bid'] = ammout
-                    data['current_bid_by'] = msg.author.id
-                    data['time_left'] = 10
-                    data['last_bid'] = datetime.datetime.now()
+        message: discord.Message = data['message']
+        thread: discord.Thread = data['thread']
+        async with thread.typing():
+            await thread.send(f"No Bet was place in last 10 seconds, starting closing calls")        
+            await asyncio.sleep(1)
+            cembed = discord.Embed(description=f"# Going Once...", color=self.bot.default_color)
+            await thread.send(embed=cembed)
+            final_call = 0
+            ammout = None
+            def check(m):
+                if m.channel == thread:
+                    if re.match('^[0-9]+', m.content):
+                        return True
+            while ammout == None:
+                try:
+                    msg = await self.bot.wait_for("message", check=check, timeout=10)
+                    ammout = await DMCConverter_Ctx().convert(msg, msg.content)
+                    if ammout is not None:
+                        data['current_bid'] = ammout
+                        data['current_bid_by'] = msg.author.id
+                        data['time_left'] = 10
+                        data['last_bid'] = datetime.datetime.now()
 
-                    embed = await self.get_embed(data, False)
-                    await message.edit(embed=embed)
-                    await msg.add_reaction("✅")
-                    await msg.reply(f"You have bid ⏣ {ammout:,} on {data['item']}")
+                        embed = await self.get_embed(data, False)
+                        await message.edit(embed=embed)
+                        await msg.add_reaction("✅")
+                        await msg.reply(f"You have bid ⏣ {ammout:,} on {data['item']}")
 
-                    self.bid_cache[data['_id']] = data
-                    return
-                else:
-                    continue
-            except asyncio.TimeoutError:
-                final_call += 1
-                if final_call == 1:
-                    ammout = None
-                    embed = discord.Embed(description=f"# Going twice...", color=self.bot.default_color)
-                    await thread.send(embed=embed)
-                elif final_call == 2:
-                    ammout = None
-                    embed1 = discord.Embed(description=f"# Going thrice...", color=self.bot.default_color)
-                    embed = discord.Embed(description=f"# Sold", color=self.bot.default_color)
-                    await thread.send(embeds=[embed1,embed])
-                    await thread.send(f"Congratulations <@{data['current_bid_by']}>, you have won the auction for {data['item']} for ⏣ {data['current_bid']:,}")
-                    await message.edit(embed=await self.get_embed(data, False, message.guild.get_member(data['current_bid_by'])))
-                    await thread.edit(archived=True, locked=True)
-                    return
+                        self.bid_cache[data['_id']] = data
+                        return
+                    else:
+                        continue
+                except asyncio.TimeoutError:
+                    final_call += 1
+                    if final_call == 1:
+                        ammout = None
+                        embed = discord.Embed(description=f"# Going twice...", color=self.bot.default_color)
+                        await thread.send(embed=embed)
+                    elif final_call == 2:
+                        ammout = None
+                        embed1 = discord.Embed(description=f"# Going thrice...", color=self.bot.default_color)
+                        embed = discord.Embed(description=f"# Sold", color=self.bot.default_color)
+                        embed.set_image(url="https://tenor.com/view/leonardo-dicaprio-sold-gif-gif-20734009")
+                        await thread.send(embeds=[embed1,embed])
+                        await thread.parent.send(f"Congratulations <@{data['current_bid_by']}>, you have won the auction for {data['item']} for ⏣ {data['current_bid']:,}")
+                        await message.edit(embed=await self.get_embed(data, False, message.guild.get_member(data['current_bid_by'])))
+                        await thread.edit(archived=True, locked=True)
+                        return
 
     @commands.Cog.listener()
     async def on_message(self, message):
