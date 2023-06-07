@@ -143,8 +143,10 @@ class Auction(commands.GroupCog, name="auction"):
         if message.guild is None:
             return
         if not isinstance(message.channel, discord.Thread): return
-
-        data = self.bid_cache[message.channel.parent_id]
+        try:
+            data = self.bid_cache[message.channel.parent_id]
+        except KeyError:
+            return
         ammount = await DMCConverter_Ctx().convert(message, message.content)
         if ammount is not None:
             if ammount % data["bet_multiplier"] != 0:

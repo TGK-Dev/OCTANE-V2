@@ -5,10 +5,21 @@ import humanfriendly
 from .selects import Channel_select, Role_select
 from .modal import General_Modal
 from discord import Interaction
+from discord.ext import commands
 from utils.converters import TimeConverter
 from .buttons import Link_view
 import datetime
 from .buttons import Confirm
+
+
+class ButtonOnCooldown(commands.CommandError):
+  def __init__(self, retry_after: float):
+    self.retry_after = retry_after
+
+# you can also use a lambda if it's simple enough
+# this function works similarly to the `key` in functions `sorted` and `list.sort`
+    def key(interaction: discord.Interaction):
+        return interaction.user
 
 class Payout_Config_Edit(discord.ui.View):
     def __init__(self, data: dict, user: discord.Member,message: discord.Message=None, interaction: Interaction=None):
@@ -208,6 +219,21 @@ class Payout_Config_Edit(discord.ui.View):
 class Payout_claim(discord.ui.View):
     def __init__(self):
         super().__init__(timeout=None)
+        self.cd = commands.CooldownMapping.from_cooldown(1.0, 5.0, commands.BucketType.user)
+    
+    async def interaction_check(self, interaction: discord.Interaction):
+        retry_after = self.cd.update_rate_limit(interaction)
+        if retry_after:
+            raise ButtonOnCooldown(retry_after)
+        return True
+
+    async def on_error(self, interaction: discord.Interaction, error: Exception, item: discord.ui.Item):
+        if isinstance(error, ButtonOnCooldown):
+            seconds = int(error.retry_after)
+            unit = 'second' if seconds == 1 else 'seconds'
+            await interaction.response.send_message(f"You're on cooldown for {seconds} {unit}!", ephemeral=True)
+        else:
+            await super().on_error(interaction, error, item)
     
     @discord.ui.button(label="Claim", style=discord.ButtonStyle.green, custom_id="payout:claim")
     async def payout_claim(self, interaction: discord.Interaction, button: discord.ui.Button):
@@ -293,12 +319,6 @@ class Payout_claim(discord.ui.View):
                 await interaction.client.payout_queue.delete(interaction.message.id)
                 
                 await modal.interaction.edit_original_response(embed=discord.Embed(description="Sucessfully cancelled payout", color=discord.Color.green()))
-
-    async def on_error(self, interaction: Interaction, error: Exception, item: discord.ui.Item):
-        try:
-            await interaction.response.send_message(f"Error: {error}", ephemeral=True)
-        except:
-            await interaction.edit_original_response(content=f"Error: {error}")
 
 class Payout_Buttton(discord.ui.View):
     def __init__(self):
