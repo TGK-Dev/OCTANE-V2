@@ -85,7 +85,27 @@ class Auction(commands.GroupCog, name="auction"):
 
     @auction_loop.before_loop
     async def before_auction_loop(self):
-        await self.bot.wait_until_ready()    
+        await self.bot.wait_until_ready()
+    
+    @commands.Cog.listener()
+    async def on_bet(self, message: discord.Message, data):
+        ammount = await DMCConverter_Ctx().convert(message, message.content)
+        if ammount % data["bet_multiplier"] != 0:
+            await message.reply(f"Mininum Bid Increment is ⏣ {data['bet_multiplier']:,}")
+            return
+        if ammount >= 50000000000:
+            await message.reply("You can't bid more than ⏣ 50,000,000,000")
+            return
+        if ammount > data["current_bid"]:
+            data['current_bid'] = ammount
+            data['current_bid_by'] = message.author.id
+            data['time_left'] = 10
+            data['last_bid'] = datetime.datetime.now()
+            await message.reply(f"You have bid ⏣ {ammount:,} on {data['item']}")
+            embed = await self.get_embed(data, False)
+
+            await data['message'].edit(embed=embed)
+            await message.add_reaction("✅")
     
     @commands.Cog.listener()
     async def on_auction_end_count(self, data):
@@ -107,8 +127,14 @@ class Auction(commands.GroupCog, name="auction"):
                     msg = await self.bot.wait_for("message", check=check, timeout=10)
                     ammout = await DMCConverter_Ctx().convert(msg, msg.content)
                     if ammout is not None:
-                        if ammout > data['current_bid'] and ammout % data['bet_multiplier'] != 0:
+                        if ammout >= 50000000000:
+                            await message.reply("You can't bid more than ⏣ 50,000,000,000")
+                            continue
+                        if ammout > data['current_bid'] and ammout % data['bet_multiplier'] == 0:
                             data['current_bid'] = ammout
+                            if data['current_bid_by'] == msg.author.id: 
+                                await msg.reply("You are already the highest bidder")
+                            
                             data['current_bid_by'] = msg.author.id
                             data['time_left'] = 10
                             data['last_bid'] = datetime.datetime.now()
@@ -120,16 +146,15 @@ class Auction(commands.GroupCog, name="auction"):
 
                             self.bid_cache[data['_id']] = data
                             return
-                        else:
-                            continue
                     else:
-                        continue
-                except asyncio.TimeoutError:
+                        raise ValueError
+                except (asyncio.TimeoutError, ValueError):
                     final_call += 1
                     if final_call == 1:
                         ammout = None
                         embed = discord.Embed(description=f"# Going twice...", color=self.bot.default_color)
                         await thread.send(embed=embed)
+                        continue
                     elif final_call == 2:
                         ammout = None
                         embed1 = discord.Embed(description=f"# Going thrice...", color=self.bot.default_color)
@@ -153,19 +178,8 @@ class Auction(commands.GroupCog, name="auction"):
             return
         ammount = await DMCConverter_Ctx().convert(message, message.content)
         if ammount is not None:
-            if ammount % data["bet_multiplier"] != 0:
-                await message.reply(f"Mininum Bid Increment is ⏣ {data['bet_multiplier']:,}")
-                return
-            if ammount > data["current_bid"]:
-                data['current_bid'] = ammount
-                data['current_bid_by'] = message.author.id
-                data['time_left'] = 10
-                data['last_bid'] = datetime.datetime.now()
-                await message.reply(f"You have bid ⏣ {ammount:,} on {data['item']}")
-                embed = await self.get_embed(data, False)
+            self.bot.dispatch("bet", message, data)
 
-                await data['message'].edit(embed=embed)
-                await message.add_reaction("✅")
 
     @app_commands.command(name="start", description="Starts an auction")
     @app_commands.describe(item="The item to auction", bet_multiplier="The bet multiplier")
