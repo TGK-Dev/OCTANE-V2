@@ -97,9 +97,13 @@ class Payout(commands.GroupCog, name="payout", description="Payout commands"):
 				payout_config = await self.bot.payout_config.find(payout['guild'])
 				guild = self.bot.get_guild(payout['guild'])
 				channel = guild.get_channel(payout_config['pending_channel'])
+				if not channel:
+					await self.bot.payout_queue.delete(payout['_id'])
+					continue
 				try:
 					message = await channel.fetch_message(payout['_id'])
 				except discord.NotFound:
+					await self.bot.payout_queue.delete(payout['_id'])
 					continue
 				embed = message.embeds[0]
 				embed.title = "Payout Expired"

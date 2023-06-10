@@ -38,7 +38,7 @@ class Auction(commands.GroupCog, name="auction"):
             embed = discord.Embed(title=f"Auction for {data['item']}", description="", color=self.bot.default_color)
             embed.description += f"**Starting Bid:** ⏣ {data['strating_price']:,}\n"
             embed.description += f"**Bet Multiplier:** ⏣ {data['bet_multiplier']:,}\n"  
-            embed.description += f"**Highest Bid:** ⏣ {data['current_bid']:,}\n"
+            embed.description += f"**Bid Increment By:** ⏣ {data['current_bid']:,}\n"
             embed.description += f"**Current Bid By:** {winner.mention}\n"
             embed.description += f"**Time Left:** `Auction Ended`\n"
             embed.description += f"**Auctioneer:** <@{data['auctioneer']}>\n"
@@ -49,7 +49,7 @@ class Auction(commands.GroupCog, name="auction"):
             embed = discord.Embed(title=f"Auction for {data['item']}", description="", color=self.bot.default_color)
             embed.description += f"**Starting Bid:** ⏣ {data['strating_price']:,}\n"
             embed.description += f"**Bet Multiplier:** ⏣ {data['bet_multiplier']:,}\n"  
-            embed.description += f"**Highest Bid:** `None`\n"
+            embed.description += f"**Bid Increment By:** `None`\n"
             embed.description += f"**Current Bid By:** `None`\n"
             embed.description += f"**Time Left:** <t:{timestamp30s}:R>\n"
             embed.description += f"**Auctioneer:** <@{data['auctioneer']}>\n"
@@ -59,7 +59,7 @@ class Auction(commands.GroupCog, name="auction"):
             embed = discord.Embed(title=f"Auction for {data['item']}", description="", color=self.bot.default_color)
             embed.description += f"**Starting Bid:** ⏣ {data['strating_price']:,}\n"
             embed.description += f"**Bet Multiplier:** ⏣ {data['bet_multiplier']:,}\n"
-            embed.description += f"**Highest Bid:** ⏣ {data['current_bid']:,}\n"
+            embed.description += f"**Bid Increment By:** ⏣ {data['current_bid']:,}\n"
             embed.description += f"**Current Bidder:** <@{data['current_bid_by']}>\n"
             embed.description += f"**Time Left:** <t:{timestamp10s}:R>\n"
             embed.description += f"**Auctioneer:** <@{data['auctioneer']}>\n"
@@ -96,6 +96,9 @@ class Auction(commands.GroupCog, name="auction"):
         if ammount >= 50000000000:
             await message.reply("You can't bid more than ⏣ 50,000,000,000")
             return
+        if message.author.id == data['current_bid_by']:
+            await message.reply("You are already the highest bidder")
+            return
         if ammount > data["current_bid"]:
             data['current_bid'] = ammount
             data['current_bid_by'] = message.author.id
@@ -103,9 +106,23 @@ class Auction(commands.GroupCog, name="auction"):
             data['last_bid'] = datetime.datetime.now()
             await message.reply(f"You have bid ⏣ {ammount:,} on {data['item']}")
             embed = await self.get_embed(data, False)
-
             await data['message'].edit(embed=embed)
             await message.add_reaction("✅")
+            self.bid_cache[data['_id']] = data
+        elif ammount <= data["current_bid"]:
+            await message.reply(f"You need to bid more than ⏣ {data['current_bid']:,}")
+    
+    @commands.Cog.listener()
+    async def on_auction_end(self, data):
+        try:
+            del self.bid_cache[data['_id']]
+        except:
+            pass
+        thread: discord.Thread = data['thread']
+        message: discord.Message = data['message']
+        await thread.edit(locked=True, name=f"{data['item']} Auction Ended")
+        await message.reply(f"**Auction Ended**\n**Winner:** <@{data['current_bid_by']}>\n**Winning Bid:** ⏣ {data['current_bid']:,}")
+
     
     @commands.Cog.listener()
     async def on_auction_end_count(self, data):
@@ -117,53 +134,29 @@ class Auction(commands.GroupCog, name="auction"):
         await thread.send(embed=cembed)
         final_call = 0
         ammout = None
-        def check(m):
+        def check(m: discord.Message):
             if m.channel == thread:
+                if m.author.id == data['current_bid_by']: return False
                 if re.match('^[0-9]+', m.content):
                     return True
-        while ammout == None:
-            async with thread.typing():
-                try:
-                    msg = await self.bot.wait_for("message", check=check, timeout=10)
-                    ammout = await DMCConverter_Ctx().convert(msg, msg.content)
-                    if ammout is not None:
-                        if ammout >= 50000000000:
-                            await message.reply("You can't bid more than ⏣ 50,000,000,000")
-                            continue
-                        if ammout > data['current_bid'] and ammout % data['bet_multiplier'] == 0:
-                            data['current_bid'] = ammout
-                            if data['current_bid_by'] == msg.author.id: 
-                                await msg.reply("You are already the highest bidder")
-                            
-                            data['current_bid_by'] = msg.author.id
-                            data['time_left'] = 10
-                            data['last_bid'] = datetime.datetime.now()
+        for i in range(3):
+            try:
+                msg = await self.bot.wait_for('message', check=check, timeout=10)
+                ammout = await DMCConverter_Ctx().convert(msg, msg.content)
+                if ammout is not None:
+                    if msg.author.id == data['current_bid_by']:
+                        await msg.reply("You are already the highest bidder")
 
-                            embed = await self.get_embed(data, False)
-                            await message.edit(embed=embed)
-                            await msg.add_reaction("✅")
-                            await msg.reply(f"You have bid ⏣ {ammout:,} on {data['item']}")
-
-                            self.bid_cache[data['_id']] = data
-                            return
-                    else:
-                        raise ValueError
-                except (asyncio.TimeoutError, ValueError):
-                    final_call += 1
-                    if final_call == 1:
-                        ammout = None
-                        embed = discord.Embed(description=f"# Going twice...", color=self.bot.default_color)
-                        await thread.send(embed=embed)
-                        continue
-                    elif final_call == 2:
-                        ammout = None
-                        embed1 = discord.Embed(description=f"# Going thrice...", color=self.bot.default_color)
-                        embed = discord.Embed(description=f"# Sold", color=self.bot.default_color)
-                        await thread.send(embeds=[embed1,embed])
-                        await thread.parent.send(f"Congratulations <@{data['current_bid_by']}>, you have won the auction for {data['item']} for ⏣ {data['current_bid']:,}")
-                        await message.edit(embed=await self.get_embed(data, False, message.guild.get_member(data['current_bid_by'])))
-                        await thread.edit(archived=True, locked=True)
-                        return
+            except asyncio.TimeoutError:
+                final_call += 1
+                if final_call == 1:
+                    cembed = discord.Embed(description=f"# Going Twice...", color=self.bot.default_color)
+                    await thread.send(embed=cembed)
+                elif final_call == 2:
+                    cembed = discord.Embed(description=f"# Final Call...", color=self.bot.default_color)
+                    fembed = discord.Embed(description=f"# Sold to <@{data['current_bid_by']}> for ⏣ {data['current_bid']:,}", color=self.bot.default_color)
+                    await thread.send(embeds=[cembed, fembed])
+                    self.bot.dispatch("auction_end", data)
 
     @commands.Cog.listener()
     async def on_message(self, message):
@@ -184,14 +177,19 @@ class Auction(commands.GroupCog, name="auction"):
     @app_commands.command(name="start", description="Starts an auction")
     @app_commands.describe(item="The item to auction", bet_multiplier="The bet multiplier")
     @app_commands.autocomplete(item=item_autocomplete)
-    async def start(self, interaction: discord.Interaction, item: str, bet_multiplier: app_commands.Transform[int, DMCConverter] = 100000):
+    @app_commands.rename(bet_multiplier="bet-increments")
+    @app_commands.choices(bet_multiplier=[
+        app_commands.Choice(name="1k", value=1000),
+        app_commands.Choice(name="10k", value=10000),
+        app_commands.Choice(name="100k", value=100000),
+        app_commands.Choice(name="1m", value=1000000),
+    ])
+    async def start(self, interaction: discord.Interaction, item: str, bet_multiplier: int):
         if interaction.channel.id in self.bid_cache.keys():
             await interaction.response.send_message("There is already an auction in this channel", ephemeral=True)
             return
-        timestamp30s = int(round((datetime.datetime.now() + datetime.timedelta(seconds=30)).timestamp()))
         item_data = self.bot.dank_items_cache[item]
         strating_price = int(item_data["price"] / 2)
-        
         data = {
             '_id': interaction.channel.id,
             'item': item,

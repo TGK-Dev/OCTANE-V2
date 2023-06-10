@@ -22,6 +22,7 @@ class Events(commands.Cog):
 
     def cog_unload(self):
         self.vote_remider_task.cancel()
+        self.counter_task.cancel()
 
     @tasks.loop(minutes=1)
     async def update_member_counter(self):
