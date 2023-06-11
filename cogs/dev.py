@@ -23,7 +23,6 @@ class Dev(commands.Cog, name="dev", description="Dev commands"):
     def __init__(self, bot):
         self.bot = bot
         self.bot.misc = Document(self.bot.db, "misc")
-        #self.check_beta_task = self.check_beta.start()
     
     async def cog_auto_complete(self, interaction: discord.Interaction, current:str) -> List[app_commands.Choice[str]]:
         _list =  [
@@ -31,46 +30,6 @@ class Dev(commands.Cog, name="dev", description="Dev commands"):
             for cog in interaction.client.cogs.keys() if current.lower() in cog.lower()
         ]
         return _list[:24]
-
-    @tasks.loop(minutes=20)
-    async def check_beta(self):
-        old_data = await self.bot.misc.find("6404836dcd9f3950711df0fd")
-        link_regex = re.compile(r'https://.*.apk')
-        version_regex = re.compile(r'AOS_Beta.*b')
-        bit_32_link = "https://web.gpubgm.com/m/download_android.html"
-        bit_64_link = "https://web.gpubgm.com/m/download_android_1.html"
-        new_data = {
-            'bit_32': None,
-            'bit_64': None
-        }
-        async with aiohttp.ClientSession() as session:
-            async with session.get(bit_32_link) as r:
-                content = await r.text()
-                links = link_regex.findall(content)
-                bit_32_link = links[0]
-                    
-            async with session.get(bit_64_link) as r:
-                content = await r.text()
-                links = link_regex.findall(content)
-                bit_64_link = links[0]
-            new_data['bit_32'] = bit_32_link
-            new_data['bit_64'] = bit_64_link
-            if old_data is None: old_data = {'_id': '6404836dcd9f3950711df0fd', 'bit_32': None, 'bit_64': None}
-            if old_data['bit_32'] != new_data['bit_32'] or old_data['bit_64'] != new_data['bit_64']:
-                version_32 = version_regex.findall(bit_32_link)
-                version_64 = version_regex.findall(bit_64_link)
-                webhook = discord.Webhook.from_url("https://canary.discord.com/api/webhooks/1081911807213568071/3Zmgz8pa1XIH4jWNVzaIarzJu1OkR-hACRuxE-mjRD3cElMQWPoBpNGDvmKVzruxMFxV", session=session)
-                embed = discord.Embed(title="New beta version available", color=self.bot.default_color, description="")
-                embed.add_field(name="32 bit", value=f"**Link:** {new_data['bit_32']}\n**Version:** {version_32[0]}", inline=False)
-                embed.add_field(name="64 bit", value=f"**Link:** {new_data['bit_64']}\n**Version:** {version_64[0]}", inline=False)
-                await webhook.send(avatar_url=self.bot.user.avatar.url, username=self.bot.user.name, embed=embed, content="@everyone New beta version available")
-                old_data['bit_32'] = new_data['bit_32']
-                old_data['bit_64'] = new_data['bit_64']
-                await self.bot.misc.update(old_data)
-    
-    @check_beta.before_loop
-    async def before_check_beta(self):
-        await self.bot.wait_until_ready()
 
     dev = app_commands.Group(name="dev", description="Dev commands")
     
