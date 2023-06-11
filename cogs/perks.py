@@ -319,7 +319,7 @@ class Perks(commands.GroupCog, name="perks", description="manage your custom per
             await interaction.edit_original_response(embed=discord.Embed(description="Cancelled", color=interaction.client.default_color), view=None)
 
 
-    @admin.command(name="pserach", description="find the owner of a custom perk")
+    @admin.command(name="psearch", description="find the owner of a custom perk")
     @app_commands.describe(role="The role you want to search for", channel="The channel you want to search for")
     async def _psearch(self, interaction: Interaction,role: discord.Role=None, channel: discord.TextChannel=None):
         config = await self.Perk.get_data(Perk_Type.config, interaction.guild.id, interaction.user.id)
