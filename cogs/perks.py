@@ -8,10 +8,9 @@ from discord import Interaction, app_commands
 from discord.app_commands import Group
 from discord.ext import commands, tasks
 from utils.db import Document
-from typing import List, Literal, Union
-from utils.transformer import MutipleChannel, TimeConverter
-from utils.paginator import Paginator
-from utils.views.buttons import Link_view, Confirm
+from typing import List, Union
+from utils.transformer import TimeConverter
+from utils.views.buttons import Confirm
 from utils.views.perks_system import friends_manage
 from colour import Color
 class Perk_Type(enum.Enum):
@@ -251,7 +250,6 @@ class Perks(commands.GroupCog, name="perks", description="manage your custom per
     
     @admin.command(name="premove", description="remove a custom perk from a user")
     @app_commands.describe(member="The member you want to manage", perk="The perk you want to manage")
-    @app_commands.checks.has_permissions(administrator=True)
     async def _premove(self, interaction: Interaction, member: discord.Member, perk: Perk_Type):
 
         config = await self.Perk.get_data(Perk_Type.config, interaction.guild.id, interaction.user.id)
@@ -285,88 +283,80 @@ class Perks(commands.GroupCog, name="perks", description="manage your custom per
             role = interaction.guild.get_role(perk_data['role_id'])
             if role: await role.delete(reason=f"Perk Removed By {interaction.user.name}")
 
-    # @admin.command(name="pinfo", description="get info about a user's custom perk")
-    # @app_commands.describe(member="The member you want to manage", perk="The perk you want to get info about")
-    # @app_commands.checks.has_permissions(administrator=True)
-    # async def _pinfo(self, interaction: Interaction, member: discord.Member, perk: Perk_Type):
+    @admin.command(name="pedit", description="edit a custom perk of a user")
+    @app_commands.describe(member="The member you want to manage", perk="The perk you want to manage", duration="The duration of the perk", friend_limit="The number of friends the user can give the perk to")
+    async def _pedit(self, interaction: discord.Interaction, member: discord.Member, perk: Perk_Type, duration: app_commands.Transform[int, TimeConverter]=None, friend_limit: app_commands.Range[int, 1, 10]=None):
+        config = await self.Perk.get_data(Perk_Type.config, interaction.guild.id, interaction.user.id)
+        if config == None:
+            await interaction.response.send_message("You need to setup config first", ephemeral=True)
+            return
+        if len(config['admin_roles']) == 0: return await interaction.response.send_message("You need to setup admin roles first", ephemeral=True)
 
-    #     config = await self.Perk.get_data(Perk_Type.config, interaction.guild.id, interaction.user.id)
-    #     if config == None:
-    #         await interaction.response.send_message("You need to setup config first", ephemeral=True)
-    #         return
-    #     if len(config['admin_roles']) == 0:
-    #         await interaction.response.send_message("You need to setup admin roles first", ephemeral=True)
-    #         return
+        user_roles = [role.id for role in interaction.user.roles]
+        if (set(user_roles) & set(config['admin_roles'])) == set():
+            await interaction.response.send_message("You need to have admin roles to use this command", ephemeral=True)
+            return
         
-    #     user_roles = [role.id for role in interaction.user.roles]
-    #     if (set(user_roles) & set(config['admin_roles'])) == set():
-    #         await interaction.response.send_message("You need to have admin roles to use this command", ephemeral=True)
-    #         return
+        if perk == Perk_Type.config: return await interaction.response.send_message("Invalid perk", ephemeral=True)
+        perk_data = await self.Perk.get_data(perk, interaction.guild.id, member.id)
+        if not perk_data: return await interaction.response.send_message("This user doesn't have this perk", ephemeral=True)
+        changes = ""
+        if duration:
+            changes += f"Duration: {duration}\n"
+            perk_data['duration'] = duration
+        if friend_limit:
+            changes += f"Friend Limit: {friend_limit}\n"
+            perk_data['friend_limit'] = friend_limit
+        changes += f"\nDo you want to apply these changes?"
+        view = Confirm(interaction.user, 30)
+        await interaction.response.send_message(embed=discord.Embed(description=changes, color=interaction.client.default_color), view=view)
+        view.message = await interaction.original_response()
+        await view.wait()
+        if view.value:
+            await self.Perk.update(perk, perk_data)
+            await view.interaction.response.edit_message(embed=discord.Embed(description="Successfully updated the perk", color=interaction.client.default_color), view=None)
+        else:
+            await interaction.edit_original_response(embed=discord.Embed(description="Cancelled", color=interaction.client.default_color), view=None)
 
-    #     match perk:
-    #         case Perk_Type.reacts:
-    #             perk_data = await self.Perk.get_data(perk, interaction.guild.id, member.id)
-    #             if not perk_data:
-    #                 await interaction.response.send_message("This user doesn't have this perk", ephemeral=True)
-    #                 return
-    #             else:
-    #                 embed = discord.Embed(description=f"**Emoji:** {perk_data['emoji']}", color=interaction.client.default_color)
-    #                 await interaction.response.send_message(embed=embed, ephemeral=False)
-    #                 return
-    #         case Perk_Type.highlights:
-    #             perk_data = await self.Perk.get_data(perk, interaction.guild.id, member.id)
-    #             if not perk_data:
-    #                 embed = discord.Embed(description=f"This user doesn't have this perk", color=interaction.client.default_color)
-    #                 await interaction.response.send_message(embed=embed, ephemeral=True)
-    #                 return
-    #             else:
-    #                 embed = discord.Embed(title="Highlights Perk", description="")
-    #                 embed.description += f"Trigger: {','.join(perk_data['trigger']) if perk_data['trigger'] else 'None'}\n"
-    #                 embed.description += f"Ignore Channels: {','.join([f'<#{channel}>' for channel in perk_data['ignore_channels']]) if perk_data['ignore_channels'] else 'None'}\n"
-    #                 embed.description += f"Ignore Users: {','.join([f'<@{user}>' for user in perk_data['ignore_users']]) if perk_data['ignore_users'] else 'None'}\n"
-    #                 await interaction.response.send_message(embed=embed, ephemeral=False)
-    #                 return
-    #         case Perk_Type.roles:
-    #             perk_data = await self.Perk.get_data(perk, interaction.guild.id, member.id)
-    #             if not perk_data:
-    #                 await interaction.response.send_message("This user doesn't have this perk", ephemeral=True)
-    #                 return
-    #             if not perk_data['role_id']:
-    #                 await interaction.response.send_message("This user doesn't yet have to claim their role", ephemeral=True)
-    #                 return
-    #             else:
-    #                 role = interaction.guild.get_role(perk_data['role_id'])
-    #                 embed = discord.Embed(title="Custom Role Perk")
-    #                 if role.display_icon: embed.set_thumbnail(url=role.display_icon.url)
-    #                 embed.add_field(name="Owner", value=member.mention, inline=True)
-    #                 embed.add_field(name="Role", value=role.mention, inline=True)
-    #                 embed.add_field(name="Created", value=f"<t:{round(role.created_at.timestamp)}>", inline=True)
-    #                 embed.add_field(name="Duration", value="Permanent" if perk_data['duration'] == 'permanent' else f"<t:{round(discord.utils.utcnow() + datetime.timedelta(seconds=perk_data['duration']))}:R>", inline=True)
-    #                 embed.add_field(name="Friend Limit", value=perk_data['friend_limit'], inline=True)
-    #                 embed.add_field(name="Friends", value=f"{','.join([f'<@{friend}>' for friend in perk_data['friends']]) if perk_data['friends'] else 'None'}", inline=True)
-    #                 await interaction.response.send_message(embed=embed, ephemeral=False)
-    #                 return
-    #         case Perk_Type.channels:
-    #             perk_data = await self.Perk.get_data(perk, interaction.guild.id, member.id)
-    #             if not perk_data:
-    #                 await interaction.response.send_message("This user doesn't have this perk", ephemeral=True)
-    #                 return
-    #             if not perk_data['channel_id']:
-    #                 await interaction.response.send_message("This user doesn't yet have to claim their channel", ephemeral=True)
-    #                 return
-    #             else:
-    #                 channel = interaction.guild.get_channel(perk_data['channel_id'])
-    #                 embed = discord.Embed(title="Custom Channel Perk")
-    #                 embed.add_field(name="Owner", value=member.mention, inline=True)
-    #                 embed.add_field(name="Channel", value=channel.mention, inline=True)
-    #                 embed.add_field(name="Created", value=f"<t:{round(channel.created_at.timestamp)}>", inline=True)
-    #                 embed.add_field(name="Duration", value="Permanent" if perk_data['duration'] == 'permanent' else f"<t:{round(discord.utils.utcnow() + datetime.timedelta(seconds=perk_data['duration']))}:R>", inline=True)
-    #                 embed.add_field(name="Friend Limit", value=perk_data['friend_limit'], inline=True)
-    #                 embed.add_field(name="Friends", value=f"{','.join([f'<@{friend}>' for friend in perk_data['friends']]) if perk_data['friends'] else 'None'}", inline=True)
-    #                 await interaction.response.send_message(embed=embed, ephemeral=False)
-    #                 return
-    #         case _:
-    #             await interaction.response.send_message("This Perk is not Viewable", ephemeral=True)
+
+    @admin.command(name="pserach", description="find the owner of a custom perk")
+    @app_commands.describe(role="The role you want to search for", channel="The channel you want to search for")
+    async def _psearch(self, interaction: Interaction,role: discord.Role=None, channel: discord.TextChannel=None):
+        config = await self.Perk.get_data(Perk_Type.config, interaction.guild.id, interaction.user.id)
+        if config == None:
+            await interaction.response.send_message("You need to setup config first", ephemeral=True)
+            return
+        
+        user_roles = [role.id for role in interaction.user.roles]
+        if (set(user_roles) & set(config['admin_roles'])) == set():
+            await interaction.response.send_message("You need to have admin roles to use this command", ephemeral=True)
+            return
+        if role and channel is None: return await interaction.response.send_message("You need to provide a channel or a role", ephemeral=True)
+        embeds = []
+        if role:
+            role_data = await self.Perk.roles.find({"role_id": role.id, "guild_id": interaction.guild.id})
+            user_data = interaction.guild.get_member(role_data['user_id'])
+            duration = humanfriendly.format_timespan(role_data['duration']) if role_data['duration'] != "permanent" else "Permanent"
+            role_embed = discord.Embed(title="Custom Role Info", color=interaction.client.default_color, description="")
+            role_embed.description += f"**User:** {user_data.mention}\n"
+            role_embed.description += f"**Role:** {role.mention}\n"
+            role_embed.description += f"**Duration:** {duration}\n"
+            role_embed.description += f"**Friend Limit:** {role_data['friend_limit']}\n"
+            role_embed.description += f"**Friends:**" + ", ".join([f"<@{friend}>" for friend in role_data['friend_list']]) if len(role_data['friend_list']) > 0 else "None"
+            embeds.append(role_embed)
+        if channel:
+            channel_data = await self.Perk.channel.find({"channel_id": channel.id, "guild_id": interaction.guild.id})
+            user_data = interaction.guild.get_member(channel_data['user_id'])
+            duration = humanfriendly.format_timespan(channel_data['duration']) if channel_data['duration'] != "permanent" else "Permanent"
+            channel_embed = discord.Embed(title="Custom Channel Info", color=interaction.client.default_color, description="")
+            channel_embed.description += f"**User:** {user_data.mention}\n"
+            channel_embed.description += f"**Channel:** {channel.mention}\n"
+            channel_embed.description += f"**Duration:** {duration}\n"
+            channel_embed.description += f"**Friend Limit:** {channel_data['friend_limit']}\n"
+            channel_embed.description += f"**Friends:**" + ", ".join([f"<@{friend}>" for friend in channel_data['friend_list']]) if len(channel_data['friend_list']) > 0 else "None"
+            embeds.append(channel_embed)
+        if len(embeds) == 0: return await interaction.response.send_message("No results found", ephemeral=True)
+        await interaction.response.send_message(embeds=embeds)
 
     @claim.command(name="role", description="claim your custom role")
     @app_commands.describe(name="The name of the role you want to claim", color="The color of the role you want to claim", icon="The icon of the role you want to claim")
@@ -396,7 +386,7 @@ class Perks(commands.GroupCog, name="perks", description="manage your custom per
                     icon = await resp.read()
         
         if "#" not in color:
-            await interaction.edit_original_response(embed=discord.Embed(description="Invalid color make sure to add `#` before the hex code", color=interaction.client.default_color))
+            return await interaction.edit_original_response(embed=discord.Embed(description="Invalid color make sure to add `#` before the hex code", color=interaction.client.default_color))
         color = tuple(round(c*255) for c in Color(color).rgb)
         color = discord.Color.from_rgb(*color)
 
@@ -917,5 +907,4 @@ class Perks(commands.GroupCog, name="perks", description="manage your custom per
 
 async def setup(bot):
     await bot.add_cog(Perks(bot))
-    #await bot.add_cog(Perk_BackEND(bot))
 
