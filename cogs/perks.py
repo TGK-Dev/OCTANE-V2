@@ -331,7 +331,7 @@ class Perks(commands.GroupCog, name="perks", description="manage your custom per
         if (set(user_roles) & set(config['admin_roles'])) == set():
             await interaction.response.send_message("You need to have admin roles to use this command", ephemeral=True)
             return
-        if role and channel is None: return await interaction.response.send_message("You need to provide a channel or a role", ephemeral=True)
+        if role is None and channel is None: return await interaction.response.send_message("You need to specify a role or a channel", ephemeral=True)
         embeds = []
         if role:
             role_data = await self.Perk.roles.find({"role_id": role.id, "guild_id": interaction.guild.id})
