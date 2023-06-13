@@ -29,10 +29,12 @@ class Events(commands.Cog):
     async def on_ready(self):
         channel = self.bot.get_channel(1031514773310930945)
         for webhook in await channel.webhooks():
-            if webhook.id == 1118161631474626590:
+            if webhook.creator.id == self.bot.user.id:
                 self.activiy_webhook = webhook
         if  not isinstance(self.activiy_webhook, discord.Webhook):
-            self.activiy_webhook = await channel.create_webhook(name=self.bot.user.name, avatar=await self.bot.user.avatar_url.read())
+            avatar = await self.bot.user.avatar.read()
+            self.activiy_webhook = await channel.create_webhook(name=self.bot.user.name, avatar=avatar)
+            print("Created webhook")
 
     @tasks.loop(minutes=1)
     async def update_member_counter(self):
