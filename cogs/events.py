@@ -29,7 +29,7 @@ class Events(commands.Cog):
     async def on_ready(self):
         channel = self.bot.get_channel(1031514773310930945)
         for webhook in await channel.webhooks():
-            if webhook.creator.id == self.bot.user.id:
+            if webhook.user.id == self.bot.user.id:
                 self.activiy_webhook = webhook
         if  not isinstance(self.activiy_webhook, discord.Webhook):
             avatar = await self.bot.user.avatar.read()
