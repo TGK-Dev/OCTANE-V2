@@ -354,6 +354,7 @@ class Perks(commands.GroupCog, name="perks", description="manage your custom per
             channel_embed.description += f"**Duration:** {duration}\n"
             channel_embed.description += f"**Friend Limit:** {channel_data['friend_limit']}\n"
             channel_embed.description += f"**Friends:**" + ", ".join([f"<@{friend}>" for friend in channel_data['friend_list']]) if len(channel_data['friend_list']) > 0 else "None"
+            channel_embed.add_field(name="Activiy", value=f"**Rank: **{channel_data['activity']['rank']}\n**Messages:** {channel_data['activity']['messages']}\n")
             embeds.append(channel_embed)
         if len(embeds) == 0: return await interaction.response.send_message("No results found", ephemeral=True)
         await interaction.response.send_message(embeds=embeds)
