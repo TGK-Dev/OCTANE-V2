@@ -18,11 +18,21 @@ class Events(commands.Cog):
         self.vote_remider_task = self.check_vote_reminders.start()
         self.counter_task = self.update_member_counter.start()
         self.bot.votes = Document(self.bot.db, "votes")
+        self.activiy_webhook = None
         self.vote_task_progress = False
 
     def cog_unload(self):
         self.vote_remider_task.cancel()
         self.counter_task.cancel()
+    
+    @commands.Cog.listener()
+    async def on_ready(self):
+        channel = self.bot.get_channel(1031514773310930945)
+        for webhook in await channel.webhooks():
+            if webhook.id == 1118161631474626590:
+                self.activiy_webhook = webhook
+        if  not isinstance(self.activiy_webhook, discord.Webhook):
+            self.activiy_webhook = await channel.create_webhook(name=self.bot.user.name, avatar=await self.bot.user.avatar_url.read())
 
     @tasks.loop(minutes=1)
     async def update_member_counter(self):
@@ -181,12 +191,11 @@ class Events(commands.Cog):
                         embed.set_footer(text=self.bot.user.name, icon_url=self.bot.user.avatar.url)
                         embed.timestamp = datetime.datetime.now()
                         embed.set_thumbnail(url="https://cdn.discordapp.com/emojis/869579480509841428.gif?v=1")
-                        await supporter_log_channel.send(embed=embed)
+                        await self.activiy_webhook.send(embed=embed)
                         await after.add_roles(supporter_role)
                         return
 
-                    elif not ".gg/tgk" in activity.name.lower():
-                        
+                    elif not ".gg/tgk" in activity.name.lower():                        
                         if supporter_role in after.roles: await after.remove_roles(supporter_role)                        
                         return
             except Exception as e:
