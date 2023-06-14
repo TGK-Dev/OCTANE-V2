@@ -270,9 +270,9 @@ class Payout(commands.GroupCog, name="payout", description="Payout commands"):
 			
 			try:
 				await interaction.client.payout_queue.insert(queue_data)
-				loading_embed.description += f"\n<:octane_yes:1019957051721535618> | Payout Successfully queued for {winner.mention} `({winner.name}#{winner.discriminator})`"
+				loading_embed.description += f"\n<:octane_yes:1019957051721535618> | Payout Successfully queued for {winner.mention} `({winner.global_name})`"
 			except Exception as e:
-				loading_embed.description += f"\n<:dynoError:1000351802702692442> | Failed to queue payout for {winner.mention} `({winner.name}#{winner.discriminator})`"
+				loading_embed.description += f"\n<:dynoError:1000351802702692442> | Failed to queue payout for {winner.mention} `({winner.global_name})`"
 
 			await interaction.edit_original_response(embed=loading_embed)
 			self.bot.dispatch("payout_queue", interaction.user, event, event_message, msg, winner, quantity)
@@ -290,7 +290,7 @@ class Payout(commands.GroupCog, name="payout", description="Payout commands"):
 		embed = discord.Embed(title="Payout | Queued", color=discord.Color.green(), timestamp=datetime.datetime.now(), description="")
 		embed.description += f"**Host:** {host.mention}\n"
 		embed.description += f"**Event:** {event}\n"
-		embed.description += f"**Winner:** {winner.mention} ({winner.name}#{winner.discriminator})\n"
+		embed.description += f"**Winner:** {winner.mention} ({winner.global_name})\n"
 		embed.description += f"**Prize:** {prize:,}\n"
 		embed.description += f"**Event Message:** [Jump to Message]({win_message.jump_url})\n"
 		embed.description += f"**Queue Message:** [Jump to Message]({queue_message.jump_url})\n"
@@ -331,7 +331,7 @@ class Payout(commands.GroupCog, name="payout", description="Payout commands"):
 	async def on_payout_paid(self, message: discord.Message, user: discord.Member, winner: discord.Member, prize: str):
 		embed = discord.Embed(title="Payout | Paid", color=discord.Color.dark_green(), timestamp=datetime.datetime.now(), description="")
 		embed.description += f"**User:** {user.mention}\n"
-		embed.description += f"**Winner:** {winner.mention} ({winner.name}#{winner.discriminator})\n"
+		embed.description += f"**Winner:** {winner.mention} ({winner.global_name})\n"
 		embed.description += f"**Prize:** {prize}\n"
 		embed.description += f"**Queue Message:** [Jump to Message]({message.jump_url})\n"
 		embed.set_footer(text=f"Queue Message ID: {message.id}")

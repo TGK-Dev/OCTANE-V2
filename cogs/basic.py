@@ -208,7 +208,7 @@ class Basic(commands.Cog):
                 channel = guild.get_channel(user_data['channel_id'])
                 channel_name = channel.name if channel else "Unknown Channel"
                 embed = discord.Embed(color=0x2b2d31 , timestamp=user_data['timestamp'])
-                embed.set_author(name = f'{user.name}#{user.discriminator}', icon_url = user.avatar.url if user.avatar else user.default_avatar)
+                embed.set_author(name = f'{user.global_name}', icon_url = user.avatar.url if user.avatar else user.default_avatar)
                 embed.description = f"<a:tgk_redSparkle:1072168821797965926> [`You were pinged in #{channel_name}.`]({jump_url}) {pinged_at}\n"
                 embed.description += f"<a:tgk_redSparkle:1072168821797965926> **Message:** {content}"
                 embed.set_footer(text = f"Pings you received while you were AFK • Pinged at")
@@ -275,7 +275,7 @@ class Basic(commands.Cog):
     async def whois(self, interaction: Interaction, member: discord.Member=None):
         member = member if member else interaction.user
 
-        embed = discord.Embed(title=f"User Info - {member.name}#{member.discriminator}")
+        embed = discord.Embed(title=f"User Info - {member.global_name}")
         embed.set_thumbnail(url=member.avatar.url if member.avatar else member.default_avatar.url)
 
         embed.add_field(name="<:authorized:991735095587254364> ID:", value=member.id)

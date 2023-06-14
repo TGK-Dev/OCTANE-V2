@@ -870,7 +870,7 @@ class Perks(commands.GroupCog, name="perks", description="manage your custom per
                 pass
             embed.description += f"**[<t:{round(bmessage.created_at.timestamp())}:T>] {bmessage.author.display_name}:** {bmessage.content}\n"        
         embed.add_field(name="Trigger Message", value=f"[<t:{round(message.created_at.timestamp())}:T>] {message.author.display_name}: {message.content}", inline=False)
-        embed.set_footer(text=f"Triggered by {user.display_name}#{user.discriminator}", icon_url=user.avatar.url if user.avatar else user.default_avatar)
+        embed.set_footer(text=f"Triggered by {user.global_name}", icon_url=user.avatar.url if user.avatar else user.default_avatar)
         try:
             view = discord.ui.View()
             view.add_item(discord.ui.Button(label="Jump to message", url=message.jump_url, style=discord.ButtonStyle.url, emoji="<:tgk_link:1105189183523401828>"))

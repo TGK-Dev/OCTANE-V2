@@ -100,7 +100,7 @@ class Linked_Roles(commands.GroupCog, name="linkedroles"):
 				"refresh_token": None,
 				"expires_in": None,
 				"expires_at": None,
-				"username": user.name,
+				"username": user.global_name,
 				"discriminator": user.discriminator,
 				"scope": None,
 				"metadata": {

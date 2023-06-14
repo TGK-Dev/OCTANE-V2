@@ -189,7 +189,7 @@ class Events(commands.Cog):
 
                         if supporter_role in after.roles: return
                         embed = discord.Embed(description=f"Thanks for supporting the The Gambler's Kingdom\n\nYou have been given the {supporter_role.mention} role", color=supporter_role.color)
-                        embed.set_author(name=f"{after.name}#{after.discriminator} ({after.id})", icon_url=after.avatar.url if after.avatar else after.default_avatar)
+                        embed.set_author(name=f"{after.global_name}({after.id})", icon_url=after.avatar.url if after.avatar else after.default_avatar)
                         embed.set_footer(text=self.bot.user.name, icon_url=self.bot.user.avatar.url)
                         embed.timestamp = datetime.datetime.now()
                         embed.set_thumbnail(url="https://cdn.discordapp.com/emojis/869579480509841428.gif?v=1")
