@@ -1,7 +1,7 @@
 import discord
 from discord.ext import commands
 from discord import app_commands, Interaction
-
+import asyncio
 import datetime
 import psutil
 from typing import Literal
@@ -50,6 +50,9 @@ class Basic(commands.Cog):
                     try:
                         messages = self.bot.snipes[interaction.channel.id]
                         messages.reverse()
+                    except KeyError:
+                        embed = discord.Embed(description="There is nothing to snipe!", color=interaction.client.default_color)
+                        return await interaction.response.send_message(embed=embed, ephemeral=True)
                     except Exception as e:
                         embed = discord.Embed(description=f"That message doesn't exist!", color=interaction.client.default_color)
                         return await interaction.response.send_message(embed=embed, ephemeral=True)
@@ -57,7 +60,9 @@ class Basic(commands.Cog):
                     pages = []
                     for message in messages:
                         author = interaction.guild.get_member(message['author'])
-                        embed = discord.Embed(description=message['content'], color=author.color if author != None else self.bot.default_color)
+                        if author is None:
+                            author = await self.bot.fetch_user(message['author'])
+                        embed = discord.Embed(description=message['content'], color=message['color'])
                         embed.set_author(name=author, icon_url=author.avatar.url if author.avatar else author.default_avatar)
                         embed.set_footer(text=f"Sniped by {interaction.user}", icon_url=interaction.user.avatar.url if interaction.user.avatar else interaction.user.default_avatar)
                         if message['attachments']:
@@ -70,12 +75,14 @@ class Basic(commands.Cog):
                         message = self.bot.snipes[interaction.channel.id]
                         message.reverse()
                         message = message[index - 1]
-                    except:
-                        embed = discord.Embed(description=f"That message doesn't exist!", color=interaction.client.default_color)
+                    except KeyError:
+                        embed = discord.Embed(description="There is nothing to snipe!", color=interaction.client.default_color)
                         return await interaction.response.send_message(embed=embed, ephemeral=True)
                     
                     author = interaction.guild.get_member(message['author'])
-                    embed = discord.Embed(description=message['content'], color=author.color if author != None else self.bot.default_color)
+                    if author is None:
+                        author = await self.bot.fetch_user(message['author'])
+                    embed = discord.Embed(description=message['content'], color=message['color'])
                     embed.set_author(name=author, icon_url=author.avatar.url if author.avatar else author.default_avatar)
                     embed.set_footer(text=f"Sniped by {interaction.user}", icon_url=interaction.user.avatar.url if interaction.user.avatar else interaction.user.default_avatar)
                     if message['attachments']:
@@ -141,7 +148,8 @@ class Basic(commands.Cog):
         data = {
             "author": message.author.id,
             "content": message.content,
-            "attachments": []
+            "attachments": [],
+            "color": message.author.color
         }
         if len(message.attachments) > 0:
             if message.attachments[0].url.endswith((".png", ".jpg", ".jpeg", ".gif", ".webp")):
@@ -161,7 +169,8 @@ class Basic(commands.Cog):
         self.bot.esnipes[before.channel.id].append({
             "author": before.author.id,
             "before": before.content,
-            "after": after.content
+            "after": after.content,
+            "color": before.author.color
         })
     
     @commands.Cog.listener()
@@ -324,6 +333,75 @@ class Appeal_server(commands.GroupCog, name="appeal"):
         await main_server.unban(member, reason=reason)
 
         await interaction.response.send_message(f"{member.mention} You have been unbanned from {main_server.name} for the reason: {reason}\nYou can now rejoin the server at https://discord.gg/tgk", ephemeral=False)
+
+class Ban_battle(commands.GroupCog, name="banbattle"):
+    def __init__(self, bot):
+        self.bot = bot
+        self.battle_guild: discord.Guild = None
+        self.battle_data = {}
+    
+    staff = app_commands.Group(name="staff", description="Staff commands for the ban battle")
+    
+    @commands.Cog.listener()
+    async def on_ready(self):
+        self.battle_guild = await self.bot.fetch_guild(1118244586008084581)
+    
+    @commands.Cog.listener()
+    async def on_member_join(self, member: discord.Member):
+        if member.guild.id != self.battle_guild.id: return
+        if member.bot: await member.kick(reason="Bots are not allowed in the ban battle")
+        if member.id == self.battle_data['host']:
+            role = self.battle_guild.get_role(1118486572115959820)
+            await member.add_roles(role)
+    
+    @staff.command(name="setup", description="Setup the ban battle")
+    @app_commands.checks.has_permissions(administrator=True)
+    async def setup(self, interaction: Interaction):
+        if interaction.guild.id == self.battle_guild.id:
+            return await interaction.response.send_message("You can't setup the ban battle in the ban battle server", ephemeral=True)
+        await interaction.response.send_message(embed=discord.Embed(description="<a:loading:1004658436778229791> Setting up the ban battle..."), ephemeral=True)
+        over_write = {
+            self.battle_guild.default_role: discord.PermissionOverwrite(send_messages=False),
+            self.battle_guild.get_role(1118486572115959820): discord.PermissionOverwrite(read_messages=True, send_messages=True),
+        }
+        battle_channel = await self.battle_guild.create_text_channel(name="Battle-ground", topic="The battle ground for the ban battle", category=self.battle_guild.get_channel(1118244586008084584), overwrites=over_write)
+        inv = battle_channel.create_invite(max_usse=100)
+        view = discord.ui.View()        
+        view.add_item(discord.ui.Button(label="Join", style=discord.ButtonStyle.url, url=inv.url))
+        self.battle_data["channel"] = battle_channel
+        self.battle_data["inv"] = inv.url
+        self.battle_data["host"] = interaction.user.id
+        await interaction.edit_original_response(embed=discord.Embed(description=f"Successfully setup the ban battle tap button below to join"), ephemeral=True, view=view)
+    
+    @staff.command(name="clean-up", description="Clean up the ban battle")
+    @app_commands.checks.has_permissions(administrator=True)
+    async def clean_up(self, interaction: Interaction):
+        await interaction.response.send_message(embed=discord.Embed(description="<a:loading:1004658436778229791> Cleaning up the ban battle..."), ephemeral=True)
+        async for ban in self.battle_guild.bans(limit=None):
+            if ban.user.reason != "Eliminated from the ban battle": continue
+            await self.battle_guild.unban(ban.user, reason="Ban battle clean up")
+            await asyncio.sleep(1)
+        for member in self.battle_guild.members:
+            if member.id == self.battle_data['host']: continue
+            await member.kick(reason="Ban battle clean up")
+            await asyncio.sleep(1)
+        for invites in await self.battle_guild.invites():
+            await invites.delete(reason="Ban battle clean up")
+            await asyncio.sleep(1)
+        await interaction.edit_original_response(embed=discord.Embed(description=f"Successfully cleaned up the ban battle\nYou will be kick from the server after 10 seconds"), ephemeral=True)
+        await asyncio.sleep(10)
+        await interaction.user.kick(reason="Ban battle clean up")
+        await self.battle_data['channel'].delete()
+        self.battle_data = {}
+
+    @staff.command(name="add", description="Add a user to the ban battle event manager")
+    @app_commands.checks.has_permissions(administrator=True)
+    async def add(self, interaction: Interaction, member: discord.Member):
+        if interaction.guild.id != self.battle_guild.id:
+            return await interaction.response.send_message("You can only use this command in the ban battle server", ephemeral=True)
+        role = interaction.guild.get_role(1118486572115959820)
+        await member.add_roles(role)
+        await interaction.response.send_message(f"Successfully added {member.mention} to the ban battle event manager", ephemeral=True)
 
 async def setup(bot):
     await bot.add_cog(Basic(bot), guilds=[discord.Object(785839283847954433)])
