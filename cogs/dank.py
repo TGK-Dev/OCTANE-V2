@@ -166,6 +166,7 @@ class Dank_Events(commands.GroupCog, name="dank"):
 
         success = ""
         failed = ""
+        same = ""
 
         for item in items:
             raw = item.removeprefix(" ").split(":")
@@ -181,7 +182,9 @@ class Dank_Events(commands.GroupCog, name="dank"):
                 await self.bot.dank_items.insert(data)
                 success += f"{item}: {data['price']}\n"
             else:
-                if data['price'] == price: continue
+                if data['price'] == price: 
+                    same += f"{item}: {data['price']}\n"
+                    continue
                 old_price = data['price']
                 update_data = {"day": data['last_updated'].strftime("%d/%m/%Y"),"old_price": old_price, "new_price": price}
                 data['last_prices'].append(update_data)
@@ -193,8 +196,9 @@ class Dank_Events(commands.GroupCog, name="dank"):
                 success += f"{item}: {old_price} -> {data['price']}" + "📉\n" if old_price > price else "📈\n"
         
         final_embed = discord.Embed(title="Scrape Complete", color=interaction.client.default_color, description="")
-        final_embed.description += f"**Success:**\n{success}"
-        final_embed.description += f"**Failed:**\n{failed}"
+        final_embed.description += f"**### Success:**\n{success}"
+        final_embed.description += f"**### Failed:**\n{failed}"
+        final_embed.description += f"**### Same:**\n{same}"
         await interaction.edit_original_response(embed=final_embed, content=None)
 
 
