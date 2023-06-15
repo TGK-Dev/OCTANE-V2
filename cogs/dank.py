@@ -190,7 +190,7 @@ class Dank_Events(commands.GroupCog, name="dank"):
                     data['last_prices'].pop(0)
                 data['last_updated'] = datetime.datetime.now()
                 await self.bot.dank_items.update(data)
-                success += f"{item}: {old_price} -> {data['price']}" + "📉" if old_price > price else "📈" + "\n"
+                success += f"{item}: {old_price} -> {data['price']}" + "📉\n" if old_price > price else "📈\n"
         
         final_embed = discord.Embed(title="Scrape Complete", color=interaction.client.default_color, description="")
         final_embed.description += f"**Success:**\n{success}"
