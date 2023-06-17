@@ -29,7 +29,7 @@ class DMCConverter(app_commands.Transformer):
     async def transform(self, interaction: Interaction, value: str):
 
         value = value.lower()
-        value = value.replace("k", "e3").replace("m", "e6").replace(" mil", "e6").replace("mil", "e6").replace("b", "e9")
+        value = value.replace("⏣", "").replace(",", "").replace("k", "e3").replace("m", "e6").replace(" mil", "e6").replace("mil", "e6").replace("b", "e9")
         if 'e' not in value:
             return int(value)
         value = value.split("e")
