@@ -76,16 +76,84 @@ class Auction(commands.GroupCog, name="auction"):
             auction = self.bid_cache[auction]
             if auction['last_bid'] == None: continue
             if auction['last_bid'] + datetime.timedelta(seconds=auction['time_left']) < datetime.datetime.now():
-                self.bot.dispatch("auction_end_count", auction)
-                try:
-                    del self.bid_cache[auction['_id']]
-                except KeyError:
-                    pass
+                if auction['call_started'] == True: continue
+                await auction['thread'].send(f"No Bet was place in last 10 seconds, starting closing calls")
+                auction['call_started'] = True
+                self.bot.dispatch("auction_calls", auction, 0, 10)
         self.auction_loop_progress = False
 
     @auction_loop.before_loop
     async def before_auction_loop(self):
         await self.bot.wait_until_ready()
+    
+    @commands.Cog.listener()
+    async def on_auction_calls(self, data: dict, call_num:int, timeout:int):
+        message: discord.Message = data['message']
+        thread: discord.Thread = data['thread']
+        if call_num == 0:
+            embed = discord.Embed(description=f"# Going Once...", color=self.bot.default_color)
+        if call_num == 1:
+            embed = discord.Embed(description=f"# Going Twice...", color=self.bot.default_color)
+        if call_num == 2:
+            self.bot.dispatch("auction_end", data)
+            return
+        
+        call_started_at = datetime.datetime.utcnow()
+        time_passed = 0
+        def check(m: discord.Message):
+            if m.channel == thread:
+                if m.author.id == data['current_bid_by']: return False
+                if re.match('^[0-9]+', m.content):
+                    return True              
+        await thread.send(embed=embed)
+
+        while True:
+            try:
+                timeout = 10 - time_passed
+                if timeout <= 0: raise asyncio.TimeoutError
+                print("waiting for Bet")
+                print(timeout)
+                print("------------------")
+                print("call_num", call_num)
+                print("------------------")
+                msg = await self.bot.wait_for('message', check=check, timeout=timeout)
+                ammout = await DMCConverter_Ctx().convert(msg, msg.content)
+                print(ammout, "Ammout")
+                if not ammout:
+                    time_passed = int((datetime.datetime.utcnow() - call_started_at).total_seconds())
+                    continue
+                if ammout % data["bet_multiplier"] != 0:
+                    time_passed = int((datetime.datetime.utcnow() - call_started_at).total_seconds())
+                    await thread.send(f"Mininum Bid Increment is ⏣ {data['bet_multiplier']:,}")
+                    continue
+                if ammout >= 50000000000:
+                    time_passed = int((datetime.datetime.utcnow() - call_started_at).total_seconds())
+                    await thread.send("You can't bid more than ⏣ 50,000,000,000")
+                    continue
+                if msg.author.id == data['current_bid_by']:
+                    time_passed = int((datetime.datetime.utcnow() - call_started_at).total_seconds())
+                    await msg.reply("You are already the highest bidder")
+                    continue
+                if ammout > data["current_bid"]:
+                    data['current_bid'] = ammout
+                    data['current_bid_by'] = msg.author.id
+                    data['time_left'] = 10
+                    data['last_bid'] = datetime.datetime.now()
+                    data['call_started'] = False
+                    data['call_count'] = 0
+                    self.bid_cache[data['message'].id] = data
+                    await thread.send(f"New Bid of ⏣ {ammout:,} by <@{msg.author.id}>")
+                    embed = await self.get_embed(data)
+                    await data['message'].edit(embed=embed)
+                    print(timeout, "Success")
+                    return
+            except asyncio.TimeoutError:
+                data['call_count'] += 1
+                self.bot.dispatch('auction_calls', data, data['call_count'], 10)
+                print(int((datetime.datetime.utcnow() - call_started_at).total_seconds()))
+                return
+        
+                
     
     @commands.Cog.listener()
     async def on_bet(self, message: discord.Message, data):
@@ -120,43 +188,10 @@ class Auction(commands.GroupCog, name="auction"):
             pass
         thread: discord.Thread = data['thread']
         message: discord.Message = data['message']
+        await thread.send(embeds=[discord.Embed(description="# Going Thrice...", color=self.bot.default_color), discord.Embed(description=f"# Auction Ended Sold to <@{data['current_bid_by']}> for ⏣ {data['current_bid']:,}", color=0x00ff00)])
         await thread.edit(locked=True, name=f"{data['item']} Auction Ended")
         await message.reply(f"**Auction Ended**\n**Winner:** <@{data['current_bid_by']}>\n**Winning Bid:** ⏣ {data['current_bid']:,}")
 
-    
-    @commands.Cog.listener()
-    async def on_auction_end_count(self, data):
-        message: discord.Message = data['message']
-        thread: discord.Thread = data['thread']
-        await thread.send(f"No Bet was place in last 10 seconds, starting closing calls")
-        await asyncio.sleep(1)
-        cembed = discord.Embed(description=f"# Going Once...", color=self.bot.default_color)
-        await thread.send(embed=cembed)
-        final_call = 0
-        ammout = None
-        def check(m: discord.Message):
-            if m.channel == thread:
-                if m.author.id == data['current_bid_by']: return False
-                if re.match('^[0-9]+', m.content):
-                    return True
-        for i in range(3):
-            try:
-                msg = await self.bot.wait_for('message', check=check, timeout=10)
-                ammout = await DMCConverter_Ctx().convert(msg, msg.content)
-                if ammout is not None:
-                    if msg.author.id == data['current_bid_by']:
-                        await msg.reply("You are already the highest bidder")
-
-            except asyncio.TimeoutError:
-                final_call += 1
-                if final_call == 1:
-                    cembed = discord.Embed(description=f"# Going Twice...", color=self.bot.default_color)
-                    await thread.send(embed=cembed)
-                elif final_call == 2:
-                    cembed = discord.Embed(description=f"# Final Call...", color=self.bot.default_color)
-                    fembed = discord.Embed(description=f"# Sold to <@{data['current_bid_by']}> for ⏣ {data['current_bid']:,}", color=self.bot.default_color)
-                    await thread.send(embeds=[cembed, fembed])
-                    self.bot.dispatch("auction_end", data)
 
     @commands.Cog.listener()
     async def on_message(self, message):
@@ -167,6 +202,7 @@ class Auction(commands.GroupCog, name="auction"):
         if not isinstance(message.channel, discord.Thread): return
         try:
             data = self.bid_cache[message.channel.parent_id]
+            if data['call_started'] == True: return
         except KeyError:
             return
         ammount = await DMCConverter_Ctx().convert(message, message.content)
@@ -201,7 +237,9 @@ class Auction(commands.GroupCog, name="auction"):
             'last_bid': None,
             'message': None,
             'auctioneer': interaction.user.id,
-            'thread': None
+            'thread': None,
+            'call_started': False,
+            'call_count': 0,
         }
 
         embed = await self.get_embed(data, True)
