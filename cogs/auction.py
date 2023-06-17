@@ -111,14 +111,8 @@ class Auction(commands.GroupCog, name="auction"):
             try:
                 timeout = 10 - time_passed
                 if timeout <= 0: raise asyncio.TimeoutError
-                print("waiting for Bet")
-                print(timeout)
-                print("------------------")
-                print("call_num", call_num)
-                print("------------------")
                 msg = await self.bot.wait_for('message', check=check, timeout=timeout)
                 ammout = await DMCConverter_Ctx().convert(msg, msg.content)
-                print(ammout, "Ammout")
                 if not ammout:
                     time_passed = int((datetime.datetime.utcnow() - call_started_at).total_seconds())
                     continue
@@ -142,15 +136,13 @@ class Auction(commands.GroupCog, name="auction"):
                     data['call_started'] = False
                     data['call_count'] = 0
                     self.bid_cache[data['message'].id] = data
-                    await thread.send(f"New Bid of ⏣ {ammout:,} by <@{msg.author.id}>")
+                    await msg.reply(f"You have bid ⏣ {ammout:,} on {data['item']}")
                     embed = await self.get_embed(data)
                     await data['message'].edit(embed=embed)
-                    print(timeout, "Success")
                     return
             except asyncio.TimeoutError:
                 data['call_count'] += 1
                 self.bot.dispatch('auction_calls', data, data['call_count'], 10)
-                print(int((datetime.datetime.utcnow() - call_started_at).total_seconds()))
                 return
         
                 
