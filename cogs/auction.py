@@ -35,10 +35,10 @@ class Auction(commands.GroupCog, name="auction"):
 
     async def get_embed(self, data, first=True, winner:discord.Member=None):
         if winner:
-            embed = discord.Embed(title=f"Auction for {data['item']}", description="", color=self.bot.default_color)
-            embed.description += f"**Starting Bid:** ⏣ {data['strating_price']:,}\n"
-            embed.description += f"**Bet Multiplier:** ⏣ {data['bet_multiplier']:,}\n"  
-            embed.description += f"**Bid Increment By:** ⏣ {data['current_bid']:,}\n"
+            embed = discord.Embed(title=f"Auction for {data['quantity']}x{data['item']}", description="", color=self.bot.default_color)
+            embed.description += f"**Starting Bid:** `⏣ {data['strating_price']:,}`\n"
+            embed.description += f"**Bet Multiplier:** `⏣ {data['bet_multiplier']:,}`\n"  
+            embed.description += f"**Bid Increment By:** `⏣ {data['current_bid']:,}`\n"
             embed.description += f"**Current Bid By:** {winner.mention}\n"
             embed.description += f"**Time Left:** `Auction Ended`\n"
             embed.description += f"**Auctioneer:** <@{data['auctioneer']}>\n"
@@ -46,9 +46,9 @@ class Auction(commands.GroupCog, name="auction"):
         
         if first:
             timestamp30s = int((datetime.datetime.now() + datetime.timedelta(seconds=30)).timestamp())
-            embed = discord.Embed(title=f"Auction for {data['item']}", description="", color=self.bot.default_color)
-            embed.description += f"**Starting Bid:** ⏣ {data['strating_price']:,}\n"
-            embed.description += f"**Bet Multiplier:** ⏣ {data['bet_multiplier']:,}\n"  
+            embed = discord.Embed(title=f"Auction for {data['quantity']}x{data['item']}", description="", color=self.bot.default_color)
+            embed.description += f"**Starting Bid:** `⏣ {data['strating_price']:,}`\n"
+            embed.description += f"**Bet Multiplier:** `⏣ {data['bet_multiplier']:,}`\n"  
             embed.description += f"**Bid Increment By:** `None`\n"
             embed.description += f"**Current Bid By:** `None`\n"
             embed.description += f"**Time Left:** <t:{timestamp30s}:R>\n"
@@ -56,10 +56,10 @@ class Auction(commands.GroupCog, name="auction"):
             return embed
         else:
             timestamp10s = int((datetime.datetime.now() + datetime.timedelta(seconds=10)).timestamp())
-            embed = discord.Embed(title=f"Auction for {data['item']}", description="", color=self.bot.default_color)
-            embed.description += f"**Starting Bid:** ⏣ {data['strating_price']:,}\n"
-            embed.description += f"**Bet Multiplier:** ⏣ {data['bet_multiplier']:,}\n"
-            embed.description += f"**Bid Increment By:** ⏣ {data['current_bid']:,}\n"
+            embed = discord.Embed(title=f"Auction for {data['quantity']}x{data['item']}", description="", color=self.bot.default_color)
+            embed.description += f"**Starting Bid:** `⏣ {data['strating_price']:,}`\n"
+            embed.description += f"**Bet Multiplier:** `⏣ {data['bet_multiplier']:,}`\n"
+            embed.description += f"**Bid Increment By:** `⏣ {data['current_bid']:,}`\n"
             embed.description += f"**Current Bidder:** <@{data['current_bid_by']}>\n"
             embed.description += f"**Time Left:** <t:{timestamp10s}:R>\n"
             embed.description += f"**Auctioneer:** <@{data['auctioneer']}>\n"
@@ -102,6 +102,7 @@ class Auction(commands.GroupCog, name="auction"):
         time_passed = 0
         def check(m: discord.Message):
             if m.channel == thread:
+                if m.author.id == data['auctioneer']: return False
                 if m.author.id == data['current_bid_by']: return False
                 if re.match('^[0-9]+', m.content):
                     return True              
@@ -150,6 +151,8 @@ class Auction(commands.GroupCog, name="auction"):
     @commands.Cog.listener()
     async def on_bet(self, message: discord.Message, data):
         ammount = await DMCConverter_Ctx().convert(message, message.content)
+        if message.author.id == data['auctioneer']: 
+            return await message.reply("You can't bid on your own auction")
         if ammount % data["bet_multiplier"] != 0:
             await message.reply(f"Mininum Bid Increment is ⏣ {data['bet_multiplier']:,}")
             return
@@ -203,26 +206,29 @@ class Auction(commands.GroupCog, name="auction"):
 
 
     @app_commands.command(name="start", description="Starts an auction")
-    @app_commands.describe(item="The item to auction", bet_multiplier="The bet multiplier")
+    @app_commands.describe(item="The item to auction", bet_multiplier="The bet multiplier", quantity="The quantity of the item")
     @app_commands.autocomplete(item=item_autocomplete)
     @app_commands.rename(bet_multiplier="bet-increments")
-    @app_commands.choices(bet_multiplier=[
-        app_commands.Choice(name="1k", value=1000),
-        app_commands.Choice(name="10k", value=10000),
-        app_commands.Choice(name="100k", value=100000),
-        app_commands.Choice(name="1m", value=1000000),
-    ])
-    async def start(self, interaction: discord.Interaction, item: str, bet_multiplier: int):
+    async def start(self, interaction: discord.Interaction, item: str, bet_multiplier: app_commands.Transform[int, DMCConverter], quantity: int=1):
         if interaction.channel.id in self.bid_cache.keys():
             await interaction.response.send_message("There is already an auction in this channel", ephemeral=True)
             return
         item_data = self.bot.dank_items_cache[item]
-        strating_price = int(item_data["price"] / 2)
+        strating_price = int((item_data["price"]*quantity) / 2)
+        #get the 10% of item_data['price']
+        ten_per = int((item_data["price"]*quantity) / 10)
+        if bet_multiplier > ten_per:
+            await interaction.response.send_message(f"Bet multiplier can't be more than ⏣ {ten_per:,} for this specific item", ephemeral=True)
+            return
+        if strating_price or bet_multiplier or quantity <= 0:
+            await interaction.response.send_message("Please provide valid values", ephemeral=True)
+            return
         data = {
             '_id': interaction.channel.id,
             'item': item,
             'strating_price': strating_price,
             'bet_multiplier': bet_multiplier,
+            'quantity': quantity,
             'current_bid': strating_price,            
             'current_bid_by': None,
             'time_left': 30,
