@@ -563,7 +563,7 @@ class Ticket_controll(View):
         view = Confirm(interaction.user, 20)
         
         view.children[0].label = "Cancel"
-        view.children.pop(1)
+        view.remove_item(view.children[1])
         await interaction.response.send_message(embed=embed, ephemeral=False, view=view)
         view.message = await interaction.original_response()
         await view.wait()
