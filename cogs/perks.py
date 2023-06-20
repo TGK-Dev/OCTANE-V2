@@ -172,7 +172,7 @@ class Perks(commands.GroupCog, name="perks", description="manage your custom per
         self.role_task_in_progress = False
         self.channel_task_in_progress = False
         self.channel_rank_update = False
-        self.channel_rank_update_task = self.update_rank.start()
+        #self.channel_rank_update_task = self.update_rank.start()
         self.Perk: Perks_DB = Perks_DB(bot, Document)
         self.bot.Perk = self.Perk
 
@@ -180,7 +180,7 @@ class Perks(commands.GroupCog, name="perks", description="manage your custom per
         self.role_perk_task.cancel()
         self.channel_perk_task.cancel()
         self.refresh_cache_task.cancel()
-        self.channel_rank_update_task.cancel()
+        #self.channel_rank_update_task.cancel()
     
     async def highlight_remove_auto(self, interaction: Interaction, current: str) -> List[app_commands.Choice[str]]:
         user_data = await self.Perk.get_data(Perk_Type.highlights, interaction.guild.id, interaction.user.id)
@@ -723,42 +723,42 @@ class Perks(commands.GroupCog, name="perks", description="manage your custom per
     async def refresh_cache(self):
         await self.Perk.create_cach()
     
-    @tasks.loop(hours=10)
-    async def update_rank(self):
-        if self.channel_rank_update: return
-        data = await self.Perk.channel.get_all()
-        data = sorted(data, key= lambda x: x['activity']['messages'], reverse=True)
-        mean_messages = sum([x['activity']['messages'] for x in data]) / len(data)
-        _str = ""
+    # @tasks.loop(hours=10)
+    # async def update_rank(self):
+    #     if self.channel_rank_update: return
+    #     data = await self.Perk.channel.get_all()
+    #     data = sorted(data, key= lambda x: x['activity']['messages'], reverse=True)
+    #     mean_messages = sum([x['activity']['messages'] for x in data]) / len(data)
+    #     _str = ""
 
-        for channel in data:
-            channel['activity']['previous_rank'] = channel['activity']['rank']
-            channel['activity']['rank'] = data.index(channel) + 1
+    #     for channel in data:
+    #         channel['activity']['previous_rank'] = channel['activity']['rank']
+    #         channel['activity']['rank'] = data.index(channel) + 1
 
             
-            if channel['activity']['previous_rank'] == None:
-                _str += (f"{data.index(channel) + 1}. <#{channel['channel_id']}> <:tgk_mid:1110528331742462002>\n")               
-            elif channel['activity']['previous_rank'] == channel['activity']['rank']:
-                _str += (f"{data.index(channel) + 1}. <#{channel['channel_id']}> <:tgk_mid:1110528331742462002>\n")
-            elif channel['activity']['previous_rank'] > channel['activity']['rank']:
-                _str += (f"{data.index(channel) + 1}. <#{channel['channel_id']}>") + (f"<:tgk_up:1110526823223275561> {channel['activity']['previous_rank'] - channel['activity']['rank']} \n")
-            elif channel['activity']['previous_rank'] < channel['activity']['rank']:
-                _str += (f"{data.index(channel) + 1}. <#{channel['channel_id']}>") + (f"<:tgk_down:1110527094376644708> {channel['activity']['rank'] - channel['activity']['previous_rank']} \n")
+    #         if channel['activity']['previous_rank'] == None:
+    #             _str += (f"{data.index(channel) + 1}. <#{channel['channel_id']}> <:tgk_mid:1110528331742462002>\n")               
+    #         elif channel['activity']['previous_rank'] == channel['activity']['rank']:
+    #             _str += (f"{data.index(channel) + 1}. <#{channel['channel_id']}> <:tgk_mid:1110528331742462002>\n")
+    #         elif channel['activity']['previous_rank'] > channel['activity']['rank']:
+    #             _str += (f"{data.index(channel) + 1}. <#{channel['channel_id']}>") + (f"<:tgk_up:1110526823223275561> {channel['activity']['previous_rank'] - channel['activity']['rank']} \n")
+    #         elif channel['activity']['previous_rank'] < channel['activity']['rank']:
+    #             _str += (f"{data.index(channel) + 1}. <#{channel['channel_id']}>") + (f"<:tgk_down:1110527094376644708> {channel['activity']['rank'] - channel['activity']['previous_rank']} \n")
 
-            await self.Perk.update(Perk_Type.channels, channel)
+    #         await self.Perk.update(Perk_Type.channels, channel)
 
-        _str += f"\n\n**Average messages per channel:** {round(mean_messages, 2)}"
+    #     _str += f"\n\n**Average messages per channel:** {round(mean_messages, 2)}"
 
-        channel = self.bot.get_channel(999575712736497695)
-        embed = discord.Embed(title="Channel Leaderboard", description=_str, color=self.bot.default_color)
-        if channel is None: return
-        await channel.send(embed=embed)
-        self.channel_rank_update = False
+    #     channel = self.bot.get_channel(999575712736497695)
+    #     embed = discord.Embed(title="Channel Leaderboard", description=_str, color=self.bot.default_color)
+    #     if channel is None: return
+    #     await channel.send(embed=embed)
+    #     self.channel_rank_update = False
 
 
-    @update_rank.before_loop
-    async def before_update_rank(self):
-        await self.bot.wait_until_ready()
+    # @update_rank.before_loop
+    # async def before_update_rank(self):
+    #     await self.bot.wait_until_ready()
 
 
     @check_perk_expire_channel.before_loop
