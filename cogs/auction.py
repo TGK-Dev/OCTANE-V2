@@ -215,12 +215,12 @@ class Auction(commands.GroupCog, name="auction"):
             return
         item_data = self.bot.dank_items_cache[item]
         strating_price = int((item_data["price"]*quantity) / 2)
-        #get the 10% of item_data['price']
         ten_per = int((item_data["price"]*quantity) / 10)
         if bet_multiplier > ten_per:
             await interaction.response.send_message(f"Bet multiplier can't be more than ⏣ {ten_per:,} for this specific item", ephemeral=True)
             return
-        if strating_price or bet_multiplier or quantity <= 0:
+        if strating_price <= 0 or bet_multiplier <= 0 or quantity <= 0:
+            print(strating_price, bet_multiplier, quantity)
             await interaction.response.send_message("Please provide valid values", ephemeral=True)
             return
         data = {
@@ -249,6 +249,49 @@ class Auction(commands.GroupCog, name="auction"):
         data['thread'] = thread
 
         self.bid_cache[interaction.channel.id] = data
+
+    @app_commands.command(name="request", description="Request an auction for an item you want to sell")
+    @app_commands.describe(item="The item to auction", quantity="The quantity of the item")
+    @app_commands.checks.has_any_role(785845265118265376, 785842380565774368)
+    @app_commands.autocomplete(item=item_autocomplete)
+    async def test(self, interaction: discord.Interaction, item: str, quantity: int=1):
+        item_data = self.bot.dank_items_cache[item]
+        embed = discord.Embed(title="Auction Request", description="",color=self.bot.default_color)
+        embed.description += "**Item: **" + item + "\n"
+        embed.description += f"**Quantity: ** {quantity}\n"
+        embed.description += f"**Market Price: ** ⏣ {item_data['price']:,}\n"
+        embed.description += f"**Starting Price: ** ⏣ {int((item_data['price']*quantity) / 2):,}\n"
+        embed.description += "**Requested By: **" + interaction.user.mention + "\n"
+
+        await interaction.response.send_message(embed=embed, ephemeral=False)
+        message = await interaction.original_response()
+        thread = await message.create_thread(name=f"Auction Request for {item}", auto_archive_duration=1440)
+        await thread.send(f"{interaction.user.mention} To Complete this request, please donate item to serverpool in this thread, you can copy the generated command below and use it in this thread, request will be automatically expired in 5 minutes")
+        await thread.add_user(interaction.guild.get_member(270904126974590976))
+        await thread.send(f"/serverevents donate quantity: {quantity} item: {item}")
+        def check(m: discord.Message):
+            if m.author.id != 270904126974590976: return False
+            if m.embeds[0].description == "Successfully donated!": return True
+        try:
+            msg = await interaction.client.wait_for("message", check=check, timeout=500)
+            msg = await msg.channel.fetch_message(msg.reference.message_id)
+            embed = msg.embeds[0].to_dict()
+            items = re.findall(r"\*\*(.*?)\*\*", embed['description'])[0]
+            emojis = list(set(re.findall(":\w*:\d*", items)))
+            for emoji in emojis :items = items.replace(emoji,"",100); items = items.replace("<>","",100);items = items.replace("<a>","",100);items = items.replace("  "," ",100)
+            mathc = re.search(r"(\d+)x (.+)", items)
+            item_found = mathc.group(2)
+            quantity_found = int(mathc.group(1))
+            if item.lower() == item_found.lower() and quantity == quantity_found:
+                await thread.send(f"{interaction.user.mention} Request Confirmed, creating auction now nad locking this thread")
+                await thread.edit(locked=True,archived=True)
+                return
+        except asyncio.TimeoutError:
+            await thread.send(f"{interaction.user.mention} Request Cancelled, you took too long to confirm, deleting this thread in 20 seconds, you many create new request if you want")
+            await asyncio.sleep(20)
+            await thread.delete()
+            await interaction.delete_original_response()
+            return
 
 async def setup(bot):
     await bot.add_cog(Auction(bot))
