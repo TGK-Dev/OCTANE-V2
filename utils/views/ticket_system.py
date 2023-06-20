@@ -383,6 +383,8 @@ class ParterShip_Button(Button):
             "status": "open",
             "added_users": [],
             "log_message_id": None,
+            "anonymous": False,
+            "thread": None,
         }
         if ticket_config['logging'] is not None:
             log_embed = discord.Embed(description="", color=0x2b2d31)
@@ -451,6 +453,8 @@ class Panel_Button(Button):
                 "status": "open",
                 "added_users": [],
                 "log_message_id": None,
+                "anonymous": False,
+                "thread": None,
             }
             if ticket_config['logging'] is not None:
                 log_embed = discord.Embed(description="", color=0x2b2d31)
@@ -598,3 +602,22 @@ class Ticket_controll(View):
 
             await interaction.channel.delete()
             await interaction.client.tickets.tickets.delete(interaction.channel.id)
+    
+    @button(custom_id="ticket:anonymous", label="Anonymous", style=discord.ButtonStyle.grey, emoji="🕵️")
+    async def anonymous(self, interaction: Interaction, button: Button):
+        ticket_data = await interaction.client.tickets.tickets.find(interaction.channel.id)
+        if not interaction.user.guild_permissions.ban_members: return await interaction.response.send_message("You don't have permission to use this button", ephemeral=True, delete_after=5)
+        if ticket_data is None: return await interaction.response.send_message("No ticket found", ephemeral=True, delete_after=5)
+        if ticket_data["anonymous"] is True: 
+            thread = interaction.guild.get_thread(ticket_data['thread'])
+            if thread:
+                await thread.add_user(interaction.user)
+                return await interaction.response.send_message("You have been added to the thread", ephemeral=True, delete_after=5)
+        thread = await interaction.channel.create_thread(name=f"Teporaly Chat", type=discord.ChannelType.private_thread, auto_archive_duration=10080,invitable=False)
+        await interaction.response.send_message("You have been added to the thread", ephemeral=True, delete_after=5)
+        msg = await thread.send("please be advised that this thread is now designated as private and restricted only to moderators and higher-ups. Thank you for your understanding and cooperation in respecting the privacy of this thread.")
+        await msg.pin()
+        await thread.add_user(interaction.user)
+        ticket_data["anonymous"] = True
+        ticket_data['thread'] = thread.id
+        await interaction.client.tickets.tickets.update(ticket_data)
