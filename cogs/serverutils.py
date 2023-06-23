@@ -32,7 +32,7 @@ class Payout(commands.GroupCog, name="payout", description="Payout commands"):
 		self.bot.payout_delete_queue = Document(self.db, "payout_delete_queue")
 		self.claim_task = self.check_unclaim.start()
 		self.claim_task_progress = False
-		self.comman_event = ["Mega Giveaway", "Daily Giveaway", "Silent Giveaway", "Black Tea", "Rumble Royale", "Hunger Games", "Guess The Number", "Split Or Steal"]
+		self.comman_event = ["Mega Giveaway", "Daily Giveaway", "Silent Giveaway", "Black Tea", "Rumble Royale", "Hunger Games", "Guess The Number", "Split Or Steal", "Mafia", "Typerace", "Bingo", "Heist Giveaway"]
 	
 	async def event_auto_complete(self, interaction: discord.Interaction, current: str) -> List[app_commands.Choice[str]]:
 		_list = [
