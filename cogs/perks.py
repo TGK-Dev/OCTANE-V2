@@ -11,7 +11,7 @@ from utils.db import Document
 from typing import List, Union
 from utils.transformer import TimeConverter
 from utils.views.buttons import Confirm
-from utils.views.perks_system import friends_manage
+from utils.views.perks_system import friends_manage, Perk_Ignore
 from colour import Color
 class Perk_Type(enum.Enum):
     roles = "roles"
@@ -658,6 +658,20 @@ class Perks(commands.GroupCog, name="perks", description="manage your custom per
 
         await interaction.response.send_message(f"Your trigger `{trigger}` has been removed", ephemeral=True)
     
+    @highlight.command(name="ignore", description="ignore a user from your highlight perk")
+    @app_commands.checks.cooldown(1, 5.0, key=lambda i: (i.guild.id, i.user.id))
+    async def highlight_ignore_role(self, interaction: Interaction):
+        user_data = await self.Perk.get_data(Perk_Type.highlights, interaction.guild.id, interaction.user.id)
+        if not user_data: return await interaction.response.send_message("You don't have any highlight perks", ephemeral=True)
+
+        embed = discord.Embed(title="Ignore Role/Channel", description="", color=interaction.client.default_color)
+        embed.description += "Users:" + f"{', '.join([f'<@{i}>' for i in user_data['ignore_users']]) if user_data['ignore_users'] else '`None`'}"
+        embed.description += "\nChannels:" + f"{', '.join([f'<#{i}>' for i in user_data['ignore_channel']]) if user_data['ignore_channel'] else '`None`'}"
+
+        view = Perk_Ignore(user_data)
+        await interaction.response.send_message(embed=embed, view=view, ephemeral=True)
+        view.message = await interaction.original_response()
+
     @tasks.loop(seconds=10)
     async def check_perk_expire_role(self):
         if self.role_task_in_progress: return
@@ -870,7 +884,7 @@ class Perks(commands.GroupCog, name="perks", description="manage your custom per
                 pass
             embed.description += f"**[<t:{round(bmessage.created_at.timestamp())}:T>] {bmessage.author.display_name}:** {bmessage.content}\n"        
         embed.add_field(name="Trigger Message", value=f"[<t:{round(message.created_at.timestamp())}:T>] {message.author.display_name}: {message.content}", inline=False)
-        embed.set_footer(text=f"Triggered by {user.global_name}", icon_url=user.avatar.url if user.avatar else user.default_avatar)
+        embed.set_footer(text=f"Triggered by {message.author.global_name}", icon_url=message.author.avatar.url if message.author.avatar else message.author.default_avatar)
         try:
             view = discord.ui.View()
             view.add_item(discord.ui.Button(label="Jump to message", url=message.jump_url, style=discord.ButtonStyle.url, emoji="<:tgk_link:1105189183523401828>"))

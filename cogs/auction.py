@@ -1,3 +1,4 @@
+import enum
 import discord
 import asyncio
 import datetime
@@ -12,11 +13,52 @@ from typing import List
 from copy import deepcopy
 
 
+class Auctions_DB:
+    def __init__(self, bot):
+        self.db = bot.mongo["Auctions"]
+        self.config = Document(self.db, "auctions_config")
+        self.auctions = Document(self.db, "auctions")
+        self.quque = Document(self.db, "auctions_queue")
+        self.cach = {}
+    
+    async def create_config(self, guild_id:int):
+        auction_data = {
+            "_id": guild_id,
+            "category": None,
+            "request_channel": None,
+            "queue_channel": None,
+            "bid_channel": None,
+            "payment_channel": None,
+            "payout_channel": None,
+            "log_channel": None,
+            "manager_roles": [],
+        }
+        await self.config.insert(auction_data)
+        return auction_data
+
+    async def get_config(self, guild_id:int):
+        if guild_id in self.cach.keys():
+            return self.cach[guild_id]
+        else:
+            guild = await self.config.find(guild_id)
+            if guild == None:
+                guild = await self.create_config(guild_id)
+            self.cach[guild_id] = guild
+            return guild
+    
+    async def setup_config_cach(self):
+        for guild in await self.config.get_all():
+            if guild["_id"] not in self.cach.keys():
+                self.cach[guild["_id"]] = guild
+    
+
+
+
 class Auction(commands.GroupCog, name="auction"):
     def __init__(self, bot):
         self.bot = bot
         self.bid_cache = {}
-        self.bot.autcions = Document(self.bot.db, "auction")
+        self.bot.auction = Auctions_DB(bot)
         self.auction_loop_progress = False
         self.auction_task = self.auction_loop.start()
 
@@ -144,8 +186,7 @@ class Auction(commands.GroupCog, name="auction"):
             except asyncio.TimeoutError:
                 data['call_count'] += 1
                 self.bot.dispatch('auction_calls', data, data['call_count'], 10)
-                return
-        
+                return        
                 
     
     @commands.Cog.listener()
@@ -205,56 +246,17 @@ class Auction(commands.GroupCog, name="auction"):
             self.bot.dispatch("bet", message, data)
 
 
-    @app_commands.command(name="start", description="Starts an auction")
-    @app_commands.describe(item="The item to auction", bet_multiplier="The bet multiplier", quantity="The quantity of the item")
-    @app_commands.autocomplete(item=item_autocomplete)
-    @app_commands.rename(bet_multiplier="bet-increments")
-    async def start(self, interaction: discord.Interaction, item: str, bet_multiplier: app_commands.Transform[int, DMCConverter], quantity: int=1):
-        if interaction.channel.id in self.bid_cache.keys():
-            await interaction.response.send_message("There is already an auction in this channel", ephemeral=True)
-            return
-        item_data = self.bot.dank_items_cache[item]
-        strating_price = int((item_data["price"]*quantity) / 2)
-        ten_per = int((item_data["price"]*quantity) / 10)
-        if bet_multiplier > ten_per:
-            await interaction.response.send_message(f"Bet multiplier can't be more than ⏣ {ten_per:,} for this specific item", ephemeral=True)
-            return
-        if strating_price <= 0 or bet_multiplier <= 0 or quantity <= 0:
-            print(strating_price, bet_multiplier, quantity)
-            await interaction.response.send_message("Please provide valid values", ephemeral=True)
-            return
-        data = {
-            '_id': interaction.channel.id,
-            'item': item,
-            'strating_price': strating_price,
-            'bet_multiplier': bet_multiplier,
-            'quantity': quantity,
-            'current_bid': strating_price,            
-            'current_bid_by': None,
-            'time_left': 30,
-            'last_bid': None,
-            'message': None,
-            'auctioneer': interaction.user.id,
-            'thread': None,
-            'call_started': False,
-            'call_count': 0,
-        }
-
-        embed = await self.get_embed(data, True)
-
-        await interaction.response.send_message(embed=embed, ephemeral=False)
-        msg = await interaction.original_response()
-        thread = await msg.create_thread(name=f"Auction for {item}", auto_archive_duration=1440)
-        data['message'] = msg
-        data['thread'] = thread
-
-        self.bid_cache[interaction.channel.id] = data
-
     @app_commands.command(name="request", description="Request an auction for an item you want to sell")
     @app_commands.describe(item="The item to auction", quantity="The quantity of the item")
     @app_commands.checks.has_any_role(785845265118265376, 785842380565774368)
     @app_commands.autocomplete(item=item_autocomplete)
-    async def test(self, interaction: discord.Interaction, item: str, quantity: int=1):
+    async def _request(self, interaction: discord.Interaction, item: str, quantity: int=1):
+        config = await self.bot.auction.config.find(interaction.guild.id)
+        if not config: 
+            return await interaction.response.send_message("Auction is not setup", ephemeral=True)
+        if interaction.channel.id != config['request_channel']: 
+            return await interaction.response.send_message("This is not the auction request channel please use the auction request channel", ephemeral=True)
+        
         item_data = self.bot.dank_items_cache[item]
         embed = discord.Embed(title="Auction Request", description="",color=self.bot.default_color)
         embed.description += "**Item: **" + item + "\n"
@@ -285,6 +287,14 @@ class Auction(commands.GroupCog, name="auction"):
             if item.lower() == item_found.lower() and quantity == quantity_found:
                 await thread.send(f"{interaction.user.mention} Request Confirmed, creating auction now nad locking this thread")
                 await thread.edit(locked=True,archived=True)
+                data = {
+                    "_id": thread.id,
+                    "channel": thread.parent_id,
+                    "item": item,
+                    "quantity": quantity,
+                    "requested_by": interaction.user.id,
+                }
+                self.bot.dispatch("auction_request", data, item_data, interaction)
                 return
         except asyncio.TimeoutError:
             await thread.send(f"{interaction.user.mention} Request Cancelled, you took too long to confirm, deleting this thread in 20 seconds, you many create new request if you want")
@@ -292,6 +302,22 @@ class Auction(commands.GroupCog, name="auction"):
             await thread.delete()
             await interaction.delete_original_response()
             return
+    
+    @commands.Cog.listener()
+    async def on_auction_request(self, data, item_data, interaction: discord.Interaction):
+
+        embed = discord.Embed(title="Auction Request", description="",color=self.bot.default_color)
+        embed.description += "**Item: **" + data['item'] + "\n"
+        embed.description += f"**Quantity: ** {data['quantity']}\n"
+        embed.description += f"**Market Price: ** ⏣ {item_data['price']:,}\n"
+        embed.description += f"**Requested By: ** <@{data['requested_by']}>\n"
+
+        guild_config = await self.bot.auction.get_config(interaction.guild_id)
+        channel = interaction.guild.get_channel(guild_config['queue_channel'])
+        message = await channel.send(embed=embed)
+        data['_id'] = message.id
+        await self.bot.auction.request.insert(data)
+        
 
 async def setup(bot):
     await bot.add_cog(Auction(bot))

@@ -2,6 +2,7 @@ import enum
 import discord
 import datetime
 from discord import Interaction, SelectOption, TextStyle
+from discord.interactions import Interaction
 from discord.ui import View, Button, button, TextInput, Item, Select, select
 from .selects import Role_select, Select_General, Channel_select, User_Select
 from .modal import General_Modal
@@ -224,3 +225,68 @@ class friends_manage(View):
             case _:
                 await interaction.response.send_message("Something went wrong", ephemeral=True)
                 return
+    
+
+class Perk_Ignore(discord.ui.View):
+    def __init__(self, data: dict, message: discord.Message=None):
+        super().__init__(timeout=120)
+        self.data = data
+        self.message = message
+    
+    async def interaction_check(self, interaction: discord.Interaction):
+        if interaction.user.id == self.data['user_id']:
+            return True
+        await interaction.response.send_message("This is not your perk", ephemeral=True)
+        return False
+
+    async def on_timeout(self):
+        for child in self.children:
+            child.disabled = True
+        try:
+            await self.message.edit(view=self)
+        except discord.NotFound:
+            pass
+    
+    async def get_embed(self, data: dict, interaction: discord.Interaction):
+        embed = discord.Embed(title="Ignore Role/Channel", description="", color=interaction.client.default_color)
+        embed.description += "Users:" + f"{', '.join([f'<@{i}>' for i in data['ignore_users']]) if data['ignore_users'] else '`None`'}"
+        embed.description += "\nChannels:" + f"{', '.join([f'<#{i}>' for i in data['ignore_channel']]) if data['ignore_channel'] else '`None`'}"
+        return embed
+    
+    @select(placeholder="Select users you want to ignore or unignore", min_values=1, max_values=25, cls=discord.ui.UserSelect)
+    async def _user(self, interaction: discord.Interaction, select: Select):
+        added = ""
+        removed = ""
+        for value in select.values:
+            if value.id in self.data['ignore_users']:
+                self.data['ignore_users'].remove(value.id)
+                removed += f"<@{value.id}> `({value.id})`\n"
+            else:
+                self.data['ignore_users'].append(value.id)
+                added += f"<@{value.id}> `({value.id})`\n"
+        await interaction.response.edit_message(embed=await self.get_embed(self.data, interaction))
+        await interaction.client.Perk.update("highlights", self.data)
+        await interaction.followup.send(f"**Added:**\n{added if added else '`None`'}\n**Removed:**\n{removed if removed else '`None`'}", ephemeral=True)
+    
+    @select(placeholder="Select channels you want to ignore or unignore", min_values=1, max_values=25, cls=discord.ui.ChannelSelect)
+    async def _channel(self, interaction: discord.Interaction, select: Select):
+        added = ""
+        removed = ""
+        for value in select.values:
+            if value.id in self.data['ignore_channel']:
+                self.data['ignore_channel'].remove(value.id)
+                removed += f"<#{value.id}> `({value.id})`\n"
+            else:
+                self.data['ignore_channel'].append(value.id)
+                added += f"<#{value.id}> `({value.id})`\n"
+        await interaction.response.edit_message(embed=await self.get_embed(self.data, interaction))
+        await interaction.client.Perk.update("highlights", self.data)
+        await interaction.followup.send(f"**Added:**\n{added if added else '`None`'}\n**Removed:**\n{removed if removed else '`None`'}", ephemeral=True)
+
+    @button(label="Reset", style=discord.ButtonStyle.red)
+    async def reset(self, interaction: Interaction, button: Button):
+        self.data['ignore_users'] = []
+        self.data['ignore_channel'] = []
+        await interaction.client.Perk.update("highlights", self.data)
+        await interaction.response.edit_message(embed=await self.get_embed(self.data, interaction))
+        await interaction.followup.send("Ignored users and channels resetted\nNote: This might take a while to update", ephemeral=True)
