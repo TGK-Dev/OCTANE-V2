@@ -10,6 +10,7 @@ from utils.views.ticket_system import Config_Edit as Ticket_Config_Edit
 from utils.views.staff_system import Staff_config_edit
 from utils.views.level_system import LevelingConfig
 from utils.views.perks_system import PerkConfig
+from utils.views.auction import AuctionConfig
 import humanfriendly
 import unicodedata
 import unidecode
@@ -60,6 +61,7 @@ class serversettings(commands.Cog):
         app_commands.Choice(name="Payout System", value="payout"),
         app_commands.Choice(name="Tickets System", value="tickets"),
         app_commands.Choice(name="Leveling System", value="leveling"),
+        app_commands.Choice(name="Auctions", value="auctions")
     ]
     
     @app_commands.command(name="serversettings", description="Change the settings of the server")
@@ -68,7 +70,6 @@ class serversettings(commands.Cog):
     @app_commands.default_permissions(administrator=True)
     async def serversettings(self, interaction: discord.Interaction, settings: app_commands.Choice[str], option: Literal['Show', 'Edit']):
         match settings.value:
-
             case "join_gate":
                 config = await self.bot.ss.get_config(settings.value, interaction.guild_id)
                 embed = discord.Embed(title="Join Gate Settings", description="", color=0x2b2d31)
@@ -205,8 +206,30 @@ class serversettings(commands.Cog):
                     view = PerkConfig(interaction.user, perk_data)
                     await interaction.response.send_message(embed=embed, view=view)
                     view.message = await interaction.original_response()
+            
+            case "auctions":
+                auction_data = await self.bot.auction.config.find(interaction.guild.id)
+                if not auction_data:
+                    auction_data = await self.bot.auction.create_config(interaction.guild.id)
+
+                embed = discord.Embed(title=f"{interaction.guild.name} Auction Config", color=self.bot.default_color, description="")
+                embed.description += f"**Category:** {interaction.guild.get_channel(auction_data['category']).mention if auction_data['category'] else '`None`'}\n"
+                embed.description += f"**Request Channel:** {interaction.guild.get_channel(auction_data['request_channel']).mention if auction_data['request_channel'] else '`None`'}\n"
+                embed.description += f"**Queue Channel:** {interaction.guild.get_channel(auction_data['queue_channel']).mention if auction_data['queue_channel'] else '`None`'}\n"
+                embed.description += f"**Bid Channel:** {interaction.guild.get_channel(auction_data['bid_channel']).mention if auction_data['bid_channel'] else '`None`'}\n"
+                embed.description += f"**Payment Channel:** {interaction.guild.get_channel(auction_data['payment_channel']).mention if auction_data['payment_channel'] else '`None`'}\n"
+                embed.description += f"**Payout Channel:** {interaction.guild.get_channel(auction_data['payout_channel']).mention if auction_data['payout_channel'] else '`None`'}\n"
+                embed.description += f"**Manager Roles:** {', '.join([f'<@&{role}>' for role in auction_data['manager_roles']]) if len(auction_data['manager_roles']) > 0 else '`None`'}\n"
+
+                if option == "Show":
+                    await interaction.response.send_message(embed=embed)
+                if option == "Edit":
+                    view = AuctionConfig(interaction.user, auction_data)
+                    await interaction.response.send_message(embed=embed, view=view)
+                    view.message = await interaction.original_response()
             case _:
                 await interaction.response.send_message("Invalid option", ephemeral=True)
+            
             
 
 
