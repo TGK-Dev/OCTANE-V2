@@ -427,31 +427,31 @@ class Logging(commands.Cog):
 
         embeds = []
         embed = discord.Embed(title="Message | Deleted", description="", color=message.author.color)
-        embed.description += f"**Channel:** `{message.channel.name} | {message.channel.id}` {message.channel.mention}\n"
-        embed.description += f"**Author:** {message.author.mention}\n"
-        embed.description += f"**Message:**" + message.content if message.content is not None else "`None`\n"
-        embed.description += f"**Created At:** {message.created_at.strftime('%d/%m/%Y %H:%M:%S')}\n"
+        embed.description += f"\n**Channel:** `{message.channel.name} | {message.channel.id}` {message.channel.mention}"
+        embed.description += f"\n**Author:** {message.author.mention}"
+        embed.description += f"\n**Message:**" + message.content if message.content is not None else "`None`"
+        embed.description += f"\n**Created At:** {message.created_at.strftime('%d/%m/%Y %H:%M:%S')}"
         if message.reference is not None:
             try:
                 ref_message = await message.channel.fetch_message(message.reference.message_id)
-                embed.description += f"**Replying to:** {ref_message.author.mention}\n"
-                embed.description += f"**Reply Message Content:** {ref_message.content}\n"
+                embed.description += f"\n**Replying to:** {ref_message.author.mention}"
+                embed.description += f"\n**Reply Message Content:** {ref_message.content}"
             except discord.NotFound:
                 pass
-        embed.description += f"**Jump:** [Click Here]({message.jump_url})\n"
+        embed.description += f"\n**Jump:** [Click Here]({message.jump_url})"
         if len(message.attachments) > 0:
             files = []
             for file in message.attachments:
                 files.append(f"[{file.filename}]({file.url})")
-            embed.description += f"**Attachments:** {', '.join(files)}\n"
+            embed.description += f"\n**Attachments:** {', '.join(files)}\n"
         embed.set_author(name=message.author, icon_url=message.author.avatar.url if message.author.avatar else message.author.default_avatar)
         embed.set_footer(text=f"Author ID: {message.author.id} | Message ID: {message.id}")
         embed.timestamp = datetime.datetime.utcnow()
         
         if message.author.bot:
             if message.interaction:
-                embed.description += f"**Command:** {message.interaction.name}"
-                embed.description += f"**Command User:** {message.interaction.user.mention}"
+                embed.description += f"\n**Command:** {message.interaction.name}"
+                embed.description += f"\n**Command User:** {message.interaction.user.mention}"
 
         embeds.append(embed)
         if len(message.embeds) > 0:
@@ -468,25 +468,25 @@ class Logging(commands.Cog):
 
         embeds = []
         embed = discord.Embed(title="Message | Edited", description="", color=after.author.color)
-        embed.description += f"**Channel:** `{before.channel.name} | {before.channel.id}` {before.channel.mention}\n"
-        embed.description += f"**Author:** {before.author.mention}\n"
-        embed.description += f"**Before:**" + before.content if before.content is not None else "`None`\n"
-        embed.description += f"**After:** {after.content if after.content is not None else '`None`'}\n"
-        embed.description += f"**Created At:** {before.created_at.strftime('%d/%m/%Y %H:%M:%S')}\n"
-        embed.description += f"**Jump:** {before.jump_url}\n"
+        embed.description += f"\n**Channel:** `{before.channel.name} | {before.channel.id}` {before.channel.mention}"
+        embed.description += f"\n**Author:** {before.author.mention}"
+        embed.description += f"\n**Before:**" + before.content if before.content is not None else "`None`"
+        embed.description += f"\n**After:** {after.content if after.content is not None else '`None`'}"
+        embed.description += f"\n**Created At:** {before.created_at.strftime('%d/%m/%Y %H:%M:%S')}"
+        embed.description += f"\n**Jump:** {before.jump_url}"
         if len(before.attachments) > 0:
             files = []
             for file in before.attachments:
                 files.append(f"[{file.filename}]({file.url})")
-            embed.description += f"**Attachments:** {', '.join(files)}\n"
+            embed.description += f"\n**Attachments:** {', '.join(files)}"
         embed.set_author(name=before.author, icon_url=before.author.avatar.url if before.author.avatar else before.author.default_avatar)
         embed.set_footer(text=f"Author ID: {before.author.id} | Message ID: {before.id}")
         embed.timestamp = datetime.datetime.utcnow()
         
         if before.author.bot:
             if before.interaction:
-                embed.description += f"**Command:** {before.interaction.name}"
-                embed.description += f"**Command User:** {before.interaction.user.mention}"
+                embed.description += f"\n**Command:** {before.interaction.name}"
+                embed.description += f"\n**Command User:** {before.interaction.user.mention}"
 
         embeds.append(embed)
         if len(before.embeds) > 0:
