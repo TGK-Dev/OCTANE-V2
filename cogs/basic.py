@@ -521,14 +521,6 @@ class Logging(commands.Cog):
             gc = self.bot.get_channel(785847439579676672)
             await gc.send(f"Hey fellow tree lovers!, Server tree is ready to be watered! {message.jump_url}", delete_after=10)
             return
-        else:
-            view = discord.ui.View.from_message(message)
-            if view:
-                button: discord.Button = view.children[0]
-                if button.style == discord.ButtonStyle.green:
-                    gc = self.bot.get_channel(785847439579676672)
-                    await gc.send(f"Hey fellow tree lovers!, Server tree is droping fruit! {message.jump_url}", delete_after=10)
-
                 
 async def setup(bot):
     await bot.add_cog(Basic(bot), guilds=[discord.Object(785839283847954433)])
