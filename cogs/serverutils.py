@@ -1,3 +1,4 @@
+import re
 import discord
 import datetime
 import asyncio
@@ -354,6 +355,56 @@ class Payout(commands.GroupCog, name="payout", description="Payout commands"):
 		log_channel = message.guild.get_channel(config['log_channel'])
 		if log_channel is None: return
 		await log_channel.send(embed=embed)
+
+	@commands.Cog.listener()
+	async def on_payout_confirmed(self, message: discord.Message, user: discord.Member, winner: discord.Member, payout_channel: discord.TextChannel,data: dict):
+		def check(m: discord.Message):
+			if m.channel.id != payout_channel.id: 
+				return False
+			if m.author.id != 270904126974590976:
+				return False
+			
+			if len(m.embeds) == 0: 
+				return False
+			embed = m.embeds[0]
+			if embed.description.startswith("Successfully paid"):
+
+				found_winner = message.guild.get_member(int(embed.description.split(" ")[2].replace("<", "").replace(">", "").replace("!", "").replace("@", ""))) 
+				if winner.id != found_winner.id: 
+					return False
+				items = re.findall(r"\*\*(.*?)\*\*", embed.description)[0]
+				if "⏣" in items:
+					items = int(items.replace("⏣", "").replace(",", ""))
+					if items == data['prize']:
+						return True
+					else:
+						return False
+				else:
+					emojis = list(set(re.findall(":\w*:\d*", items)))
+					for emoji in emojis :items = items.replace(emoji,"",100); items = items.replace("<>","",100);items = items.replace("<a>","",100);items = items.replace("  "," ",100)
+					mathc = re.search(r"(\d+)x (.+)", items)
+					item_found = mathc.group(2)
+					quantity_found = int(mathc.group(1))
+					if item_found == data['item'] and quantity_found == data['prize']:
+						return True			
+
+		try:
+			msg: discord.Message = await self.bot.wait_for('message', check=check, timeout=60)
+			view = discord.ui.View()
+			view.add_item(discord.ui.Button(label=f"Paid at", style=discord.ButtonStyle.url, url=msg.jump_url, emoji="<:tgk_link:1105189183523401828>"))
+			embed = message.embeds[0]
+			embed.description += f"\n**Payout Location:** {msg.jump_url}"
+			embed.description = embed.description.replace("`Initiated`", "`Successfuly Paid`")
+			embed.description += f"\n**Santioned By:** {user.mention}"
+			embed.title = "Successfully Paid"
+			await message.edit(view=view, embed=embed)
+			await self.bot.payout_pending.delete(data['_id'])
+		except asyncio.TimeoutError:
+			embed = message.embeds[0]
+			embed.title = "Payout Queue"
+			embed.description = embed.description.replace("`Initiated`", "`Awaiting Payment`")
+			await message.edit(view=Payout_Buttton(), embed=embed)
+			message.reply(f"{user.mention} This payout could not be confirmed in time. Please try again, if you think it's a mistake, please contact a `@jay2404`")
 
 utc = datetime.timezone.utc
 time = datetime.time(hour=4, minute=30, tzinfo=utc)

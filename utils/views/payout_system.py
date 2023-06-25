@@ -367,14 +367,12 @@ class Payout_Buttton(discord.ui.View):
             
             update_embed = interaction.message.embeds[0]
             new_description = update_embed.description
-            update_embed.title = "Successfully Paid!"
+            update_embed.title = "Payout Initiated"
             update_embed.description = ""
-            new_description = new_description.replace("`Awaiting Payment`", "`Paid`")
+            new_description = new_description.replace("`Awaiting Payment`", "`Initiated`")
             update_embed.description = new_description
-            update_embed.description += f"\n**Santioned By:** {interaction.user.mention}"
-            update_embed.description += f"\n**Possible Payout Location:** {payout_cmd.jump_url}"
             edit_view = discord.ui.View()
-            edit_view.add_item(discord.ui.Button(label=f'Successfully Paid', style=discord.ButtonStyle.gray, disabled=True, emoji="<:paid:1071752278794575932>"))
+            edit_view.add_item(discord.ui.Button(label=f'Waiting for Confirmation', style=discord.ButtonStyle.gray, emoji="<:caution:1122473257338151003>", disabled=True))
 
             winner_channel = interaction.guild.get_channel(data['channel'])
             winner_message = await winner_channel.fetch_message(data['winner_message_id'])
@@ -382,13 +380,13 @@ class Payout_Buttton(discord.ui.View):
             winner_view = discord.ui.View()
             winner_view.add_item(discord.ui.Button(label=f'Winner Message', url=f"{winner_message.jump_url}"))
             winner_view.add_item(discord.ui.Button(label=f'Payout Queue Message', url=f"{interaction.message.jump_url}"))
-            success_embed = discord.Embed(description="<:octane_yes:1019957051721535618> | Payout Marked Successfully!", color=discord.Color.green())
+            success_embed = discord.Embed(description="<:octane_yes:1019957051721535618> | Payout Marked as Initiated", color=interaction.client.default_color)
 
             await interaction.edit_original_response(embed=success_embed)
             await interaction.message.edit(embed=update_embed, view=edit_view, content=None)
             
             interaction.client.dispatch("payout_paid", interaction.message, interaction.user, winner, data['prize'])
-            await interaction.client.payout_pending.delete(data['_id'])
+            interaction.client.dispatch("payout_confirmed", interaction.message, interaction.user, winner, payout_channel,data)
 
             is_more_payout_pending = await interaction.client.payout_pending.find_many_by_custom({'winner_message_id': data['winner_message_id']})
             if len(is_more_payout_pending) <= 0:
