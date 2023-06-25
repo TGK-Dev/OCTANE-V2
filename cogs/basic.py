@@ -491,16 +491,20 @@ class Logging(commands.Cog):
         embeds.append(embed)
         if len(before.embeds) > 0:
             for embed in before.embeds:
+                embed = discord.Embed.from_dict(embed.to_dict())
                 if embed.title:
                     embed.title += "| Before Edit"
                 else:
                     embed.title = "| Before Edit"
-        for embed in after.embeds:
-            if embed.title:
-                embed.title += "| After Edit"
-            else:
-                embed.title = "| After Edit"
-            embeds.append(embed)
+                embeds.append(embed)
+        if len(after.embeds) > 0:
+            for embed in after.embeds:
+                embed = discord.Embed.from_dict(embed.to_dict())
+                if embed.title:
+                    embed.title += "| After Edit"
+                else:
+                    embed.title = "| After Edit"
+                embeds.append(embed)
 
         await self.webhook.send(embeds=embeds)  
 
