@@ -403,9 +403,111 @@ class Ban_battle(commands.GroupCog, name="banbattle"):
         await member.add_roles(role)
         await interaction.response.send_message(f"Successfully added {member.mention} to the ban battle event manager", ephemeral=True)
 
+
+class Logging(commands.Cog):
+    def __init__(self, bot):
+        self.bot = bot
+        self.webhook = None
+    
+    @commands.Cog.listener()
+    async def on_ready(self):
+        channel = self.bot.get_channel(1122510437011955862)
+        for webhook in await channel.webhooks():
+            if webhook.user.id == self.bot.user.id:
+                self.webhook = webhook
+                break
+        if self.webhook is None:
+            avatar = await self.bot.user.avatar.read()
+            self.webhook = await channel.create_webhook(name=f"{self.bot.user.name} Message Logger", avatar=avatar)            
+
+    @commands.Cog.listener()
+    async def on_message_delete(self, message: discord.Message):
+        if message.guild is None: return
+        if message.guild.id != 785839283847954433: return
+
+        embeds = []
+        embed = discord.Embed(title="Message | Deleted", description="", color=message.author.color)
+        embed.description += f"**Channel:** `{message.channel.name} | {message.channel.id}` {message.channel.mention}\n"
+        embed.description += f"**Author:** {message.author.mention}\n"
+        embed.description += f"**Message:**" + message.content if message.content is not None else "`None`\n"
+        embed.description += f"**Created At:** {message.created_at.strftime('%d/%m/%Y %H:%M:%S')}\n"
+        if message.reference is not None:
+            try:
+                ref_message = await message.channel.fetch_message(message.reference.message_id)
+                embed.description += f"**Replying to:** {ref_message.author.mention}\n"
+                embed.description += f"**Reply Message Content:** {ref_message.content}\n"
+            except discord.NotFound:
+                pass
+        embed.description += f"**Jump:** [Click Here]({message.jump_url})\n"
+        if len(message.attachments) > 0:
+            files = []
+            for file in message.attachments:
+                files.append(f"[{file.filename}]({file.url})")
+            embed.description += f"**Attachments:** {', '.join(files)}\n"
+        embed.set_author(name=message.author, icon_url=message.author.avatar.url if message.author.avatar else message.author.default_avatar)
+        embed.set_footer(text=f"Author ID: {message.author.id} | Message ID: {message.id}")
+        embed.timestamp = datetime.datetime.utcnow()
+        
+        if message.author.bot:
+            if message.interaction:
+                embed.description += f"**Command:** {message.interaction.name}"
+                embed.description += f"**Command User:** {message.interaction.user.mention}"
+
+        embeds.append(embed)
+        if len(message.embeds) > 0:
+            for embed in message.embeds:
+                embeds.append(embed)
+
+        await self.webhook.send(embeds=embeds)
+
+    @commands.Cog.listener()
+    async def on_message_edit(self, before: discord.Message, after: discord.Message):
+        if before.guild is None: return
+        if before.guild.id != 785839283847954433: return
+        if before.content == after.content: return
+
+        embeds = []
+        embed = discord.Embed(title="Message | Edited", description="", color=after.author.color)
+        embed.description += f"**Channel:** `{before.channel.name} | {before.channel.id}` {before.channel.mention}\n"
+        embed.description += f"**Author:** {before.author.mention}\n"
+        embed.description += f"**Before:**" + before.content if before.content is not None else "`None`\n"
+        embed.description += f"**After:** {after.content if after.content is not None else '`None`'}\n"
+        embed.description += f"**Created At:** {before.created_at.strftime('%d/%m/%Y %H:%M:%S')}\n"
+        embed.description += f"**Jump:** {before.jump_url}\n"
+        if len(before.attachments) > 0:
+            files = []
+            for file in before.attachments:
+                files.append(f"[{file.filename}]({file.url})")
+            embed.description += f"**Attachments:** {', '.join(files)}\n"
+        embed.set_author(name=before.author, icon_url=before.author.avatar.url if before.author.avatar else before.author.default_avatar)
+        embed.set_footer(text=f"Author ID: {before.author.id} | Message ID: {before.id}")
+        embed.timestamp = datetime.datetime.utcnow()
+        
+        if before.author.bot:
+            if before.interaction:
+                embed.description += f"**Command:** {before.interaction.name}"
+                embed.description += f"**Command User:** {before.interaction.user.mention}"
+
+        embeds.append(embed)
+        if len(before.embeds) > 0:
+            for embed in before.embeds:
+                if embed.title:
+                    embed.title += "| Before Edit"
+                else:
+                    embed.title = "| Before Edit"
+        for embed in after.embeds:
+            if embed.title:
+                embed.title += "| After Edit"
+            else:
+                embed.title = "| After Edit"
+            embeds.append(embed)
+
+        await self.webhook.send(embeds=embeds)  
+
 async def setup(bot):
     await bot.add_cog(Basic(bot), guilds=[discord.Object(785839283847954433)])
     await bot.add_cog(Appeal_server(bot), guilds=[discord.Object(988761284956799038)])
+    await bot.add_cog(Logging(bot))
 
 
 
