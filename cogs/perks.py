@@ -459,7 +459,7 @@ class Perks(commands.GroupCog, name="perks", description="manage your custom per
                 friends = "".join([f"<@{friend}> `({friend})`\n" for friend in user_data['friend_list']])
                 embed.add_field(name="Friends", value=friends if friends else "`No Friends ;(`")
                 view = friends_manage(interaction.user, user_data, "roles")
-                await interaction.response.send_message(embed=embed, view=view)
+                await interaction.response.send_message(embed=embed, view=view, ephemeral=True)
                 view.message = await interaction.original_response()
                 return
     
@@ -484,7 +484,7 @@ class Perks(commands.GroupCog, name="perks", description="manage your custom per
                 friends = "".join([f"<@{friend}> `({friend})`\n" for friend in user_data['friend_list']])
                 embed.add_field(name="Friends", value=friends if friends else "`No Friends ;(`")
                 view = friends_manage(interaction.user, user_data, "channels")
-                await interaction.response.send_message(embed=embed, view=view)
+                await interaction.response.send_message(embed=embed, view=view, ephemeral=True)
                 view.message = await interaction.original_response()
                 return
     
@@ -614,7 +614,7 @@ class Perks(commands.GroupCog, name="perks", description="manage your custom per
         user_data = await self.Perk.get_data(Perk_Type.reacts, interaction.guild.id, interaction.user.id)
         if not user_data: return await interaction.response.send_message("You don't have any custom reaction perks", ephemeral=True)
 
-        await interaction.response.send_message(embed=discord.Embed(description="Checking emoji...", color=interaction.client.default_color))
+        await interaction.response.send_message(embed=discord.Embed(description="Checking emoji...", color=interaction.client.default_color), ephemeral=True)
         msg = await interaction.original_response()
         try:
             await msg.add_reaction(emoji)
