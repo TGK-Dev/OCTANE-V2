@@ -511,8 +511,9 @@ class Logging(commands.Cog):
     @commands.Cog.listener()
     async def on_raw_message_edit(self, payload: discord.RawMessageUpdateEvent):
         data = payload.data
-        if int(data['author']['id']) != 972637072991068220: 
-            return print("Not the bot")
+        try: 
+            if int(data['author']['id']) != 972637072991068220: return
+        except KeyError: return 
         channel = self.bot.get_channel(payload.channel_id)
         if not channel: 
             return print("Channel not found")
