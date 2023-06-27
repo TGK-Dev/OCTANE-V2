@@ -417,6 +417,18 @@ class Payout(commands.GroupCog, name="payout", description="Payout commands"):
 			await msg.add_reaction("<:tgk_active:1082676793342951475>")
 			await asyncio.sleep(random.randint(1, 5))
 			await interaction.message.edit(embeds=[embed], view=view)
+			is_more_payout_pending = await interaction.client.payout_pending.find_many_by_custom({'winner_message_id': data['winner_message_id']})
+			if len(is_more_payout_pending) <= 0:
+				loading_emoji = await interaction.client.emoji_server.fetch_emoji(998834454292344842)
+				paid_emoji = await interaction.client.emoji_server.fetch_emoji(1052528036043558942)
+				winner_channel = interaction.client.get_channel(data['channel'])
+				try:
+					winner_message = await winner_channel.fetch_message(data['winner_message_id'])
+					await winner_message.remove_reaction(loading_emoji, interaction.client.user)
+					await winner_message.add_reaction(paid_emoji)
+				except Exception as e:
+					pass
+
 		except asyncio.TimeoutError:
 			embed = message.embeds[0]
 			embed.title = "Payout Queue"

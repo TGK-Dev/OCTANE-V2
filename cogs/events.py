@@ -34,9 +34,8 @@ class Events(commands.Cog):
         if  not isinstance(self.activiy_webhook, discord.Webhook):
             avatar = await self.bot.user.avatar.read()
             self.activiy_webhook = await channel.create_webhook(name=self.bot.user.name, avatar=avatar)
-            print("Created webhook")
 
-    @tasks.loop(minutes=1)
+    @tasks.loop(minutes=5)
     async def update_member_counter(self):
         guild = self.bot.get_guild(785839283847954433)
         member_count = guild.member_count
@@ -46,8 +45,6 @@ class Events(commands.Cog):
         if number != member_count:
             new_name = f"{channel.name.replace(str(number), str(member_count))}"
             await channel.edit(name=new_name)
-            print(f"Updated member counter to {member_count}")
-            print("New name: " + new_name)
     
     @tasks.loop(minutes=1)
     async def check_vote_reminders(self):

@@ -389,19 +389,6 @@ class Payout_Buttton(discord.ui.View):
             
             interaction.client.dispatch("payout_paid", interaction.message, interaction.user, winner, data['prize'])
             interaction.client.dispatch("payout_confirmed", interaction.message, interaction.user, winner, payout_channel,data, interaction)
-
-            is_more_payout_pending = await interaction.client.payout_pending.find_many_by_custom({'winner_message_id': data['winner_message_id']})
-            if len(is_more_payout_pending) <= 0:
-                loading_emoji = await interaction.client.emoji_server.fetch_emoji(998834454292344842)
-                paid_emoji = await interaction.client.emoji_server.fetch_emoji(1052528036043558942)
-                winner_channel = interaction.client.get_channel(data['channel'])
-                try:
-                    winner_message = await winner_channel.fetch_message(data['winner_message_id'])
-                    await winner_message.remove_reaction(loading_emoji, interaction.client.user)
-                    await winner_message.add_reaction(paid_emoji)
-                except Exception as e:
-                    pass
-
     
     @discord.ui.button(label="Reject", style=discord.ButtonStyle.gray, emoji="<a:nat_cross:1010969491347357717>", custom_id="reject")
     async def reject(self, interaction: discord.Interaction, button: discord.ui.Button):
