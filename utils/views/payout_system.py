@@ -321,6 +321,8 @@ class Payout_claim(discord.ui.View):
 class Payout_Buttton(discord.ui.View):
     def __init__(self):
         super().__init__(timeout=None)
+        self.cd = app_commands.Cooldown(5, 10)
+
     
     async def get_command(self, winner: discord.Member, amount: str, item=None):
         if item ==  None:
@@ -386,7 +388,7 @@ class Payout_Buttton(discord.ui.View):
             await interaction.message.edit(embed=update_embed, view=edit_view, content=None)
             
             interaction.client.dispatch("payout_paid", interaction.message, interaction.user, winner, data['prize'])
-            interaction.client.dispatch("payout_confirmed", interaction.message, interaction.user, winner, payout_channel,data)
+            interaction.client.dispatch("payout_confirmed", interaction.message, interaction.user, winner, payout_channel,data, interaction)
 
             is_more_payout_pending = await interaction.client.payout_pending.find_many_by_custom({'winner_message_id': data['winner_message_id']})
             if len(is_more_payout_pending) <= 0:
@@ -400,49 +402,6 @@ class Payout_Buttton(discord.ui.View):
                 except Exception as e:
                     pass
 
-    
-    # @discord.ui.button(label="Payout", style=discord.ButtonStyle.gray, emoji="<a:nat_check:1010969401379536958>", custom_id="payout")
-    # async def payout(self, interaction: discord.Interaction, button: discord.ui.Button):
-    #     loadin_embed = discord.Embed(description="<a:loading:998834454292344842> | Marking payout...", color=discord.Color.blue())
-    #     await interaction.response.send_message(embed=loadin_embed, ephemeral=True)
-
-    #     data = await interaction.client.payout_pending.find(interaction.message.id)
-    #     if not data: await interaction.edit_original_response(embed=discord.Embed(description="<:dynoError:1000351802702692442> | Payout not found in Database", color=discord.Color.red()))
-
-    #     embed = interaction.message.embeds[0]
-    #     new_description = embed.description
-    #     embed.title = "Successfully Paid!"
-    #     embed.description = ""
-    #     new_description = new_description.replace("`Awaiting Payment`", "`Paid`")
-    #     embed.description = new_description
-    #     embed.description += f"\n**Santioned By:** {interaction.user.mention}"
-    #     edit_view = discord.ui.View()
-    #     edit_view.add_item(discord.ui.Button(label=f'Successfully Paid', style=discord.ButtonStyle.gray, disabled=True, emoji="<:paid:1071752278794575932>"))
-
-    #     winner_channel = interaction.client.get_channel(data['channel'])
-    #     winner_message = await winner_channel.fetch_message(data['winner_message_id'])
-        
-    #     view = discord.ui.View()
-    #     view.add_item(discord.ui.Button(label=f'Winner Message', url=f"{winner_message.jump_url}"))
-    #     view.add_item(discord.ui.Button(label=f'Payout Queue Message', url=f"{interaction.message.jump_url}"))
-    #     success_embed = discord.Embed(description="<:octane_yes:1019957051721535618> | Payout Marked Successfully!", color=discord.Color.green())
-    #     await interaction.edit_original_response(embed=success_embed)
-    #     await interaction.message.edit(view=edit_view, embed=embed, content=None)
-    #     winner = interaction.guild.get_member(data['winner'])
-    #     interaction.client.dispatch("payout_paid", interaction.message, interaction.user, winner, data['prize'])
-    #     await interaction.client.payout_pending.delete(data['_id'])
-        
-    #     is_more_payout_pending = await interaction.client.payout_pending.find_many_by_custom({'winner_message_id': data['winner_message_id']})
-    #     if len(is_more_payout_pending) <= 0:
-    #         loading_emoji = await interaction.client.emoji_server.fetch_emoji(998834454292344842)
-    #         paid_emoji = await interaction.client.emoji_server.fetch_emoji(1052528036043558942)
-    #         winner_channel = interaction.client.get_channel(data['channel'])
-    #         try:
-    #             winner_message = await winner_channel.fetch_message(data['winner_message_id'])
-    #             await winner_message.remove_reaction(loading_emoji, interaction.client.user)
-    #             await winner_message.add_reaction(paid_emoji)
-    #         except Exception as e:
-    #             pass
     
     @discord.ui.button(label="Reject", style=discord.ButtonStyle.gray, emoji="<a:nat_cross:1010969491347357717>", custom_id="reject")
     async def reject(self, interaction: discord.Interaction, button: discord.ui.Button):
@@ -466,18 +425,87 @@ class Payout_Buttton(discord.ui.View):
         await view.interaction.response.edit_message(embed=discord.Embed(description="<:octane_yes:1019957051721535618> | Payout Rejected Successfully!", color=interaction.client.default_color), view=None)
         await interaction.message.edit(view=edit_view, embed=embed, content=None)
         await interaction.client.payout_pending.delete(data['_id'])
+    
+    @discord.ui.button(label="Manual Verification", style=discord.ButtonStyle.gray, emoji="<:caution:1122473257338151003>", custom_id="manual_verification", disabled=True)
+    async def manual_verification(self, interaction: discord.Interaction, button: discord.ui.Button):
+        view = General_Modal(title="Manual Verification", interaction=interaction)
+        view.msg = discord.ui.TextInput(label="Message Link", placeholder="Enter the message link of te confirmation message", max_length=100, required=True, style=discord.TextStyle.long)
+        view.add_item(view.msg)
 
-    # async def on_error(self, interaction: Interaction, error: Exception, item: discord.ui.Item):
-    #     try:
-    #         await interaction.response.send_message(f"Error: {error}", ephemeral=True)
-    #     except:
-    #         await interaction.edit_original_response(content=f"Error: {error}")
+        await interaction.response.send_modal(view)
+        await view.wait()
+        if not view.value: return
+        msg_link = view.msg.value
+        await view.interaction.response.send_message("Verifying...", ephemeral=True)
+        data = await interaction.client.payout_pending.find(interaction.message.id)
+        try:
+            msg_id = int(msg_link.split("/")[-1])
+            msg_channel = int(msg_link.split("/")[-2])
+            channel = interaction.guild.get_channel(msg_channel)
+            message = await channel.fetch_message(msg_id)
+
+            if message.author.id != 270904126974590976: raise Exception("Invalid Message Link")
+            if len(message.embeds) <= 0: raise Exception("Invalid Message Link")
+
+            embed = message.embeds[0]
+            if not embed.description.startswith("Successfully paid"): raise Exception("Invalid Message Link")
+
+            winner = message.guild.get_member(int(embed.description.split(" ")[2].replace("<", "").replace(">", "").replace("!", "").replace("@", ""))) 
+            if not winner: raise Exception("Invalid Message Link")
+            if winner.id != data['winner']: return await view.interaction.edit_original_response(content="The winner of the provided message is not the winner of this payout")
+
+            items = re.findall(r"\*\*(.*?)\*\*", embed.description)[0]
+            if "⏣" in items:
+                items = int(items.replace("⏣", "").replace(",", ""))
+                if items == data['prize']:
+                    await view.interaction.edit_original_response(content="Verified Successfully")
+                else:
+                    return await view.interaction.edit_original_response(content="The prize of the provided message is not the prize of this payout")
+            else:
+                emojis = list(set(re.findall(":\w*:\d*", items)))
+                for emoji in emojis :items = items.replace(emoji,"",100); items = items.replace("<>","",100);items = items.replace("<a>","",100);items = items.replace("  "," ",100)
+                mathc = re.search(r"(\d+)x (.+)", items)
+                item_found = mathc.group(2)
+                quantity_found = int(mathc.group(1))
+                if item_found == data['item'] and quantity_found == data['prize']:
+                    await view.interaction.edit_original_response(content="Verified Successfully")
+                else:
+                    return await view.interaction.edit_original_response(content="The prize of the provided message is not the prize of this payout")
+            
+            payot_embed = interaction.message.embeds[0]
+            payot_embed.description += f"\n**Payout Location:** {message.jump_url}"
+            payot_embed.description = payot_embed.description.replace("`Initiated`", "`Successfuly Paid`")
+            payot_embed.description = payot_embed.description.replace("`Awaiting Payment`", "`Successfuly Paid`")
+            payot_embed.description += f"\n**Santioned By:** {interaction.user.mention}"
+            payot_embed.title = "Successfully Paid"
+            view = discord.ui.View()
+            view.add_item(discord.ui.Button(label=f"Paid at", style=discord.ButtonStyle.url, url=message.jump_url, emoji="<:tgk_link:1105189183523401828>"))
+            await interaction.message.edit(embed=payot_embed, view=view)   
+            await interaction.client.payout_pending.delete(data['_id'])             
+        except:
+            return await view.interaction.response.send_message("Invalid Message Link", ephemeral=True)
+
+    async def on_error(self, interaction: Interaction, error: Exception, item: discord.ui.Item):
+        if isinstance(error, ButtonCooldown):
+            seconds = int(error.retry_after)
+            unit = 'second' if seconds == 1 else 'seconds'
+            return await interaction.response.send_message(f"You're on cooldown for {seconds} {unit}!", ephemeral=True)
+        try:
+            await interaction.response.send_message(f"Error: {error}", ephemeral=True)
+        except:
+            await interaction.edit_original_response(content=f"Error: {error}")
 
     async def interaction_check(self, interaction: Interaction):
         config = await interaction.client.payout_config.find(interaction.guild.id)
         roles = [role.id for role in interaction.user.roles]
-        if (set(roles) & set(config['manager_roles'])): return True
+        if (set(roles) & set(config['manager_roles'])): 
+            retry_after = self.cd.update_rate_limit()
+            if retry_after:
+                raise ButtonCooldown(retry_after)
+            return True
         else:
             embed = discord.Embed(title="Error", description="You don't have permission to use this button", color=discord.Color.red())
             await interaction.response.send_message(embed=embed, ephemeral=True)
             return False
+
+

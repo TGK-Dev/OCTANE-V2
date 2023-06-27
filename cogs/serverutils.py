@@ -1,3 +1,4 @@
+import random
 import re
 import discord
 import datetime
@@ -60,12 +61,12 @@ class Payout(commands.GroupCog, name="payout", description="Payout commands"):
 		else:
 			return choices[:24]
 	
-	async def create_pending_embed(self, event: str, winner: discord.Member, prize: str, channel: discord.TextChannel, message: discord.Message, claim_time: int, host: discord.Member, item: str=None) -> discord.Embed:
+	async def create_pending_embed(self, event: str, winner: discord.Member, prize: str, channel: discord.TextChannel, message: discord.Message, claim_time: int, host: discord.Member, item_data: dict) -> discord.Embed:
 		embed = discord.Embed(title="Payout Queue", timestamp=datetime.datetime.now(), description="", color=self.bot.default_color)
 		embed.description += f"**Event:** {event}\n"
 		embed.description += f"**Winner:** {winner.mention}\n"
-		if item:
-			embed.description += f"**Prize:** `{prize}x {item}`\n"
+		if item_data != None:
+			embed.description += f"**Prize:** `{prize}x {item_data['_id']}`\n"
 		else:
 			embed.description += f"**Prize:** `⏣ {prize:,}`\n"
 		embed.description += f"**Channel:** {channel.mention}\n"
@@ -74,8 +75,12 @@ class Payout(commands.GroupCog, name="payout", description="Payout commands"):
 		embed.description += f"**Set By:** {host.mention}\n"
 		embed.description += f"**Status:** `Pending`"
 		embed.set_footer(text=f"ID: {message.id}")
-		return embed
-			
+		if item_data != None:
+			value = f"**Name**: {item_data['_id']}\n"
+			value += f"**Price**: ⏣ {item_data['price']:,}\n"
+			value += f"Total Value of this payout with {prize}x {item_data['_id']} is ⏣ {prize * item_data['price']:,}"
+			embed.add_field(name="Item Info", value=value)
+		return embed			
 
 	def cog_unload(self):
 		self.claim_task.cancel()
@@ -202,8 +207,8 @@ class Payout(commands.GroupCog, name="payout", description="Payout commands"):
 		if (set(user_roles) & set(data['event_manager_roles'])):
 			pass
 		else:
-			return await interaction.response.send_message("You are not allowed to use this command!", ephemeral=True)		
-
+			return await interaction.response.send_message("You are not allowed to use this command!", ephemeral=True)
+		
 		claim_time_seconds = data['default_claim_time'] if data['default_claim_time'] is not None else 86400
 		try:
 			event_message = await interaction.channel.fetch_message(message_id)
@@ -220,9 +225,13 @@ class Payout(commands.GroupCog, name="payout", description="Payout commands"):
 		confrim_embed.description += f"**Event:** {event}\n"
 		confrim_embed.description += f"**Winners:** {', '.join([winner.mention for winner in winners])}\n"
 		if item:
+			item_data = await interaction.client.dank_items.find(item)
+			if not item_data:
+				return await interaction.response.send_message("Error: Item not found! Please make sure you have the correct item name.", ephemeral=True)
 			confrim_embed.description += f"**Prize:** {quantity} x {item}\n"
 		else:
 			confrim_embed.description += f"**Prize: ⏣ {quantity:,} Each**\n"
+			item_data = None
 		confrim_embed.description += f"**Message** {event_message.jump_url}\n"
 		confrim_embed.description += f"**Claim Time:** {humanfriendly.format_timespan(claim_time_seconds)}\n"
 		confrim_embed.add_field(name="Warning", value=f"**By clicking on the button below, you confirm that all information is correct and you will be responsible for any incorrect information provided.**")
@@ -247,7 +256,14 @@ class Payout(commands.GroupCog, name="payout", description="Payout commands"):
 			await view.interaction.response.edit_message(view=None, embed=loading_embed)
 		
 		for winner in winners:
-			embed = await self.create_pending_embed(event, winner, quantity, event_message.channel, event_message, claim_time_timestamp, interaction.user, item)
+			queue_data = await self.bot.payout_queue.find({'winner_message_id': event_message.id, 'winner': winner.id})
+			pending_data = await self.bot.payout_queue.find({'winner_message_id': event_message.id, 'winner': winner.id})
+
+			if queue_data != None or pending_data != None:
+				loading_embed.description += f"\n<:dynoError:1000351802702692442> | Failed to queue payout for {winner.mention} `({winner.global_name})` due to possible duplicate entry."
+				await interaction.edit_original_response(embed=loading_embed)
+				continue
+			embed = await self.create_pending_embed(event, winner, quantity, event_message.channel, event_message, claim_time_timestamp, interaction.user, item_data)
 			msg = await claim_channel.send(embed=embed, view=Payout_claim(), content=f"{winner.mention} Your prize has been queued for payout. Please claim it within <t:{claim_time_timestamp}:R> or it will rerolled.")
 
 			queue_data = {
@@ -279,7 +295,7 @@ class Payout(commands.GroupCog, name="payout", description="Payout commands"):
 			self.bot.dispatch("payout_queue", interaction.user, event, event_message, msg, winner, quantity)
 			await asyncio.sleep(0.75)
 
-		await asyncio.sleep(1.5)
+		await asyncio.sleep(2)
 
 		done_embed = discord.Embed(description=f"**Successfully queued payout for `{len(winners)}` winners!**", color=interaction.client.default_color)
 		done_embed.set_footer(text="You can view the queued payouts by clicking on the button below.")
@@ -357,7 +373,7 @@ class Payout(commands.GroupCog, name="payout", description="Payout commands"):
 		await log_channel.send(embed=embed)
 
 	@commands.Cog.listener()
-	async def on_payout_confirmed(self, message: discord.Message, user: discord.Member, winner: discord.Member, payout_channel: discord.TextChannel,data: dict):
+	async def on_payout_confirmed(self, message: discord.Message, user: discord.Member, winner: discord.Member, payout_channel: discord.TextChannel,data: dict, interaction: discord.Interaction):
 		def check(m: discord.Message):
 			if m.channel.id != payout_channel.id: 
 				return False
@@ -397,14 +413,18 @@ class Payout(commands.GroupCog, name="payout", description="Payout commands"):
 			embed.description = embed.description.replace("`Initiated`", "`Successfuly Paid`")
 			embed.description += f"\n**Santioned By:** {user.mention}"
 			embed.title = "Successfully Paid"
-			await message.edit(view=view, embed=embed)
 			await self.bot.payout_pending.delete(data['_id'])
+			await msg.add_reaction("<:tgk_active:1082676793342951475>")
+			await asyncio.sleep(random.randint(1, 5))
+			await interaction.message.edit(embeds=[embed], view=view)
 		except asyncio.TimeoutError:
 			embed = message.embeds[0]
 			embed.title = "Payout Queue"
 			embed.description = embed.description.replace("`Initiated`", "`Awaiting Payment`")
-			await message.edit(view=Payout_Buttton(), embed=embed)
-			message.reply(f"{user.mention} This payout could not be confirmed in time. Please try again, if you think it's a mistake, please contact a `@jay2404`")
+			view = Payout_Buttton()
+			view.children[2].disabled = False
+			await interaction.message.edit(embeds=[embed], view=view)
+			await message.reply(f"{user.mention} This payout could not be confirmed in time. Please try again, if you think it's a mistake, please contact a `@jay2404`", delete_after=10)
 
 utc = datetime.timezone.utc
 time = datetime.time(hour=4, minute=30, tzinfo=utc)
