@@ -210,7 +210,6 @@ class Perks(commands.GroupCog, name="perks", description="manage your custom per
     edit = Group(name="edit", description="edit your perks")
     highlight = Group(name="highlight", description="manage your highlight perks")
     friend = Group(name="friend", description="give/revoke your custom role/channel access from your friends")
-    delete = Group(name="delete", description="delete your perks temporarily")
 
     
     @admin.command(name="padd", description="add a custom perk to a user")
@@ -589,6 +588,7 @@ class Perks(commands.GroupCog, name="perks", description="manage your custom per
                         duraction = user_data['duration'] - total_time
                         user_data['duration'] = duraction
                     await self.Perk.update(Perk_Type.channels, user_data)
+                    await channel.delete()
                 user_data['channel_id'] = None
                 await self.Perk.update(Perk_Type.channels, user_data)
         
