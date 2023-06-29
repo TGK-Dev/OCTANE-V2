@@ -147,6 +147,7 @@ class Level(commands.GroupCog):
         await ctx.send("Rank config has been created!")
 
     @app_commands.command(name="rank", description="View your rank card")
+    @app_commands.checks.cooldown(1, 10, key=lambda i:(i.guild_id, i.user.id))
     async def rank(self, interaction: Interaction, member: discord.Member = None):
         if member is None:
             member = interaction.user
@@ -158,7 +159,7 @@ class Level(commands.GroupCog):
         # weekly_rank = sorted(all_ranks, key=lambda x: x['weekly'], reverse=True)
         # weekly_rank = weekly_rank.index(data) + 1
 
-        embed = discord.Embed(title=f"{interaction.user.name}'s Rank Card", color=interaction.client.default_color, description="")
+        embed = discord.Embed(color=interaction.client.default_color, description="")
         embed.set_author(name=interaction.user.name, icon_url=interaction.user.avatar.url if interaction.user.avatar else interaction.user.default_avatar)
         embed.set_thumbnail(url=interaction.user.avatar.url if interaction.user.avatar else interaction.user.default_avatar)
         embed.description += f"**Level:** {data['level']}\n"
