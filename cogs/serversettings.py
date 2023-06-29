@@ -170,24 +170,27 @@ class serversettings(commands.Cog):
                         await self.bot.tickets.config.update(view.data)
 
             case "leveling":
-                level_data = await self.bot.level_config.find(interaction.guild.id)
-                if not level_data: 
-                    level_data = {"_id": interaction.guild_id,"blacklist": {"channels": [],"roles": [],},'multiplier': {'global': 1, 'channels': {}, 'roles': {}},'cooldown': 8,'clear_on_leave': True}
-                    await self.bot.level_config.insert(level_data)
-                channel_multipliers = ""
-                role_multipliers = ""
-                for channel, multiplier in level_data['multiplier']['channels'].items(): channel_multipliers += f"<#{channel}>: `{multiplier}`\n"
-                for role, multiplier in level_data['multiplier']['roles'].items(): role_multipliers += f"<@&{role}>: `{multiplier}`\n"
-                embed = discord.Embed(title=f"{interaction.guild.name} Leveling Config", color=self.bot.default_color, description="")
-                embed.description += f"Global Multiplier: `{level_data['multiplier']['global']}`\n"
-                embed.description += f"Cooldown: `{level_data['cooldown'] if level_data['cooldown'] else 'None'}`\n"
-                embed.description += f"Clear On Leave: `{'On' if level_data['clear_on_leave'] else 'Off'}`\n"
-                embed.description += f"Blacklisted Channels: {', '.join([f'<#{channel}>' for channel in level_data['blacklist']['channels']]) if level_data['blacklist']['channels'] else '`None`'}\n"
-                embed.description += f"Blacklisted Roles: {', '.join([f'<@&{role}>' for role in level_data['blacklist']['roles']]) if level_data['blacklist']['roles'] else '`None`'}\n"                
+                leveling_config = await self.bot.level.get_config(interaction.guild)
+                embed = discord.Embed(title="Leveling Config", color=interaction.client.default_color, description="")
+                embed.description += f"**Leveling:** {leveling_config['enabled']}\n"
+                embed.description += f"**Clear On Leave:** {leveling_config['clear_on_leave']}\n"
+                embed.description += f"**Announcement Channel:** {interaction.guild.get_channel(leveling_config['announcement_channel']).mention if leveling_config['announcement_channel'] else '`None`'}\n"
+                embed.description += f"**Global Multiplier:** `{leveling_config['global_multiplier']}`\n"
+                embed.description += f"**Global Cooldown:** `{humanfriendly.format_timespan(leveling_config['cooldown'])}`\n"
+                embed.description += f"**Multiplier Roles:**\n"
+                for role, multi in leveling_config['multipliers']['roles'].items():
+                    embed.description += f"> <@&{role}>: `{multi}`\n"
+                
+                embed.description += f"**Multiplier Channels:**\n"
+                for channel, multi in leveling_config['multipliers']['channels'].items():
+                    embed.description += f"> <#{channel}>: `{multi}`\n"
+                
+                embed.description += f"**Blacklist:**\n> Roles: {','.join([f'<@&{role}>' for role in leveling_config['blacklist']['roles']]) if leveling_config['blacklist']['roles'] else '`None`'}\n> Channels: {','.join([f'<#{channel}>' for channel in leveling_config['blacklist']['channels']]) if leveling_config['blacklist']['channels'] else '`None`'}\n"
+                embed.description += f"**Rewards Roles:**\n> {','.join([f'<@&{role}>' for role in leveling_config['rewards']]) if leveling_config['rewards'] else '`None`'}\n"
                 if option == "Show":
                     await interaction.response.send_message(embed=embed)
-                if option == "Edit":
-                    view = LevelingConfig(interaction.user, level_data)
+                elif option == "Edit":
+                    view = LevelingConfig(interaction.user, leveling_config)
                     await interaction.response.send_message(embed=embed, view=view)
                     view.message = await interaction.original_response()
                     
