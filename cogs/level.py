@@ -152,16 +152,18 @@ class Level(commands.GroupCog):
         if member is None:
             member = interaction.user
         data = await self.levels.get_member_level(member)
-
-        # all_ranks = await self.levels.ranks.get_all()
-        # all_ranks = sorted(all_ranks, key=lambda x: x['xp'], reverse=True)
-        # rank = all_ranks.index(data) + 1
-        # weekly_rank = sorted(all_ranks, key=lambda x: x['weekly'], reverse=True)
-        # weekly_rank = weekly_rank.index(data) + 1
+        try:
+            all_ranks = await self.levels.ranks.get_all()
+            all_ranks = sorted(all_ranks, key=lambda x: x['xp'], reverse=True)
+            rank = all_ranks.index(data) + 1
+            weekly_rank = sorted(all_ranks, key=lambda x: x['weekly'], reverse=True)
+            weekly_rank = weekly_rank.index(data) + 1
+        except:
+            pass
 
         embed = discord.Embed(color=interaction.client.default_color, description="")
-        embed.set_author(name=interaction.user.name, icon_url=interaction.user.avatar.url if interaction.user.avatar else interaction.user.default_avatar)
-        embed.set_thumbnail(url=interaction.user.avatar.url if interaction.user.avatar else interaction.user.default_avatar)
+        embed.set_author(name=member.name, icon_url=member.avatar.url if member.avatar else member.default_avatar)
+        embed.set_thumbnail(url=member.avatar.url if member.avatar else member.default_avatar)
         embed.description += f"**Level:** {data['level']}\n"
         embed.description += f"**XP:** {data['xp']}\n"
         embed.description += f"**Weekly XP:** {data['weekly']}\n"
