@@ -99,17 +99,62 @@ class Level(commands.GroupCog):
     @commands.Cog.listener()
     async def on_message(self, message):
         if message.author.bot:
+            if message.interaction:
+                self.bot.dispatch("slash_command", message)
             return
         if message.guild is None:
             return
         
         data = await self.levels.get_member_level(message.author)
-        
+
         if data['last_updated'] is None:
             self.bot.dispatch("level_up", message, data)
             return
         if data['last_updated'] + datetime.timedelta(seconds=8) < datetime.datetime.utcnow():
             self.bot.dispatch("level_up", message, data)
+        
+
+    @commands.Cog.listener()
+    async def on_slash_command(self, message: discord.Message):
+        config = await self.levels.get_config(message.guild)
+        if not config['enabled']: return
+
+        if not message.interaction: return
+        user = message.interaction.user
+        data = await self.levels.get_member_level(user)
+        if data['last_updated'] is None or data['last_updated'] + datetime.timedelta(seconds=8) < datetime.datetime.utcnow():
+            pass
+        else:
+            return
+
+        user_roles = [role.id for role in user.roles]
+        if (set(user_roles) & set(config['blacklist']['roles'])):
+            return
+        if str(message.channel.id) in config['blacklist']['channels']:
+            return
+        
+        expirience = 1 * config['global_multiplier']
+        if str(message.channel.id) in config['multipliers']['channels'].keys():
+            expirience = expirience * config['multipliers']['channels'][str(message.channel.id)]
+        
+        for role in user_roles:
+            if str(role) in config['multipliers']['roles'].keys():
+                expirience = expirience * config['multipliers']['roles'][str(role)]
+
+        data['xp'] += expirience
+        data['weekly'] += 1
+        data['last_updated'] = datetime.datetime.utcnow()
+        level = await self.levels.count_level(data['xp'])
+        if level > data['level']:
+            data['level'] = level
+            if str(level) in config['rewards'].keys():
+                for role in config['rewards'][str(level)]:
+                    role = message.guild.get_role(role)
+                    if role is None: continue
+                    await user.add_roles(role)
+        
+        print(f"user {user} got {expirience} by slash command")
+
 
     @commands.Cog.listener()
     async def on_level_up(self, message: discord.Message, data: dict):
@@ -117,14 +162,19 @@ class Level(commands.GroupCog):
         expirience = 1
         if not config['enabled']:
             return
-        
+        user_roles = [role.id for role in message.author.roles]
+        if (set(user_roles) & set(config['blacklist']['roles'])):
+            return
+        if str(message.channel.id) in config['blacklist']['channels']:
+            return
+
         expirience = expirience * config['global_multiplier']
         if str(message.channel.id) in config['multipliers']['channels'].keys():
             expirience = expirience * config['multipliers']['channels'][str(message.channel.id)]
 
-        for role in message.author.roles:
-            if str(role.id) in config['multipliers']['roles'].keys():
-                expirience = expirience * config['multipliers']['roles'][str(role.id)]
+        for role in user_roles:
+            if str(role) in config['multipliers']['roles'].keys():
+                expirience = expirience * config['multipliers']['roles'][str(role)]
         
         data['xp'] += expirience
         data['weekly'] += 1
@@ -134,6 +184,7 @@ class Level(commands.GroupCog):
             data['level'] = level
             if str(level) in config['rewards'].keys():
                 role = message.guild.get_role(config['rewards'][str(level)])
+                if role is None: return
                 await message.author.add_roles(role)
             #     await message.channel.send(f"Congratulations {message.author.mention} you have leveled up to level {level} and have been given the {role.n} role!")
             # await message.channel.send(f"Congratulations {message.author.mention} you have leveled up to level {level}!")
@@ -153,11 +204,10 @@ class Level(commands.GroupCog):
             member = interaction.user
         data = await self.levels.get_member_level(member)
         try:
-            all_ranks = await self.levels.ranks.get_all()
-            all_ranks = sorted(all_ranks, key=lambda x: x['xp'], reverse=True)
+            all_ranks = sorted(self.levels.level_cache.values(), key=lambda x: x['xp'], reverse=True)
             rank = all_ranks.index(data) + 1
-            weekly_rank = sorted(all_ranks, key=lambda x: x['weekly'], reverse=True)
-            weekly_rank = weekly_rank.index(data) + 1
+            all_ranks = sorted(self.levels.level_cache.values(), key=lambda x: x['weekly'], reverse=True)
+            weekly_rank = all_ranks.index(data) + 1
         except:
             pass
 
@@ -168,7 +218,6 @@ class Level(commands.GroupCog):
         embed.description += f"**XP:** {data['xp']}\n"
         embed.description += f"**Weekly XP:** {data['weekly']}\n"
         await interaction.response.send_message(embed=embed)
-
 
 async def setup(bot):
     await bot.add_cog(Level(bot))
