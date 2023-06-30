@@ -4,7 +4,7 @@ from typing import List, Dict, Optional, Union, Any, TypeVar, Type
 
 from motor.motor_asyncio import AsyncIOMotorDatabase, AsyncIOMotorCollection
 from pymongo.results import DeleteResult
-
+from pymongo.operations import UpdateOne
 T = TypeVar("T")
 
 
@@ -192,6 +192,19 @@ class Document:
         """
         existence = not where_field_doesnt_exist
         return await self._document.find({field: {"$exists": existence}}).to_list(None)
+
+    @return_converted
+    async def bulk_update(self, data: List[Dict]):
+        """
+        Bulk update documents
+
+        Parameters
+        ----------
+        data: List[Dict]
+            The data to update with
+        """
+        bulk_operations = [UpdateOne({'_id': d['_id']}, {'$set': d}) for d in data]
+        await self._document.bulk_write(bulk_operations)
 
     @return_converted
     async def find_by_id(

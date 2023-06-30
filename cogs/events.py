@@ -18,6 +18,8 @@ class Events(commands.Cog):
         self.vote_remider_task = self.check_vote_reminders.start()
         self.counter_task = self.update_member_counter.start()
         self.bot.votes = Document(self.bot.db, "votes")
+        self.bot.free = Document(self.bot.db, "free")
+        self.free_task = self.update_free.start()
         self.activiy_webhook = None
         self.vote_task_progress = False
 
@@ -46,6 +48,20 @@ class Events(commands.Cog):
             new_name = f"{channel.name.replace(str(number), str(member_count))}"
             await channel.edit(name=new_name)
     
+    @tasks.loop(minutes=5)
+    async def update_free(self):
+        data = await self.bot.free.get_all()
+        now = datetime.datetime.utcnow()
+        guild = self.bot.get_guild(785839283847954433)
+        for user in data:
+            if user['banned'] == False or user['unbanAt'] is None: continue
+            if user['unbanAt'] < now:
+                user = await self.bot.fetch_user(user['_id'])
+                await guild.unban(user, reason="Freeloader ban expired")
+                user['unbanAt'] = None
+                user['banned'] = False
+                await self.bot.free.update(user)
+
     @tasks.loop(minutes=1)
     async def check_vote_reminders(self):
         if self.vote_task_progress:
@@ -65,6 +81,10 @@ class Events(commands.Cog):
                 await self.bot.votes.delete(data['_id'])
         
         self.vote_task_progress = False
+    
+    @update_free.before_loop
+    async def before_update_free(self):
+        await self.bot.wait_until_ready()
 
     @update_member_counter.before_loop
     async def before_update_member_counter(self):
@@ -173,7 +193,6 @@ class Events(commands.Cog):
     async def on_presence_update(self, before, after):
         if before.guild.id != 785839283847954433: return
         supporter_role = before.guild.get_role(992108093271965856)
-        supporter_log_channel = before.guild.get_channel(1031514773310930945)
         if len(after.activities) <= 0 and supporter_role in after.roles:
             await after.remove_roles(supporter_role, reason="No longer supporting")
             return        

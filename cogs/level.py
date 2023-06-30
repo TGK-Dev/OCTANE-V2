@@ -5,8 +5,7 @@ from discord import app_commands
 from discord import Interaction
 from discord.ext import commands
 from utils.db import Document
-from PIL import Image, ImageDraw, ImageFont, ImageChops
-from io import BytesIO
+from utils.transformer import TimeConverter, MutipleRole
 
 
 
@@ -87,6 +86,7 @@ class Level(commands.GroupCog):
         self.bot = bot
         self.levels = Level_DB(bot)
         self.bot.level = self.levels
+        self.webhook = None
     
     @commands.Cog.listener()
     async def on_ready(self):
@@ -95,6 +95,15 @@ class Level(commands.GroupCog):
 
         for member in await self.levels.ranks.get_all():
             self.levels.level_cache[member['_id']] = member
+        
+        channel = self.bot.get_channel(999736058071744583)
+        for webhook in await channel.webhooks():
+            if webhook.user.id == self.bot.user.id:
+                self.webhook = webhook
+                break
+        if self.webhook is None:
+            avatar = await self.bot.user.avatar.read()
+            self.webhook = await channel.create_webhook(name="Banish Logs", avatar=avatar)
 
     @commands.Cog.listener()
     async def on_message(self, message):
@@ -112,10 +121,47 @@ class Level(commands.GroupCog):
             return
         if data['last_updated'] + datetime.timedelta(seconds=8) < datetime.datetime.utcnow():
             self.bot.dispatch("level_up", message, data)
-        
+    
+    @commands.Cog.listener()
+    async def on_raw_member_remove(self, payload: discord.RawMemberRemoveEvent):
+        member = payload.user
+        guild = self.bot.get_guild(payload.guild_id)
+
+        if member.bot: return
+        if payload.guild_id is None: return
+        member_data = await self.levels.get_member_level(member)
+        if member_data['weekly'] < 10 or member_data['level'] < 5:
+            data = await self.bot.free.find(member.id)
+            if data is None:
+                data = {
+                    "_id": member.id,
+                    "total_ff": 1,
+                    "banned": False,
+                    "ban_days": 7,
+                    "unbanAt": None,
+                }
+                await self.bot.free.insert(data)
+            if data['total_ff'] == 1:
+                data['unbanAt'] = datetime.datetime.utcnow() + datetime.timedelta(days=data['ban_days'])
+            else:
+                days = data['ban_days'] * data['total_ff']
+                data['unbanAt'] = datetime.datetime.utcnow() + datetime.timedelta(days=days)
+            await guild.ban(member, reason=f"Freeloaded after Heist. Total Freeloads: {data['total_ff']}")
+            embed = discord.Embed(title="Freeloader Banned", description=f"", color=discord.Color.red())
+            embed.description += f"**User:** {member.mention} | `{member.id}`\n"
+            embed.description += f"**Total Freeloads:** {data['total_ff']}\n"
+            embed.description += f"**Ban Duration:** {data['ban_days']} days\n"
+            embed.description += f"**Uban In:** <t:{round(data['unbanAt'].timestamp())}:R>\n"
+            embed.set_thumbnail(url=member.avatar.url if member.avatar else member.default_avatar)
+            embed.set_footer(text="The Gambler's Kingdom", icon_url=guild.icon.url)
+            await self.webhook.send(embed=embed)
+            data['total_ff'] += 1
+            data['banned'] = True
+            await self.bot.free.update(data)
 
     @commands.Cog.listener()
     async def on_slash_command(self, message: discord.Message):
+        if message.guild is None: return
         config = await self.levels.get_config(message.guild)
         if not config['enabled']: return
 
@@ -148,13 +194,18 @@ class Level(commands.GroupCog):
         if level > data['level']:
             data['level'] = level
             if str(level) in config['rewards'].keys():
-                for role in config['rewards'][str(level)]:
-                    role = message.guild.get_role(role)
-                    if role is None: continue
-                    await user.add_roles(role)
-        
-        print(f"user {user} got {expirience} by slash command")
+                role = message.guild.get_role(config['rewards'][str(level)])
+                if role is None: return
+                await message.author.add_roles(role)
 
+                level_up_embed = discord.Embed(description="", color=self.bot.default_color)
+                level_up_embed.set_author(name=f"{user.name}")
+                level_up_embed.set_thumbnail(url=user.avatar.url if user.avatar else user.default_avatar)
+                level_up_embed.description += f"## Congratulations {user.mention}!\n you have leveled up to level {level}!"
+                level_up_embed.set_footer(text="The Gambler's Kingdom", icon_url=message.guild.icon.url if message.guild.icon else None)
+                annouce = message.guild.get_channel(config['announcement_channel'])
+                if annouce is None: return
+                await annouce.send(embed=level_up_embed, content=message.author.mention)
 
     @commands.Cog.listener()
     async def on_level_up(self, message: discord.Message, data: dict):
@@ -175,7 +226,7 @@ class Level(commands.GroupCog):
         for role in user_roles:
             if str(role) in config['multipliers']['roles'].keys():
                 expirience = expirience * config['multipliers']['roles'][str(role)]
-        
+        if data is None: return
         data['xp'] += expirience
         data['weekly'] += 1
         data['last_updated'] = datetime.datetime.utcnow()
@@ -186,7 +237,14 @@ class Level(commands.GroupCog):
                 role = message.guild.get_role(config['rewards'][str(level)])
                 if role is None: return
                 await message.author.add_roles(role)
-            #     await message.channel.send(f"Congratulations {message.author.mention} you have leveled up to level {level} and have been given the {role.n} role!")
+                level_up_embed = discord.Embed(description="", color=self.bot.default_color)
+                level_up_embed.set_author(name=f"{message.author.name}")
+                level_up_embed.set_thumbnail(url=message.author.avatar.url if message.author.avatar else message.author.default_avatar)
+                level_up_embed.description += f"## Congratulations {message.author.mention}!\n you have leveled up to level {level}!"
+                level_up_embed.set_footer(text="The Gambler's Kingdom", icon_url=message.guild.icon.url if message.guild.icon else None)
+                annouce = message.guild.get_channel(config['announcement_channel'])
+                if annouce is None: return
+                await annouce.send(embed=level_up_embed, content=message.author.mention)
             # await message.channel.send(f"Congratulations {message.author.mention} you have leveled up to level {level}!")
     
         await self.levels.update_member_level(message.author, data)
@@ -219,5 +277,107 @@ class Level(commands.GroupCog):
         embed.description += f"**Weekly XP:** {data['weekly']}\n"
         await interaction.response.send_message(embed=embed)
 
+class Giveaways_Backend:
+    def __init__(self, bot):
+        self.db = bot.mongo["Giveaways"]
+        self.config = Document(self.db, "config")
+        self.giveaways = Document(self.db, "giveaways")
+        self.config_cache = {}
+        self.giveaways_cache = {}
+
+    async def get_config(self, guild: discord.Guild):
+        if guild.id in self.config_cache.keys():
+            return self.config_cache[guild.id]
+        config = await self.config.find(guild.id)
+        if config is None:
+            config = await self.create_config(guild)
+            self.config_cache[guild.id] = config
+        return config
+    
+    async def create_config(self, guild: discord.Guild):
+        data = {
+            "_id": guild.id,
+            "manager_roles": [],
+            "log_channel": None,
+            "multipliers": {},
+            "blacklist": {},
+        }
+        await self.config.insert(data)
+        return data
+    
+    async def update_config(self, guild: discord.Guild, data: dict):
+        await self.config.update(data)
+        self.config_cache[guild.id] = data
+
+
+class Giveaways(commands.GroupCog, name="giveaways"):
+    def __init__(self, bot):
+        self.bot = bot
+        self.backend = Giveaways_Backend(bot)
+
+    
+    @app_commands.command(name="start", description="Start a giveaway")
+    async def _start(self, interaction: discord.Interaction, winners: app_commands.Range[int, 1, 20], prize: str,
+                     duraction: app_commands.Transform[int, TimeConverter], 
+                     req_roles: app_commands.Transform[discord.Role, MutipleRole]=None, 
+                     bypass_role: app_commands.Transform[discord.Role, MutipleRole]=None, 
+                     req_level: app_commands.Range[int, 1, 100]=None,
+                     req_weekly: app_commands.Range[int, 1, 100]=None,
+    ):
+        await interaction.response.defer()
+        config = await self.backend.get_config(interaction.guild)
+        if not config:
+            return await interaction.followup.send("Giveaways are not enabled in this server!", ephemeral=True)
+        user_role = [role.id for role in interaction.user.roles]
+        if not set(user_role) & set(config['manager_roles']): return await interaction.followup.send("You do not have permission to start giveaways!", ephemeral=True)
+        data = {
+            "_id": None,
+            "channel": interaction.channel.id,
+            "guild": interaction.guild.id,
+            "winners": winners,
+            "prize": prize,
+            "duration": duraction,
+            "req_roles": [role.id for role in req_roles] if req_roles else [],
+            "bypass_role": [role.id for role in bypass_role] if bypass_role else [],
+            "req_level": req_level,
+            "req_weekly": req_weekly,
+            "entries": [],
+            "start_time": datetime.datetime.now(),
+            "end_time": datetime.datetime.now() + datetime.timedelta(seconds=duraction),
+        }
+        embed = discord.Embed(color=interaction.client.default_color, description="", title=prize)
+        embed.description += f"**Winners:** {winners}\n"
+        embed.description += f"**Duration:** <t:{round(data['end_time'].timestamp())}:R>\n"
+        if req_roles:
+            if len(req_roles) == 1:
+                embed.description += f"**Required Role:** {req_roles[0].mention}\n"
+            elif len(req_roles) == 2:
+                embed.description += f"**Required Roles:** {req_roles[0].mention} and {req_roles[1].mention}\n"
+            else:
+                embed.description += f"**Required Roles:** {', '.join([role.mention for role in req_roles])}\n"
+        if bypass_role:
+            if len(bypass_role) == 1:
+                embed.description += f"**Bypass Role:** {bypass_role[0].mention}\n"
+            elif len(bypass_role) == 2:
+                embed.description += f"**Bypass Roles:** {bypass_role[0].mention} and {bypass_role[1].mention}\n"
+            else:
+                embed.description += f"**Bypass Roles:** {', '.join([role.mention for role in bypass_role])}\n"
+        if req_level:
+            embed.description += f"**Required Level:** {req_level}\n"
+        if req_weekly:
+            embed.description += f"**Required Weekly:** {req_weekly}\n"
+        if len(config['multipliers'].keys()) > 0:
+            value = ""
+            for role_id, multiplier in config['multipliers'].items():
+                value += f"<@&{role_id}> - `{multiplier}`x\n"
+            embed.add_field(name="Multipliers", value=value)
+        
+        await interaction.followup.send(embed=embed)
+        msg = await interaction.original_response()
+        data['_id'] = msg.id
+        await self.backend.giveaways.insert(data)
+        self.backend.giveaways_cache[msg.id] = data
+
 async def setup(bot):
     await bot.add_cog(Level(bot))
+    await bot.add_cog(Giveaways(bot))
