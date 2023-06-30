@@ -35,6 +35,12 @@ class Level_DB:
             return 0
         level:int = math.floor(math.sqrt((expirience - 35) / 20)) + 1
         return level
+
+    async def count_xp(self, level: int):
+        if level < 1:
+            return 0
+        experience: int = math.ceil(((104 - 1) ** 2) * 20 + 35)
+        return experience
     
     async def level_template(self, member: discord.Member):
         data = {
@@ -193,19 +199,22 @@ class Level(commands.GroupCog):
         level = await self.levels.count_level(data['xp'])
         if level > data['level']:
             data['level'] = level
-            if str(level) in config['rewards'].keys():
-                role = message.guild.get_role(config['rewards'][str(level)])
-                if role is None: return
-                await message.author.add_roles(role)
+            roles = []
+            for key, value in config['rewards'].items():
+                if level >= int(key):
+                    role = message.guild.get_role(value)
+                    if role is None: continue
+                    roles.append(role)
+            if len(roles) > 0:
+                await user.add_roles(*roles)
 
-                level_up_embed = discord.Embed(description="", color=self.bot.default_color)
-                level_up_embed.set_author(name=f"{user.name}")
-                level_up_embed.set_thumbnail(url=user.avatar.url if user.avatar else user.default_avatar)
-                level_up_embed.description += f"## Congratulations {user.mention}!\n you have leveled up to level {level}!"
-                level_up_embed.set_footer(text="The Gambler's Kingdom", icon_url=message.guild.icon.url if message.guild.icon else None)
-                annouce = message.guild.get_channel(config['announcement_channel'])
-                if annouce is None: return
-                await annouce.send(embed=level_up_embed, content=message.author.mention)
+            level_up_embed = discord.Embed(description="", color=self.bot.default_color)
+            level_up_embed.set_thumbnail(url=user.avatar.url if user.avatar else user.default_avatar)
+            level_up_embed.description += f"## Congratulations {user.mention}!\n you have leveled up to level {level}!"
+            level_up_embed.set_footer(text="The Gambler's Kingdom", icon_url=message.guild.icon.url if message.guild.icon else None)
+            annouce = message.guild.get_channel(config['announcement_channel'])
+            if annouce is None: return
+            await annouce.send(embed=level_up_embed, content=user.mention)
 
     @commands.Cog.listener()
     async def on_level_up(self, message: discord.Message, data: dict):
@@ -233,19 +242,21 @@ class Level(commands.GroupCog):
         level = await self.levels.count_level(data['xp'])
         if level > data['level']:
             data['level'] = level
-            if str(level) in config['rewards'].keys():
-                role = message.guild.get_role(config['rewards'][str(level)])
-                if role is None: return
-                await message.author.add_roles(role)
-                level_up_embed = discord.Embed(description="", color=self.bot.default_color)
-                level_up_embed.set_author(name=f"{message.author.name}")
-                level_up_embed.set_thumbnail(url=message.author.avatar.url if message.author.avatar else message.author.default_avatar)
-                level_up_embed.description += f"## Congratulations {message.author.mention}!\n you have leveled up to level {level}!"
-                level_up_embed.set_footer(text="The Gambler's Kingdom", icon_url=message.guild.icon.url if message.guild.icon else None)
-                annouce = message.guild.get_channel(config['announcement_channel'])
-                if annouce is None: return
-                await annouce.send(embed=level_up_embed, content=message.author.mention)
-            # await message.channel.send(f"Congratulations {message.author.mention} you have leveled up to level {level}!")
+            roles = []
+            for key, value in config['rewards'].items():
+                if level >= int(key):
+                    role = message.guild.get_role(value)
+                    if role is None: continue
+                    roles.append(role)
+            if len(roles) > 0:
+                await message.author.add_roles(*roles)
+            level_up_embed = discord.Embed(description="", color=self.bot.default_color)
+            level_up_embed.set_thumbnail(url=message.author.avatar.url if message.author.avatar else message.author.default_avatar)
+            level_up_embed.description += f"## Congratulations {message.author.mention}!\n you have leveled up to level {level}!"
+            level_up_embed.set_footer(text="The Gambler's Kingdom", icon_url=message.guild.icon.url if message.guild.icon else None)
+            annouce = message.guild.get_channel(config['announcement_channel'])
+            if annouce is None: return
+            await annouce.send(embed=level_up_embed, content=message.author.mention)
     
         await self.levels.update_member_level(message.author, data)
     
@@ -276,6 +287,39 @@ class Level(commands.GroupCog):
         embed.description += f"**XP:** {data['xp']}\n"
         embed.description += f"**Weekly XP:** {data['weekly']}\n"
         await interaction.response.send_message(embed=embed)
+
+    @app_commands.command(name="set", description="Set a user's level")
+    @commands.has_permissions(administrator=True)
+    async def set(self, interaction: Interaction, member: discord.Member, level: int):
+        data = await self.levels.get_member_level(member)
+        data['xp'] = await self.levels.count_xp(level)
+        data['level'] = level
+        await self.levels.update_member_level(member, data)
+        await interaction.response.send_message(f"Succesfully set {member.mention}'s level to {level}")
+        config = await self.levels.get_config(member.guild)
+        roles = []
+        for key, value in config['rewards'].items():
+            if level >= int(key):
+                role = member.guild.get_role(value)
+                if role is None: continue
+                roles.append(role)
+        if len(roles) > 0:
+            await member.add_roles(*roles)
+    
+    @app_commands.command(name="reset", description="Reset a user's level")
+    @commands.has_permissions(administrator=True)
+    async def reset(self, interaction: Interaction, member: discord.Member):
+        data = await self.levels.get_member_level(member)
+        await self.levels.ranks.delete(member.id)
+        del self.levels.level_cache[member.id]
+        await interaction.response.send_message(f"Reset {member.mention}'s level")
+        config = await self.levels.get_config(member.guild)
+        roles = []
+        for key, value in config['rewards'].items():
+            role = member.guild.get_role(value)
+            if role is None: continue
+            roles.append(role)
+        await member.remove_roles(*roles)
 
 class Giveaways_Backend:
     def __init__(self, bot):
@@ -380,4 +424,4 @@ class Giveaways(commands.GroupCog, name="giveaways"):
 
 async def setup(bot):
     await bot.add_cog(Level(bot))
-    await bot.add_cog(Giveaways(bot))
+    # await bot.add_cog(Giveaways(bot))
