@@ -25,14 +25,20 @@ class LevelingConfig(View):
         embed.description += f"**Global Cooldown:** `{humanfriendly.format_timespan(leveling_config['cooldown'])}`\n"
         embed.description += f"**Multiplier Roles:**\n"
         for role, multi in leveling_config['multipliers']['roles'].items():
-            embed.description += f"> <@&{role}>: `{multi}`\n"
+            embed.description += f"> `{multi}`: <:tgk_blank:1072224743266193459> <@&{role}> \n"
         
         embed.description += f"**Multiplier Channels:**\n"
         for channel, multi in leveling_config['multipliers']['channels'].items():
-            embed.description += f"> <#{channel}>: `{multi}`\n"
+            embed.description += f"> `{multi}`: <:tgk_blank:1072224743266193459> <#{channel}> \n"
         
+        rewards_roles = leveling_config['rewards']
+        rewards_roles = sorted(rewards_roles.items(), key=lambda x: int(x[0]))
+        embed.description += f"**Rewards:**\n"
+        for level, role in rewards_roles:
+            embed.description += f"> `{level}` : <:tgk_blank:1072224743266193459> <@&{role}>\n"
+
         embed.description += f"**Blacklist:**\n> Roles: {','.join([f'<@&{role}>' for role in leveling_config['blacklist']['roles']]) if leveling_config['blacklist']['roles'] else '`None`'}\n> Channels: {','.join([f'<#{channel}>' for channel in leveling_config['blacklist']['channels']]) if leveling_config['blacklist']['channels'] else '`None`'}\n"
-        embed.description += f"**Rewards Roles:**\n> {','.join([f'<@&{role}>' for role in leveling_config['rewards']]) if leveling_config['rewards'] else '`None`'}\n"
+
         return embed
 
     async def interaction_check(self, interaction: Interaction):
@@ -247,3 +253,5 @@ class LevelingConfig(View):
         self.data['rewards'][str(level)] = role.id
         await interaction.client.level.update_config(interaction.guild, self.data)
         await modal.interaction.response.edit_message(content=f"{role.mention} will now be rewarded at level {level}!", embed=None, view=None)
+        await modal.interaction.delete_original_response()
+        await self.message.edit(embed=await self.update_embed(interaction, self.data))
