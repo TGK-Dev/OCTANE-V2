@@ -6,7 +6,7 @@ from discord import Interaction
 from discord.ext import commands
 from utils.db import Document
 from utils.transformer import TimeConverter, MutipleRole
-from utils.views.giveaway import Giveaway
+# from utils.views.giveaway import Giveaway
 
 
 
@@ -448,4 +448,4 @@ class Giveaways(commands.GroupCog, name="giveaways"):
 
 async def setup(bot):
     await bot.add_cog(Level(bot))
-    await bot.add_cog(Giveaways(bot))
+    # await bot.add_cog(Giveaways(bot))
