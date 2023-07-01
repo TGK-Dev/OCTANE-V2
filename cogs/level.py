@@ -6,6 +6,7 @@ from discord import Interaction
 from discord.ext import commands
 from utils.db import Document
 from utils.transformer import TimeConverter, MutipleRole
+from utils.views.giveaway import Giveaway
 
 
 
@@ -180,7 +181,7 @@ class Level(commands.GroupCog):
             return
         mutiplier = 1
 
-        mutiplier += config['gold_multiplier']
+        mutiplier += config['global_multiplier']
         user_roles = [role.id for role in user.roles]
         if (set(user_roles) & set(config['blacklist']['roles'])):
             return
@@ -230,7 +231,7 @@ class Level(commands.GroupCog):
         if str(message.channel.id) in config['blacklist']['channels']:
             return
 
-        multiplier = config['gold_multiplier']
+        multiplier = config['global_multiplier']
 
         if str(message.channel.id) in config['multipliers']['channels'].keys():
             multiplier += config['multipliers']['channels'][str(message.channel.id)]
@@ -358,13 +359,30 @@ class Giveaways_Backend:
     async def update_config(self, guild: discord.Guild, data: dict):
         await self.config.update(data)
         self.config_cache[guild.id] = data
+    
+    async def get_giveaway(self, message: discord.Message):
+        if message.id in self.giveaways_cache.keys():
+            return self.giveaways_cache[message.id]
+        giveaway = await self.giveaways.find(message.id)
+        if giveaway is None: 
+            return None
+        return giveaway
 
 
 class Giveaways(commands.GroupCog, name="giveaways"):
     def __init__(self, bot):
         self.bot = bot
         self.backend = Giveaways_Backend(bot)
+        self.bot.giveaway = self.backend
 
+    @commands.Cog.listener()
+    async def on_ready(self):
+        self.bot.add_view(Giveaway())
+        for guild in await self.backend.config.get_all():
+            self.backend.config_cache[guild["_id"]] = guild
+        
+        for giveaway in await self.backend.giveaways.get_all():
+            self.backend.giveaways_cache[giveaway["_id"]] = giveaway
     
     @app_commands.command(name="start", description="Start a giveaway")
     async def _start(self, interaction: discord.Interaction, winners: app_commands.Range[int, 1, 20], prize: str,
@@ -391,7 +409,7 @@ class Giveaways(commands.GroupCog, name="giveaways"):
             "bypass_role": [role.id for role in bypass_role] if bypass_role else [],
             "req_level": req_level,
             "req_weekly": req_weekly,
-            "entries": [],
+            "entries": {},
             "start_time": datetime.datetime.now(),
             "end_time": datetime.datetime.now() + datetime.timedelta(seconds=duraction),
         }
@@ -422,7 +440,7 @@ class Giveaways(commands.GroupCog, name="giveaways"):
                 value += f"<@&{role_id}> - `{multiplier}`x\n"
             embed.add_field(name="Multipliers", value=value)
         
-        await interaction.followup.send(embed=embed)
+        await interaction.followup.send(embed=embed, view=Giveaway())
         msg = await interaction.original_response()
         data['_id'] = msg.id
         await self.backend.giveaways.insert(data)
@@ -430,4 +448,4 @@ class Giveaways(commands.GroupCog, name="giveaways"):
 
 async def setup(bot):
     await bot.add_cog(Level(bot))
-    # await bot.add_cog(Giveaways(bot))
+    await bot.add_cog(Giveaways(bot))
