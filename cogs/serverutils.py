@@ -33,6 +33,7 @@ class Payout(commands.GroupCog, name="payout", description="Payout commands"):
 		self.bot.payout_pending = Document(self.db, "payout_pending")
 		self.bot.payout_delete_queue = Document(self.db, "payout_delete_queue")
 		self.claim_task = self.check_unclaim.start()
+		self.bot.create_payout = self.create_payout
 		self.claim_task_progress = False
 		self.comman_event = ["Mega Giveaway", "Daily Giveaway", "Silent Giveaway", "Black Tea", "Rumble Royale", "Hunger Games", "Guess The Number", "Split Or Steal", "Mafia", "Typerace", "Bingo", "Heist Giveaway"]
 	
@@ -71,7 +72,7 @@ class Payout(commands.GroupCog, name="payout", description="Payout commands"):
 			embed.description += f"**Prize:** `⏣ {prize:,}`\n"
 		embed.description += f"**Channel:** {channel.mention}\n"
 		embed.description += f"**Message:** [Click Here]({message.jump_url})\n"
-		embed.description += f"**Claim Time:** <t:{claim_time}:R>\n"
+		embed.description += f"**Claim Time:** <t:{int(claim_time)}:R>\n"
 		embed.description += f"**Set By:** {host.mention}\n"
 		embed.description += f"**Status:** `Pending`"
 		embed.set_footer(text=f"ID: {message.id}")
@@ -80,7 +81,32 @@ class Payout(commands.GroupCog, name="payout", description="Payout commands"):
 			value += f"**Price**: ⏣ {item_data['price']:,}\n"
 			value += f"Total Value of this payout with {prize}x {item_data['_id']} is ⏣ {prize * item_data['price']:,}"
 			embed.add_field(name="Item Info", value=value)
-		return embed			
+		return embed
+
+	async def create_payout(self, event: str, winner: discord.Member, host: discord.Member, prize: int, message: discord.Message, item: dict=None):
+		config = await self.bot.payout_config.find(message.guild.id)
+		queue_data = {
+			'_id': None,
+			'channel': message.channel.id,
+			'guild': message.guild.id,
+			'winner': winner.id,
+			'prize': prize,
+			'item': item if item else None,
+			'event': event,
+			'claimed': False,
+			'set_by': host.id,
+			'winner_message_id': message.id,
+			'queued_at': datetime.datetime.now(), 
+			'claim_time': config['default_claim_time']
+			}
+		embed = await self.create_pending_embed(event, winner, prize, message.channel, message, config['default_claim_time'], host, item)
+		claim_channel = message.guild.get_channel(config['pending_channel'])
+		if not claim_channel: return
+		claim_time_timestamp = int((datetime.datetime.now() + datetime.timedelta(seconds=int(config['default_claim_time']))).timestamp())
+		claim_message = await claim_channel.send(embed=embed, view=Payout_claim(), content=f"{winner.mention} Your prize has been queued for payout. Please claim it within <t:{claim_time_timestamp}:R> or it will rerolled.")
+		queue_data['_id'] = claim_message.id
+		await self.bot.payout_queue.insert(queue_data)
+		await message.add_reaction("<a:loading:998834454292344842>")
 
 	def cog_unload(self):
 		self.claim_task.cancel()

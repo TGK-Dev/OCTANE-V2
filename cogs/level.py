@@ -1,12 +1,15 @@
+from typing import List
 import discord
 import math
 import datetime
+import random
+import humanfriendly
 from discord import app_commands
 from discord import Interaction
-from discord.ext import commands
+from discord.ext import commands, tasks
 from utils.db import Document
-from utils.transformer import TimeConverter, MutipleRole
-# from utils.views.giveaway import Giveaway
+from utils.transformer import TimeConverter, MutipleRole, DMCConverter
+from utils.views.giveaway import Giveaway
 
 
 
@@ -368,12 +371,120 @@ class Giveaways_Backend:
             return None
         return giveaway
 
+    async def update_giveaway(self, message: discord.Message, data: dict):
+        await self.giveaways.update(data)
+        self.giveaways_cache[message.id] = data
 
 class Giveaways(commands.GroupCog, name="giveaways"):
     def __init__(self, bot):
         self.bot = bot
         self.backend = Giveaways_Backend(bot)
         self.bot.giveaway = self.backend
+        self.giveaway_task = self.giveaway_loop.start()
+        self.giveaway_task_progress = False
+    
+
+    @tasks.loop(seconds=10)
+    async def giveaway_loop(self):
+        if self.giveaway_task_progress:
+            return
+        self.giveaway_task_progress = True
+        now = datetime.datetime.now()
+        giveaways = self.backend.giveaways_cache.copy()
+        for giveaway in giveaways.values():
+            if giveaway["end_time"] <= now:
+                self.bot.dispatch("giveaway_end", giveaway)
+                del self.backend.giveaways_cache[giveaway["_id"]]
+        self.giveaway_task_progress = False
+
+    @commands.Cog.listener()
+    async def on_giveaway_end(self, giveaway):
+        guild = self.bot.get_guild(giveaway["guild"])
+        channel = guild.get_channel(giveaway["channel"])
+        try:
+            message = await channel.fetch_message(giveaway["_id"])
+        except:
+            await self.backend.giveaways.delete(giveaway["_id"])
+            del self.backend.giveaways_cache[giveaway["_id"]]
+            return
+        
+        if len(giveaway["entries"].keys()) == 0:
+            embed = message.embeds[0]
+            view = Giveaway()
+            view.children[0].disabled = True
+            embed.title = "Giveaway has ended"
+            await message.edit(embed=embed, view=view)
+            await message.reply("No Entries, No Winners")
+            await self.backend.giveaways.delete(giveaway["_id"])
+            try:
+                del self.backend.giveaways_cache[giveaway["_id"]]
+            except:
+                pass
+            return
+        
+        enrtrys = []
+        for key, value in giveaway["entries"].items():
+            if int(key) in enrtrys:
+                continue
+            enrtrys.extend([int(key)] * value)
+        
+        winners = []
+        while len(winners) != giveaway["winners"]:
+            winner = random.choice(enrtrys)
+            if winner in winners:
+                continue
+            winners.append(winner)
+
+        embed = message.embeds[0]
+        embed.description += f"\n**Total Entries:** {len(giveaway['entries'].keys())}"
+        embed.description += f"\n**Winners:**{', '.join([f'<@{winner}>' for winner in winners])}"
+        view = Giveaway()
+        view.children[0].disabled = True
+        embed.title = "Giveaway has ended"
+        await message.edit(embed=embed, view=view)
+        if giveaway["item"]:
+            item = await self.bot.dank_items.find(giveaway["item"])
+        else:
+            item = None
+        for winner in winners:
+            winner = guild.get_member(winner)
+            if winner is None: continue
+            await self.bot.create_payout(event="Giveaway", winner=winner, host=guild.get_member(giveaway["host"]), prize=giveaway["prize"], message=message, item=item)
+            try:
+                embed = discord.Embed(description=f"", color=self.bot.default_color)
+                embed.timestamp = datetime.datetime.now()
+                if giveaway["item"]:
+                    embed.description += f"## Congratulations, You Won {giveaway['prize']}x {giveaway['item']}\n"
+                else:
+                    embed.description += f"## Congratulations, You Won ⏣ {giveaway['prize']}\n"
+                embed.description += f"Please Make sure to Claim the your prize within claim time from the payout queue\n"
+                await winner.send(embed=embed)
+            except:
+                pass
+        embed = discord.Embed(title="Congratulations", color=self.bot.default_color, description="")
+        embed.description += f"## Winners: {', '.join([f'<@{winner}>' for winner in winners])}\n"
+        if giveaway["item"]:
+            embed.description += f"## Prize: {giveaway['prize']}x {giveaway['item']}"
+        else:
+            embed.description += f"## Prize: {giveaway['prize']}"
+        await message.reply(embed=embed)
+
+        giveaway['ended'] = True
+        await self.backend.giveaways.update(giveaway)
+        del self.backend.giveaways_cache[giveaway["_id"]]
+    
+    async def item_autocomplete(self, interaction: discord.Interaction, string: str) -> List[app_commands.Choice[str]]:
+        choices = []
+        for item in self.bot.dank_items_cache.keys():
+            if string.lower() in item.lower():
+                choices.append(app_commands.Choice(name=item, value=item))
+        if len(choices) == 0:
+            return [
+                app_commands.Choice(name=item, value=item)
+                for item in self.bot.dank_items_cache.keys()
+            ]
+        else:
+            return choices[:24]
 
     @commands.Cog.listener()
     async def on_ready(self):
@@ -382,11 +493,19 @@ class Giveaways(commands.GroupCog, name="giveaways"):
             self.backend.config_cache[guild["_id"]] = guild
         
         for giveaway in await self.backend.giveaways.get_all():
+            if giveaway["ended"] == True: continue
             self.backend.giveaways_cache[giveaway["_id"]] = giveaway
     
     @app_commands.command(name="start", description="Start a giveaway")
-    async def _start(self, interaction: discord.Interaction, winners: app_commands.Range[int, 1, 20], prize: str,
-                     duraction: app_commands.Transform[int, TimeConverter], 
+    @app_commands.describe(
+        winners="Number of winners", prize="Prize of the giveaway", item="Item to giveaway", duration="Duration of the giveaway",
+        req_roles="Roles required to enter the giveaway", bypass_role="Roles that can bypass the giveaway", req_level="Level required to enter the giveaway",
+        req_weekly="Weekly XP required to enter the giveaway"        
+    )
+    @app_commands.autocomplete(item=item_autocomplete)
+    async def _start(self, interaction: discord.Interaction, winners: app_commands.Range[int, 1, 20], prize: app_commands.Transform[int, DMCConverter],
+                     duration: app_commands.Transform[int, TimeConverter],
+                     item:str=None,
                      req_roles: app_commands.Transform[discord.Role, MutipleRole]=None, 
                      bypass_role: app_commands.Transform[discord.Role, MutipleRole]=None, 
                      req_level: app_commands.Range[int, 1, 100]=None,
@@ -404,16 +523,23 @@ class Giveaways(commands.GroupCog, name="giveaways"):
             "guild": interaction.guild.id,
             "winners": winners,
             "prize": prize,
-            "duration": duraction,
+            "item": item if item else None,
+            "duration": duration,
             "req_roles": [role.id for role in req_roles] if req_roles else [],
             "bypass_role": [role.id for role in bypass_role] if bypass_role else [],
             "req_level": req_level,
             "req_weekly": req_weekly,
             "entries": {},
             "start_time": datetime.datetime.now(),
-            "end_time": datetime.datetime.now() + datetime.timedelta(seconds=duraction),
+            "end_time": datetime.datetime.now() + datetime.timedelta(seconds=duration),
+            "ended": False,
+            "host": interaction.user.id
         }
-        embed = discord.Embed(color=interaction.client.default_color, description="", title=prize)
+        embed = discord.Embed(color=interaction.client.default_color, description="")
+        if item is not None:
+            embed.description += f"## {prize}x {item}\n"
+        else:
+            embed.description += f"## ⏣ {humanfriendly.format_number(prize, num_decimals=0)}\n"
         embed.description += f"**Winners:** {winners}\n"
         embed.description += f"**Duration:** <t:{round(data['end_time'].timestamp())}:R>\n"
         if req_roles:
@@ -434,11 +560,6 @@ class Giveaways(commands.GroupCog, name="giveaways"):
             embed.description += f"**Required Level:** {req_level}\n"
         if req_weekly:
             embed.description += f"**Required Weekly:** {req_weekly}\n"
-        if len(config['multipliers'].keys()) > 0:
-            value = ""
-            for role_id, multiplier in config['multipliers'].items():
-                value += f"<@&{role_id}> - `{multiplier}`x\n"
-            embed.add_field(name="Multipliers", value=value)
         
         await interaction.followup.send(embed=embed, view=Giveaway())
         msg = await interaction.original_response()
@@ -448,4 +569,4 @@ class Giveaways(commands.GroupCog, name="giveaways"):
 
 async def setup(bot):
     await bot.add_cog(Level(bot))
-    # await bot.add_cog(Giveaways(bot))
+    await bot.add_cog(Giveaways(bot))

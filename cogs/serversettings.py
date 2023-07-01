@@ -11,6 +11,7 @@ from utils.views.staff_system import Staff_config_edit
 from utils.views.level_system import LevelingConfig
 from utils.views.perks_system import PerkConfig
 from utils.views.auction import AuctionConfig
+from utils.views.giveaway import GiveawayConfig
 import humanfriendly
 import unicodedata
 import unidecode
@@ -55,13 +56,14 @@ class serversettings(commands.Cog):
         self.bot.ss = serversettingsDB(bot, Document)
     
     settings = [
+        app_commands.Choice(name="Auctions", value="auctions"),
+        app_commands.Choice(name="Giveaways", value="giveaways"),
         app_commands.Choice(name="Join Verification", value="join_gate"),
-        app_commands.Choice(name="Staff Managment", value="staff"),
+        app_commands.Choice(name="Leveling System", value="leveling"),
         app_commands.Choice(name="Perks System", value="perks"),
         app_commands.Choice(name="Payout System", value="payout"),
-        app_commands.Choice(name="Tickets System", value="tickets"),
-        app_commands.Choice(name="Leveling System", value="leveling"),
-        app_commands.Choice(name="Auctions", value="auctions")
+        app_commands.Choice(name="Staff Managment", value="staff"),
+        app_commands.Choice(name="Tickets System", value="tickets"),        
     ]
     
     @app_commands.command(name="serversettings", description="Change the settings of the server")
@@ -236,6 +238,26 @@ class serversettings(commands.Cog):
                     view = AuctionConfig(interaction.user, auction_data)
                     await interaction.response.send_message(embed=embed, view=view)
                     view.message = await interaction.original_response()
+            
+            case "giveaways":
+                giveaway_data = await self.bot.giveaway.get_config(interaction.guild)
+                embed = discord.Embed(title=f"{interaction.guild.name} Giveaway Config", color=self.bot.default_color, description="")
+                embed.description += f"**Manager Roles:** {', '.join([f'<@&{role}>' for role in giveaway_data['manager_roles']]) if len(giveaway_data['manager_roles']) > 0 else '`None`'}\n"
+                embed.description += f"**Logging Channel:** {interaction.guild.get_channel(giveaway_data['log_channel']).mention if giveaway_data['log_channel'] else '`None`'}\n"
+                embed.description += f"**Blacklist:**\n {', '.join([f'<@&{(role)}>' for role in giveaway_data['blacklist']]) if len(giveaway_data['blacklist']) > 0 else '`None`'}"
+                mults = giveaway_data['multipliers']                
+                mults = sorted(mults.items(), key=lambda x: int(x[1]))
+                embed.description += f"\n**Multipliers:**\n"
+                for value, multi in mults:
+                    embed.description += f"> `{multi}` : <@&{value}>\n"
+
+                if option == "Show":
+                    await interaction.response.send_message(embed=embed)
+                if option == "Edit":
+                    view = GiveawayConfig(giveaway_data, interaction.user)
+                    await interaction.response.send_message(embed=embed, view=view)
+                    view.message = await interaction.original_response()
+
             case _:
                 await interaction.response.send_message("Invalid option", ephemeral=True)
             
