@@ -169,7 +169,7 @@ class Level(commands.GroupCog):
     async def on_slash_command(self, message: discord.Message):
         if message.guild is None: return
         config = await self.levels.get_config(message.guild)
-        if not config['enabled']: return
+        if config['enabled'] == False: return
 
         if not message.interaction: return
         user = message.interaction.user
@@ -178,21 +178,24 @@ class Level(commands.GroupCog):
             pass
         else:
             return
+        mutiplier = 1
 
+        mutiplier += config['gold_multiplier']
         user_roles = [role.id for role in user.roles]
         if (set(user_roles) & set(config['blacklist']['roles'])):
             return
         if str(message.channel.id) in config['blacklist']['channels']:
             return
-        
-        expirience = 1 * config['global_multiplier']
+
         if str(message.channel.id) in config['multipliers']['channels'].keys():
-            expirience = expirience * config['multipliers']['channels'][str(message.channel.id)]
+            mutiplier += config['multipliers']['channels'][str(message.channel.id)]
         
         for role in user_roles:
             if str(role) in config['multipliers']['roles'].keys():
-                expirience = expirience * config['multipliers']['roles'][str(role)]
+                mutiplier += config['multipliers']['roles'][str(role)]
 
+        expirience = 1
+        expirience *= mutiplier
         data['xp'] += expirience
         data['weekly'] += 1
         data['last_updated'] = datetime.datetime.utcnow()
@@ -219,8 +222,7 @@ class Level(commands.GroupCog):
     @commands.Cog.listener()
     async def on_level_up(self, message: discord.Message, data: dict):
         config = await self.levels.get_config(message.guild)
-        expirience = 1
-        if not config['enabled']:
+        if config['enabled'] == False:
             return
         user_roles = [role.id for role in message.author.roles]
         if (set(user_roles) & set(config['blacklist']['roles'])):
@@ -228,15 +230,19 @@ class Level(commands.GroupCog):
         if str(message.channel.id) in config['blacklist']['channels']:
             return
 
-        expirience = expirience * config['global_multiplier']
+        multiplier = config['gold_multiplier']
+
         if str(message.channel.id) in config['multipliers']['channels'].keys():
-            expirience = expirience * config['multipliers']['channels'][str(message.channel.id)]
+            multiplier += config['multipliers']['channels'][str(message.channel.id)]
 
         for role in user_roles:
             if str(role) in config['multipliers']['roles'].keys():
-                expirience = expirience * config['multipliers']['roles'][str(role)]
-        if data is None: return
-        data['xp'] += expirience
+                multiplier += config['multipliers']['roles'][str(role)]
+        
+        exprience = 1
+        exprience *= multiplier
+
+        data['xp'] += exprience
         data['weekly'] += 1
         data['last_updated'] = datetime.datetime.utcnow()
         level = await self.levels.count_level(data['xp'])
