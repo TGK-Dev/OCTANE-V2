@@ -1,8 +1,10 @@
 import discord
 from discord.ext import commands
-from typing import Union
+from typing import Any, Union
 from discord import Interaction, SelectOption
+from discord.interactions import Interaction
 from discord.ui import View, Button, Select
+from discord.ui.item import Item
 from .selects import Role_select, Channel_select, Select_General
 
 
@@ -10,6 +12,13 @@ class Giveaway(View):
     def __init__(self):
         super().__init__(timeout=None)
     
+    async def on_error(self, interaction: Interaction, error: Exception):
+        try:
+            await interaction.response.edit_message(content=f"An error occured: {error}", view=None)
+        except:
+            await interaction.followup.send(content=f"An error occured: {error}", ephemeral=True)
+
+
     @discord.ui.button(emoji="<a:tgk_tadaa:806631994770849843>", style=discord.ButtonStyle.gray, custom_id="giveaway:Join")
     async def _join(self, interaction: discord.Interaction, button: discord.ui.Button):
         await interaction.response.defer(thinking=True, ephemeral=True)

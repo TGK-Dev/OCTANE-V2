@@ -354,7 +354,7 @@ class Giveaways_Backend:
             "manager_roles": [],
             "log_channel": None,
             "multipliers": {},
-            "blacklist": {},
+            "blacklist": [],
         }
         await self.config.insert(data)
         return data
@@ -383,10 +383,13 @@ class Giveaways(commands.GroupCog, name="giveaways"):
         self.giveaway_task = self.giveaway_loop.start()
         self.giveaway_task_progress = False
     
+    def cog_unload(self):
+        self.giveaway_task.cancel()
+    
 
     @tasks.loop(seconds=10)
     async def giveaway_loop(self):
-        if self.giveaway_task_progress:
+        if self.giveaway_task_progress == True:
             return
         self.giveaway_task_progress = True
         now = datetime.datetime.now()
@@ -396,6 +399,10 @@ class Giveaways(commands.GroupCog, name="giveaways"):
                 self.bot.dispatch("giveaway_end", giveaway)
                 del self.backend.giveaways_cache[giveaway["_id"]]
         self.giveaway_task_progress = False
+
+    @giveaway_loop.before_loop
+    async def before_giveaway_loop(self):
+        await self.bot.wait_until_ready()
 
     @commands.Cog.listener()
     async def on_giveaway_end(self, giveaway):
@@ -542,6 +549,7 @@ class Giveaways(commands.GroupCog, name="giveaways"):
             embed.description += f"## ⏣ {humanfriendly.format_number(prize, num_decimals=0)}\n"
         embed.description += f"**Winners:** {winners}\n"
         embed.description += f"**Duration:** <t:{round(data['end_time'].timestamp())}:R>\n"
+        embed.description += f"**Host:** <@{interaction.user.id}>\n"
         if req_roles:
             if len(req_roles) == 1:
                 embed.description += f"**Required Role:** {req_roles[0].mention}\n"
