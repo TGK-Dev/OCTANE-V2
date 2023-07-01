@@ -144,9 +144,17 @@ class LevelingConfig(View):
         await view.select.interaction.response.edit_message(view=multi_view)
         await multi_view.wait()
         if not multi_view.value: return await interaction.delete_original_message()
-        
-        self.data['multipliers']['roles'][str(muilt_role.id)] = int(multi_view.select.values[0])
-        await multi_view.select.interaction.response.edit_message(content=f"Multiplier for {muilt_role.mention} has been set to {multi_view.select.values[0]}x!", embed=None, view=None)
+
+        if multi_view.select.values[0] == "0":
+            try:
+                del self.data['multipliers']['roles'][str(view.select.values[0].id)]
+            except KeyError:
+                pass
+            await multi_view.select.interaction.response.edit_message(content=f"Multiplier for {muilt_role.mention} has been removed!", embed=None, view=None)
+        else:
+            self.data['multipliers']['roles'][str(view.select.values[0].id)] = int(multi_view.select.values[0])
+            await multi_view.select.interaction.response.edit_message(content=f"Multiplier for {muilt_role.mention} has been set to {multi_view.select.values[0]}x!", embed=None, view=None)
+
         await multi_view.select.interaction.delete_original_response()
         await interaction.client.level.update_config(interaction.guild, self.data)
         await self.message.edit(embed=await self.update_embed(interaction, self.data))
@@ -170,9 +178,17 @@ class LevelingConfig(View):
         await multi_view.wait()
 
         if not multi_view.value: return await interaction.delete_original_message()
-        
-        self.data['multipliers']['channels'][str(view.select.values[0].id)] = int(multi_view.select.values[0])
-        await multi_view.select.interaction.response.edit_message(content=f"Multiplier for <#{view.select.values[0].id}> has been set to {multi_view.select.values[0]}x!", embed=None, view=None)
+                
+        if multi_view.select.values[0] == "0":
+            try:
+                del self.data['multipliers']['channels'][str(view.select.values[0].id)]
+            except KeyError:
+                pass
+            await multi_view.select.interaction.response.edit_message(content=f"Multiplier for <#{view.select.values[0].id}> has been removed!", embed=None, view=None)
+        else:
+            self.data['multipliers']['channels'][str(view.select.values[0].id)] = int(multi_view.select.values[0])
+            await multi_view.select.interaction.response.edit_message(content=f"Multiplier for <#{view.select.values[0].id}> has been set to {multi_view.select.values[0]}x!", embed=None, view=None)
+
         await multi_view.select.interaction.delete_original_response()
         await interaction.client.level.update_config(interaction.guild, self.data)
         await self.message.edit(embed=await self.update_embed(interaction, self.data))
