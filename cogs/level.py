@@ -515,7 +515,7 @@ class Giveaways(commands.GroupCog, name="giveaways"):
                 embed.description += f"Prize: ⏣ {giveaway['prize']:,}\n"
         else:
             embed.description += f"Prize: {giveaway['prize']}\n"
-        await message.reply(embed=embed)
+        await message.reply(embed=embed, content=",".join([f"<@{winner}>" for winner in winners]))
 
         host = guild.get_member(giveaway["host"])
         if host is None: return
