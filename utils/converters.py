@@ -30,7 +30,7 @@ class DMCConverter_Ctx(commands.Converter):
                 return int(value)
             value = value.split("e")
 
-            if len(value) > 2: raise Exception(f"Invalid number format try using 1e3 or 1k: {value}")
+            if len(value) > 2: raise Exception(f"Invalid number format try using 1e3 or 1k, provided: {argument}")
 
             price = value[0]
             multi = int(value[1])
@@ -38,7 +38,7 @@ class DMCConverter_Ctx(commands.Converter):
 
             return int(price)
         except Exception as e:
-            return None
+            return Exception(f"Invalid number format try using 1e3 or 1k, provided: {argument}")
 
 
 def millify(n):
