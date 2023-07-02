@@ -26,8 +26,8 @@ class Dev(commands.Cog, name="dev", description="Dev commands"):
     
     async def cog_auto_complete(self, interaction: discord.Interaction, current:str) -> List[app_commands.Choice[str]]:
         _list =  [
-            app_commands.Choice(name=cog, value=cog)
-            for cog in interaction.client.cogs.keys() if current.lower() in cog.lower()
+            app_commands.Choice(name=extention, value=extention)
+            for extention in self.bot.extensions if current.lower() in extention.lower()
         ]
         return _list[:24]
 
@@ -40,7 +40,7 @@ class Dev(commands.Cog, name="dev", description="Dev commands"):
     async def reload(self, interaction: discord.Interaction, cog: str):
         await interaction.response.send_message(embed=discord.Embed(description=f"Reloading cog `{cog}`...", color=interaction.client.default_color))
         try:
-            await self.bot.reload_extension(f"cogs.{cog}")
+            await self.bot.reload_extension(cog)
             await interaction.edit_original_response(embed=discord.Embed(description=f"Successfully reloaded cog `{cog}`", color=interaction.client.default_color))
         except Exception as e:
             await interaction.edit_original_response(content=None, embed=discord.Embed(description=f"Error while reloading cog `{cog}`: {e}", color=interaction.client.default_color))
