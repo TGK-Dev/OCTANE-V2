@@ -7,6 +7,7 @@ from discord.ui import View, Button, Select
 from discord.ui.item import Item
 from .selects import Role_select, Channel_select, Select_General
 from .modal import General_Modal
+from utils.paginator import Paginator
 
 
 class Giveaway(View):
@@ -86,6 +87,24 @@ class Giveaway(View):
             embed.description += "\nYou have bypassed the requirements due to your role(s)."
         await interaction.followup.send(embed=embed)
 
+    @discord.ui.button(label="Entries", style=discord.ButtonStyle.gray, emoji="<:tgk_entries:1124995375548338176>", custom_id="giveaway:Entries")
+    async def _entries(self, interaction: discord.Interaction, button: discord.ui.Button):
+        data = await interaction.client.giveaway.get_giveaway(interaction.message)
+        if data is None: return await interaction.followup.send("This giveaway is not available anymore/invalid.", ephemeral=True)
+        entries = data['entries']
+        entries = sorted(entries.items(), key=lambda x: x[1])
+        #split entries into sections of 10
+        entries = [entries[i:i + 10] for i in range(0, len(entries), 10)]
+        pages = []
+        i = 1
+        for page in entries:
+            embed = discord.Embed(title="Giveaway Entries", description="", color=interaction.client.default_color)
+            for user in page:
+                embed.description += f"{i}. <@{user[0]}> - {user[1]} entries\n"
+                i += 1
+            pages.append(embed)
+        
+        await Paginator(interaction, pages).start(embeded=True, hidden=True, quick_navigation=False)
 
 class GiveawayLeave(View):
     def __init__(self, data: dict, user: discord.Member, interaction: discord.Interaction):
