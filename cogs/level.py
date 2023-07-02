@@ -518,28 +518,28 @@ class Giveaways(commands.GroupCog, name="giveaways"):
         await message.reply(embed=embed, content=",".join([f"<@{winner}>" for winner in winners]))
 
         host = guild.get_member(giveaway["host"])
-        if host is None: return
-        host_dm = discord.Embed(title=f"", description="", color=self.bot.default_color)
-        if giveaway["dank"]:
-            if giveaway["item"]:
-                host_dm.title += f"{giveaway['prize']}x {giveaway['item']} Giveaway Ended"
+        if host: 
+            host_dm = discord.Embed(title=f"Your Giveaway ", description="", color=self.bot.default_color)
+            if giveaway["dank"]:
+                if giveaway["item"]:
+                    host_dm.title += f"{giveaway['prize']}x {giveaway['item']} has ended"
+                else:
+                    host_dm.title += f"⏣ {giveaway['prize']:,} has ended"
             else:
-                host_dm.title += f"⏣ {giveaway['prize']:,} Giveaway Ended"
-        else:
-            host_dm.title += f"{giveaway['prize']} Giveaway Ended"
+                host_dm.title += f"{giveaway['prize']} has ended"
         
-        embed.description += f"total entries: {len(giveaway['entries'].keys())}\n"
-        embed.description += f"Total Winners: {len(winners)}\n"
-        i = 1
-        for winner in winners:
-            winner = guild.get_member(winner)
-            if winner is None: continue
-            host_dm.description += f"> {i}. {winner.mention}\n"
-            i += 1
-        try:
-            await winner.send(embed=host_dm, view=link_view)
-        except:
-            pass
+            embed.description += f"total entries: {len(giveaway['entries'].keys())}\n"
+            embed.description += f"Total Winners: {len(winners)}\n"
+            i = 1
+            for winner in winners:
+                winner = guild.get_member(winner)
+                if winner is None: continue
+                host_dm.description += f"> {i}. {winner.mention}\n"
+                i += 1
+            try:
+                await host.send(embed=host_dm, view=link_view)
+            except:
+                pass
 
         giveaway['ended'] = True
         await self.backend.giveaways.update(giveaway)
