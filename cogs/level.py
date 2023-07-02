@@ -10,6 +10,7 @@ from discord.ext import commands, tasks
 from utils.db import Document
 from utils.transformer import TimeConverter, MutipleRole, DMCConverter
 from utils.views.giveaway import Giveaway
+from utils.converters import DMCConverter_Ctx
 
 
 
@@ -355,6 +356,7 @@ class Giveaways_Backend:
             "log_channel": None,
             "multipliers": {},
             "blacklist": [],
+            "dm_message": "Please dm Host to claim your prize!"
         }
         await self.config.insert(data)
         return data
@@ -382,6 +384,7 @@ class Giveaways(commands.GroupCog, name="giveaways"):
         self.bot.giveaway = self.backend
         self.giveaway_task = self.giveaway_loop.start()
         self.giveaway_task_progress = False
+        self.giveaway_in_prosses = []
     
     def cog_unload(self):
         self.giveaway_task.cancel()
@@ -396,7 +399,10 @@ class Giveaways(commands.GroupCog, name="giveaways"):
         giveaways = self.backend.giveaways_cache.copy()
         for giveaway in giveaways.values():
             if giveaway["end_time"] <= now:
+                if giveaway["_id"] in self.giveaway_in_prosses:
+                    continue
                 self.bot.dispatch("giveaway_end", giveaway)
+                self.giveaway_in_prosses.append(giveaway["_id"])
                 del self.backend.giveaways_cache[giveaway["_id"]]
         self.giveaway_task_progress = False
 
@@ -405,7 +411,7 @@ class Giveaways(commands.GroupCog, name="giveaways"):
         await self.bot.wait_until_ready()
 
     @commands.Cog.listener()
-    async def on_giveaway_end(self, giveaway):
+    async def on_giveaway_end(self, giveaway: dict):
         guild = self.bot.get_guild(giveaway["guild"])
         channel = guild.get_channel(giveaway["channel"])
         try:
@@ -421,12 +427,29 @@ class Giveaways(commands.GroupCog, name="giveaways"):
             view.children[0].disabled = True
             embed.title = "Giveaway has ended"
             await message.edit(embed=embed, view=view)
-            await message.reply("No Entries, No Winners")
+            embed = discord.Embed(description="No one entered the giveaway", color=discord.Color.red())
+            await message.reply(embed=embed)
             await self.backend.giveaways.delete(giveaway["_id"])
             try:
                 del self.backend.giveaways_cache[giveaway["_id"]]
             except:
                 pass
+            self.giveaway_in_prosses.remove(giveaway["_id"])
+            return
+        elif len(giveaway['entries'].keys()) < giveaway["winners"]:
+            embed = message.embeds[0]
+            view = Giveaway()
+            view.children[0].disabled = True
+            embed.title = "Giveaway has ended"
+            await message.edit(embed=embed, view=view)
+            embed = discord.Embed(description="Not enough people entered the giveaway", color=discord.Color.red())
+            await message.reply(embed=embed)
+            await self.backend.giveaways.delete(giveaway["_id"])
+            try:
+                del self.backend.giveaways_cache[giveaway["_id"]]
+            except:
+                pass
+            self.giveaway_in_prosses.remove(giveaway["_id"])
             return
         
         enrtrys = []
@@ -442,9 +465,17 @@ class Giveaways(commands.GroupCog, name="giveaways"):
                 continue
             winners.append(winner)
 
-        embed = message.embeds[0]
-        embed.description += f"\n**Total Entries:** {len(giveaway['entries'].keys())}"
-        embed.description += f"\n**Winners:**{', '.join([f'<@{winner}>' for winner in winners])}"
+        embed: discord.Embed = message.embeds[0]
+        if len(embed.fields) != 0:
+            fields_names = [field.name for field in embed.fields]
+            if "Winners" in fields_names:
+                embed.set_field_at(fields_names.index("Winners"), name="Winners", value=", ".join([f"<@{winner}>" for winner in winners]))
+            else:
+                embed.description += f"\nTotal Entries: {len(giveaway['entries'].keys())}"
+                embed.add_field(name="Winners", value=", ".join([f"<@{winner}>" for winner in winners]))
+        else:
+            embed.add_field(name="Winners", value=", ".join([f"<@{winner}>" for winner in winners]))
+        
         view = Giveaway()
         view.children[0].disabled = True
         embed.title = "Giveaway has ended"
@@ -453,32 +484,67 @@ class Giveaways(commands.GroupCog, name="giveaways"):
             item = await self.bot.dank_items.find(giveaway["item"])
         else:
             item = None
+        dm_embed = discord.Embed(title="You won a giveaway!", description=f"**Congratulations!** you won", color=self.bot.default_color)
+        if giveaway["dank"]:
+            if giveaway["item"]:
+                dm_embed.description += f" {giveaway['prize']}x {item['_id']} in {guild.name}"
+            else:
+                dm_embed.description += f" ⏣ {giveaway['prize']:,} in {guild.name}"
+        else:
+            dm_embed.description += f" {giveaway['prize']} in {guild.name}"
+        config = await self.backend.get_config(guild)
+        if config["dm_message"]:
+            dm_embed.description += f"\n{config['dm_message']}"
+        link_view = discord.ui.View()
+        link_view.add_item(discord.ui.Button(label="Giveaway Link!", url=message.jump_url, style=discord.ButtonStyle.link))
         for winner in winners:
             winner = guild.get_member(winner)
             if winner is None: continue
-            await self.bot.create_payout(event="Giveaway", winner=winner, host=guild.get_member(giveaway["host"]), prize=giveaway["prize"], message=message, item=item)
+            if giveaway['dank'] != False:
+                await self.bot.create_payout(event="Giveaway", winner=winner, host=guild.get_member(giveaway["host"]), prize=giveaway["prize"], message=message, item=item)
             try:
-                embed = discord.Embed(description=f"", color=self.bot.default_color)
-                embed.timestamp = datetime.datetime.now()
-                if giveaway["item"]:
-                    embed.description += f"## Congratulations, You Won {giveaway['prize']}x {giveaway['item']}\n"
-                else:
-                    embed.description += f"## Congratulations, You Won ⏣ {giveaway['prize']}\n"
-                embed.description += f"Please Make sure to Claim the your prize within claim time from the payout queue\n"
-                await winner.send(embed=embed)
+                await winner.send(embed=dm_embed, view=link_view)
             except:
                 pass
         embed = discord.Embed(title="Congratulations", color=self.bot.default_color, description="")
-        embed.description += f"## Winners: {', '.join([f'<@{winner}>' for winner in winners])}\n"
-        if giveaway["item"]:
-            embed.description += f"## Prize: {giveaway['prize']}x {giveaway['item']}"
+        embed.description += f"Winners: {', '.join([f'<@{winner}>' for winner in winners])}\n"
+        if giveaway["dank"]:
+            if giveaway["item"]:
+                embed.description += f"Prize: {giveaway['prize']}x {giveaway['item']}\n"
+            else:
+                embed.description += f"Prize: ⏣ {giveaway['prize']:,}\n"
         else:
-            embed.description += f"## Prize: {giveaway['prize']}"
+            embed.description += f"Prize: {giveaway['prize']}\n"
         await message.reply(embed=embed)
+
+        host = guild.get_member(giveaway["host"])
+        if host is None: return
+        host_dm = discord.Embed(title=f"", description="", color=self.bot.default_color)
+        if giveaway["dank"]:
+            if giveaway["item"]:
+                host_dm.title += f"{giveaway['prize']}x {giveaway['item']} Giveaway Ended"
+            else:
+                host_dm.title += f"⏣ {giveaway['prize']:,} Giveaway Ended"
+        else:
+            host_dm.title += f"{giveaway['prize']} Giveaway Ended"
+        
+        embed.description += f"total entries: {len(giveaway['entries'].keys())}\n"
+        embed.description += f"Total Winners: {len(winners)}\n"
+        i = 1
+        for winner in winners:
+            winner = guild.get_member(winner)
+            if winner is None: continue
+            host_dm.description += f"> {i}. {winner.mention}\n"
+            i += 1
+        try:
+            await winner.send(embed=host_dm, view=link_view)
+        except:
+            pass
 
         giveaway['ended'] = True
         await self.backend.giveaways.update(giveaway)
         del self.backend.giveaways_cache[giveaway["_id"]]
+        self.giveaway_in_prosses.remove(giveaway["_id"])
     
     async def item_autocomplete(self, interaction: discord.Interaction, string: str) -> List[app_commands.Choice[str]]:
         choices = []
@@ -507,16 +573,19 @@ class Giveaways(commands.GroupCog, name="giveaways"):
     @app_commands.describe(
         winners="Number of winners", prize="Prize of the giveaway", item="Item to giveaway", duration="Duration of the giveaway",
         req_roles="Roles required to enter the giveaway", bypass_role="Roles that can bypass the giveaway", req_level="Level required to enter the giveaway",
-        req_weekly="Weekly XP required to enter the giveaway"        
+        req_weekly="Weekly XP required to enter the giveaway", donor="Donor of the giveaway", message="Message to accompany the giveaway", dank="Dank Memer Giveaway?"
     )
     @app_commands.autocomplete(item=item_autocomplete)
-    async def _start(self, interaction: discord.Interaction, winners: app_commands.Range[int, 1, 20], prize: app_commands.Transform[int, DMCConverter],
+    async def _start(self, interaction: discord.Interaction, winners: app_commands.Range[int, 1, 20], prize: str,
                      duration: app_commands.Transform[int, TimeConverter],
+                     dank: bool,
                      item:str=None,
                      req_roles: app_commands.Transform[discord.Role, MutipleRole]=None, 
                      bypass_role: app_commands.Transform[discord.Role, MutipleRole]=None, 
                      req_level: app_commands.Range[int, 1, 100]=None,
                      req_weekly: app_commands.Range[int, 1, 100]=None,
+                     donor: discord.Member=None,
+                     message: app_commands.Range[str, 1, 250]=None,
     ):
         await interaction.response.defer()
         config = await self.backend.get_config(interaction.guild)
@@ -524,6 +593,11 @@ class Giveaways(commands.GroupCog, name="giveaways"):
             return await interaction.followup.send("Giveaways are not enabled in this server!", ephemeral=True)
         user_role = [role.id for role in interaction.user.roles]
         if not set(user_role) & set(config['manager_roles']): return await interaction.followup.send("You do not have permission to start giveaways!", ephemeral=True)
+        if dank == True:
+            prize = await DMCConverter_Ctx().convert(interaction, prize)
+            print(prize)
+            if not prize:
+                return await interaction.followup.send("Invalid Prize!", ephemeral=True)
         data = {
             "_id": None,
             "channel": interaction.channel.id,
@@ -540,40 +614,87 @@ class Giveaways(commands.GroupCog, name="giveaways"):
             "start_time": datetime.datetime.now(),
             "end_time": datetime.datetime.now() + datetime.timedelta(seconds=duration),
             "ended": False,
-            "host": interaction.user.id
+            "host": interaction.user.id,
+            "donor": donor.id if donor else None,
+            "message": message if message else None,
+            "dank": dank
         }
         embed = discord.Embed(color=interaction.client.default_color, description="")
-        if item is not None:
-            embed.description += f"## {prize}x {item}\n"
+
+        if dank:
+            if item:
+                embed.description += f"## {prize}x {item}\n"
+            else:
+                embed.description += f"## ⏣ {prize:,}\n"
         else:
-            embed.description += f"## ⏣ {humanfriendly.format_number(prize, num_decimals=0)}\n"
-        embed.description += f"**Winners:** {winners}\n"
-        embed.description += f"**Duration:** <t:{round(data['end_time'].timestamp())}:R>\n"
-        embed.description += f"**Host:** <@{interaction.user.id}>\n"
+            embed.description += f"## Prize: {prize}\n"
+
+        embed.description += f"End Time: <t:{int(data['end_time'].timestamp())}:R> (<t:{int(data['end_time'].timestamp())}:F>)\n"
+        embed.description += f"Winners: {winners}\n"
+        embed.description += f"Host: {interaction.user.mention}\n"
+        if donor:
+            embed.description += f"Donor: {donor.mention}"
         if req_roles:
-            if len(req_roles) == 1:
-                embed.description += f"**Required Role:** {req_roles[0].mention}\n"
-            elif len(req_roles) == 2:
-                embed.description += f"**Required Roles:** {req_roles[0].mention} and {req_roles[1].mention}\n"
+            value = ""
+            if len(req_roles) == 2:
+                value = f"{req_roles[0].mention} and {req_roles[1].mention}"
             else:
-                embed.description += f"**Required Roles:** {', '.join([role.mention for role in req_roles])}\n"
+                value = ", ".join([role.mention for role in req_roles])
+            embed.add_field(name="Required Roles", value=value, inline=True)
         if bypass_role:
-            if len(bypass_role) == 1:
-                embed.description += f"**Bypass Role:** {bypass_role[0].mention}\n"
-            elif len(bypass_role) == 2:
-                embed.description += f"**Bypass Roles:** {bypass_role[0].mention} and {bypass_role[1].mention}\n"
+            value = ""
+            if len(bypass_role) == 2:
+                value = f"{bypass_role[0].mention} and {bypass_role[1].mention}"
             else:
-                embed.description += f"**Bypass Roles:** {', '.join([role.mention for role in bypass_role])}\n"
+                value = ", ".join([role.mention for role in bypass_role])
+            embed.add_field(name="Bypass Roles", value=value, inline=False)
         if req_level:
-            embed.description += f"**Required Level:** {req_level}\n"
+            embed.add_field(name="Required Level", value=str(req_level), inline=True)
         if req_weekly:
-            embed.description += f"**Required Weekly:** {req_weekly}\n"
+            embed.add_field(name="Required Weekly XP", value=str(req_weekly), inline=False)
         
-        await interaction.followup.send(embed=embed, view=Giveaway())
+        await interaction.followup.send(embed=embed, view=Giveaway(), content="<a:tgk_tadaa:806631994770849843> **GIVEAWAY STARTED** <a:tgk_tadaa:806631994770849843>")
+        if message:
+            embed = discord.Embed(color=interaction.client.default_color, description=message)
+            await interaction.followup.send(embed=embed)
+
         msg = await interaction.original_response()
         data['_id'] = msg.id
         await self.backend.giveaways.insert(data)
         self.backend.giveaways_cache[msg.id] = data
+    
+    @app_commands.command(name="reroll", description="Reroll a giveaway")
+    @app_commands.describe(
+        message="Message to accompany the reroll",
+        winners="Numbers of winners to reroll"
+    )
+    async def _reroll(self, interaction: discord.Interaction, message: str, winners: app_commands.Range[int, 1, 10]=1):
+        try:
+            message = await interaction.channel.fetch_message(int(message))
+        except:
+            return await interaction.response.send_message("Invalid message ID!", ephemeral=True)
+        
+        giveawa_data = await self.backend.get_giveaway(message)
+        if not giveawa_data: return await interaction.response.send_message("This message is not a giveaway!", ephemeral=True)
+        if not giveawa_data['ended']: return await interaction.response.send_message("This giveaway has not ended!", ephemeral=True)
+        giveawa_data['winners'] = winners
+        self.bot.dispatch("giveaway_end", giveawa_data)
+        await interaction.response.send_message("Giveaway rerolled successfully! Make sure to cancel the already queued payouts use `/payout search`", ephemeral=True)
+
+    @app_commands.command(name="end", description="End a giveaway")
+    @app_commands.describe(
+        message="Message to accompany the end"
+    )
+    async def _end(self, interaction: discord.Interaction, message: str):
+        try:
+            message = await interaction.channel.fetch_message(int(message))
+        except:
+            return await interaction.response.send_message("Invalid message ID!", ephemeral=True)
+        giveaway_data = await self.backend.get_giveaway(message)
+        if not giveaway_data: return await interaction.response.send_message("This message is not a giveaway!", ephemeral=True)
+        if giveaway_data['ended']: return await interaction.response.send_message("This giveaway has already ended!", ephemeral=True)
+        self.bot.dispatch("giveaway_end", giveaway_data)
+        await interaction.response.send_message("Giveaway ended successfully!", ephemeral=True)
 
 async def setup(bot):
     await bot.add_cog(Level(bot))

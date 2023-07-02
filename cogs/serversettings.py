@@ -244,8 +244,9 @@ class serversettings(commands.Cog):
                 embed = discord.Embed(title=f"{interaction.guild.name} Giveaway Config", color=self.bot.default_color, description="")
                 embed.description += f"**Manager Roles:** {', '.join([f'<@&{role}>' for role in giveaway_data['manager_roles']]) if len(giveaway_data['manager_roles']) > 0 else '`None`'}\n"
                 embed.description += f"**Logging Channel:** {interaction.guild.get_channel(giveaway_data['log_channel']).mention if giveaway_data['log_channel'] else '`None`'}\n"
+                embed.description += f"**Dm Message:** ```\n{giveaway_data['dm_message']}\n```\n"
                 embed.description += f"**Blacklist:**\n {', '.join([f'<@&{(role)}>' for role in giveaway_data['blacklist']]) if len(giveaway_data['blacklist']) > 0 else '`None`'}"
-                mults = giveaway_data['multipliers']                
+                mults = giveaway_data['multipliers']
                 mults = sorted(mults.items(), key=lambda x: int(x[1]))
                 embed.description += f"\n**Multipliers:**\n"
                 for value, multi in mults:

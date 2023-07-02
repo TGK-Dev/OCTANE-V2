@@ -6,6 +6,7 @@ from discord.interactions import Interaction
 from discord.ui import View, Button, Select
 from discord.ui.item import Item
 from .selects import Role_select, Channel_select, Select_General
+from .modal import General_Modal
 
 
 class Giveaway(View):
@@ -31,9 +32,10 @@ class Giveaway(View):
             embed = discord.Embed(description="Unable to join the giveawy due to blacklisted role.", color=discord.Color.red())
             return await interaction.followup.send(embed=embed, ephemeral=True)
 
-        if interaction.user.id in data['entries'].keys():
-            embed = discord.Embed(description="You already joined this giveaway.", color=discord.Color.red())
-            return await interaction.followup.send(embed=embed, ephemeral=True)
+        if str(interaction.user.id) in data['entries'].keys():
+            view = GiveawayLeave(data, interaction.user, interaction)
+            embed = discord.Embed(description="You already joined this giveaway.",color=interaction.client.default_color)
+            return await interaction.followup.send(embed=embed, view=view)
         
         result = {}
 
@@ -44,28 +46,31 @@ class Giveaway(View):
                 if user_level['level'] >= data['req_level']: 
                     pass
                 else:
-                    req_roles = [f'<@&{role}>' for role in data['req_level']]
-                    result['level'] = f"You don't have the required level to join this giveaway. Required levels: {','.join(req_roles)}"
+                    result['level'] = f"You don't have the required level to join this giveaway.\n> `Required levels: {data['req_level']}`"
 
             if data['req_weekly']:
                 if user_level['weekly'] >= data['req_weekly']:
                     pass
                 else:
-                    result['weekly'] = "You don't have the required weekly XP to join this giveaway. Required weekly XP: {}".format(data['req_weekly'])
+                    result['weekly'] = "You don't have the required weekly XP to join this giveaway.\n> `Required weekly XP: {}`".format(data['req_weekly'])
         
         if data['req_roles']:
             if (set(user_roles) & set(data['req_roles'])):
                 pass
             else:
-                result['roles'] = "You don't have the required role to join this giveaway. Required role: {}".format(data['req_roles'])
-        
+                req_roles = [f'<@&{role}>' for role in data['req_level']]
+                result['roles'] = f"You don't have the required role to join this giveaway.\n> Required role: {', '.join(req_roles)}"
+        bypassed = False
         if len(result.keys()) > 0:
             if data['bypass_role'] and (set(user_roles) & set(data['bypass_role'])):
+                bypassed = True
                 pass
             else:
-                embed = discord.Embed(description="")
+                embed = discord.Embed(description="", title="You Failed to meet the following requriements")
+                i = 1
                 for key, value in result.items():
-                    embed.description += f"{value}\n"
+                    embed.description += f"{i}. {value}\n"
+                    i += 1
                 embed.color = discord.Color.red()
                 return await interaction.followup.send(embed=embed, ephemeral=True)
         
@@ -77,7 +82,29 @@ class Giveaway(View):
         data['entries'][str(interaction.user.id)] = entries
         await interaction.client.giveaway.update_giveaway(interaction.message, data)
         embed = discord.Embed(description="You have successfully joined the giveaway.", color=discord.Color.green())
+        if bypassed:
+            embed.description += "\nYou have bypassed the requirements due to your role(s)."
         await interaction.followup.send(embed=embed)
+
+
+class GiveawayLeave(View):
+    def __init__(self, data: dict, user: discord.Member, interaction: discord.Interaction):
+        self.data = data
+        self.user = user
+        self.interaction = interaction
+        super().__init__(timeout=30)
+    
+    async def on_timeout(self):
+        await self.interaction.delete_original_response()
+    
+    @discord.ui.button(label="Leave", style=discord.ButtonStyle.gray, emoji="<:tgk_pepeexit:790189030569934849>", custom_id="giveaway:Leave")
+    async def _leave(self, interaction: discord.Interaction, button: discord.ui.Button):
+        try:
+            del self.data['entries'][str(self.user.id)]
+            await interaction.client.giveaway.update_giveaway(interaction.message, self.data)
+        except:
+            pass
+        await interaction.response.edit_message(content="You have successfully left the giveaway.", view=None, delete_after=10, embed=None)        
 
 class GiveawayConfig(View):
     def __init__(self, data: dict, user: discord.Member, message: discord.Message=None):
@@ -96,6 +123,7 @@ class GiveawayConfig(View):
         embed = discord.Embed(title=f"{interaction.guild.name} Giveaway Config", color=interaction.client.default_color, description="")
         embed.description += f"**Manager Roles:** {', '.join([f'<@&{role}>' for role in giveaway_data['manager_roles']]) if len(giveaway_data['manager_roles']) > 0 else '`None`'}\n"
         embed.description += f"**Logging Channel:** {interaction.guild.get_channel(giveaway_data['log_channel']).mention if giveaway_data['log_channel'] else '`None`'}\n"
+        embed.description += f"**Dm Message:** ```\n{giveaway_data['dm_message']}\n```\n"
         embed.description += f"**Blacklist:**\n {', '.join([f'<@&{(role)}>' for role in giveaway_data['blacklist']]) if len(giveaway_data['blacklist']) > 0 else '`None`'}"
         mults = giveaway_data['multipliers']                
         mults = sorted(mults.items(), key=lambda x: int(x[1]))
@@ -144,6 +172,22 @@ class GiveawayConfig(View):
         await view.select.interaction.response.edit_message(content=f"Set logging channel to {view.select.values[0].mention}", view=None)
         await interaction.delete_original_response()
         await interaction.message.edit(embed=await self.update_embed(interaction, self.data))
+        await interaction.client.giveaway.update_config(interaction.guild, self.data)
+
+    @discord.ui.button(label="Dm Message", style=discord.ButtonStyle.gray, emoji="<:tgk_edit:1073902428224757850>", custom_id="giveaway:DmMessage")
+    async def _dm_message(self, interaction: discord.Interaction, button: discord.ui.Button):
+        view = General_Modal(title="Giveaway Dm Message", interaction=interaction)
+        view.value = None
+        view.input = discord.ui.TextInput(label="Message",placeholder="Please enter the message you want to set as dm message.", min_length=1, max_length=300, style=discord.TextStyle.long)
+        if self.data['dm_message']:
+            view.input.default = str(self.data['dm_message'])
+        view.add_item(view.input)
+        await interaction.response.send_modal(view)
+        await view.wait()
+
+        if view.value is None: return
+        self.data['dm_message'] = str(view.input.value)
+        await view.interaction.response.edit_message(embed=await self.update_embed(interaction, self.data))
         await interaction.client.giveaway.update_config(interaction.guild, self.data)
 
     @discord.ui.button(label="Blacklist", style=discord.ButtonStyle.gray, emoji="<:tgk_role:1073908306713780284>", custom_id="giveaway:Blacklist")
