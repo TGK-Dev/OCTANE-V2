@@ -92,7 +92,7 @@ class Giveaway(View):
         data = await interaction.client.giveaway.get_giveaway(interaction.message)
         if data is None: return await interaction.followup.send("This giveaway is not available anymore/invalid.", ephemeral=True)
         entries = data['entries']
-        entries = sorted(entries.items(), key=lambda x: x[1])
+        entries = sorted(entries.items(), key=lambda x: x[1], reverse=True)
         #split entries into sections of 10
         entries = [entries[i:i + 10] for i in range(0, len(entries), 10)]
         pages = []
@@ -100,7 +100,7 @@ class Giveaway(View):
         for page in entries:
             embed = discord.Embed(title="Giveaway Entries", description="", color=interaction.client.default_color)
             for user in page:
-                embed.description += f"{i}. <@{user[0]}> - {user[1]} entries\n"
+                embed.description += f"{i}. <@{user[0]}> - **Entries: {user[1]}**\n"
                 i += 1
             pages.append(embed)
         
