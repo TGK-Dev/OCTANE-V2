@@ -614,7 +614,7 @@ class Perks(commands.GroupCog, name="perks", description="manage your custom per
         user_data = await self.Perk.get_data(Perk_Type.reacts, interaction.guild.id, interaction.user.id)
         if not user_data: return await interaction.response.send_message("You don't have any custom reaction perks", ephemeral=True)
 
-        await interaction.response.send_message(embed=discord.Embed(description="Checking emoji...", color=interaction.client.default_color), ephemeral=True)
+        await interaction.response.send_message(embed=discord.Embed(description="Checking emoji...", color=interaction.client.default_color), ephemeral=False)
         msg = await interaction.original_response()
         try:
             await msg.add_reaction(emoji)
@@ -624,7 +624,8 @@ class Perks(commands.GroupCog, name="perks", description="manage your custom per
         
         user_data['emoji'] = emoji
         await self.Perk.update(Perk_Type.reacts, user_data)
-        await interaction.edit_original_response(embed=discord.Embed(description=f"Your custom reaction has been set to {emoji}", color=interaction.client.default_color))
+        await interaction.followup.send(embed=discord.Embed(description=f"Your custom reaction has been set to {emoji}", color=interaction.client.default_color), ephemeral=True)
+        await interaction.delete_original_response()
         await self.Perk.update_cache(Perk_Type.reacts, interaction.guild, user_data)
 
 
