@@ -236,37 +236,33 @@ class GiveawayConfig(View):
     
     @discord.ui.button(label="Multipliers", style=discord.ButtonStyle.gray, emoji="<:tgk_role:1073908306713780284>", custom_id="giveaway:Multipliers")
     async def _multipliers(self, interaction: discord.Interaction, button: discord.ui.Button):
-        view = View()
-        view.value = None
-        view.select = Role_select(placeholder="Select the role you want to set multiplier for", min_values=1, max_values=1)
-        view.add_item(view.select)
-
-        await interaction.response.send_message(view=view, ephemeral=True)
-        await view.wait()
-        if not view.value: return await interaction.delete_original_message()
-            
-        muilt_role = view.select.values[0]
         multi_view = View()
         multi_view.value = None
-        multi_view.select = Select_General(view.select.interaction, options=[SelectOption(label="Remove", value="0"),SelectOption(label="1x", value="1"), SelectOption(label="2x", value="2"), SelectOption(label="3x", value="3"), SelectOption(label="4x", value="4"), SelectOption(label="5x", value="5"), SelectOption(label="6x", value="6"), SelectOption(label="7x", value="7"), SelectOption(label="8x", value="8"), SelectOption(label="9x", value="9"), SelectOption(label="10x", value="10")], placeholder="Select the multiplier you want to set",min_values=1, max_values=1)
+        multi_view.select = Select_General(interaction, options=[SelectOption(label="Remove", value="0"),SelectOption(label="1x", value="1"), SelectOption(label="2x", value="2"), SelectOption(label="3x", value="3"), SelectOption(label="4x", value="4"), SelectOption(label="5x", value="5"), SelectOption(label="6x", value="6"), SelectOption(label="7x", value="7"), SelectOption(label="8x", value="8"), SelectOption(label="9x", value="9"), SelectOption(label="10x", value="10")], placeholder="Select the multiplier you want to set",min_values=1, max_values=1)
         multi_view.add_item(multi_view.select)
-        await view.select.interaction.response.edit_message(view=multi_view)
+        await interaction.response.send_message(view=multi_view, ephemeral=True)
         await multi_view.wait()
         if not multi_view.value: return await interaction.delete_original_message()
-        if multi_view.select.values[0] == "0":
-            try:
-                del self.data['multipliers'][str(view.select.values[0].id)]
-            except Exception as e:
-                print(e)
-            await multi_view.select.interaction.response.edit_message(content=f"Multiplier for {muilt_role.mention} has been removed!", embed=None, view=None)
+        multiplier = int(multi_view.select.values[0])
+
+        roles_view = View()
+        roles_view.value = None
+        roles_view.select = Role_select(placeholder="Select the role you want to set multiplier for", min_values=1, max_values=15)
+        roles_view.add_item(roles_view.select)
+        await multi_view.select.interaction.response.edit_message(view=roles_view)
+        await roles_view.wait()
+        if not roles_view.value: return await interaction.delete_original_message()
+        roles = roles_view.select.values
+        if multiplier == 0:
+            for role in roles:
+                    try:
+                        del self.data['multipliers'][str(role.id)]
+                    except KeyError:
+                        pass
+            await roles_view.select.interaction.response.edit_message(content=f"Removed multiplier for {', '.join([f'<@&{role.id}>' for role in roles])}", view=None)
         else:
-            self.data['multipliers'][str(muilt_role.id)] = int(multi_view.select.values[0])
-            await multi_view.select.interaction.response.edit_message(content=f"Multiplier for {muilt_role.mention} has been set to {multi_view.select.values[0]}x!", embed=None, view=None)
-
-        await multi_view.select.interaction.delete_original_response()
-        await interaction.client.level.update_config(interaction.guild, self.data)
-        await self.message.edit(embed=await self.update_embed(interaction, self.data))
+            for role in roles:
+                self.data['multipliers'][str(role.id)] = multiplier
+            await roles_view.select.interaction.response.edit_message(content=f"Set multiplier for {', '.join([f'<@&{role.id}>' for role in roles])} to {multiplier}x", view=None, delete_after=5)
+            await interaction.message.edit(embed=await self.update_embed(interaction, self.data))
         await interaction.client.giveaway.update_config(interaction.guild, self.data)
-
-
-        

@@ -440,8 +440,7 @@ class Giveaways(commands.GroupCog, name="giveaways"):
             embed = message.embeds[0]
             view = Giveaway()
             view.children[0].disabled = True
-            embed.title = "Giveaway has ended"
-            await message.edit(embed=embed, view=view)
+            await message.edit(embed=embed, view=view, content="**Giveaway has ended**")
             embed = discord.Embed(description="Not enough people entered the giveaway", color=discord.Color.red())
             await message.reply(embed=embed)
             await self.backend.giveaways.delete(giveaway["_id"])
@@ -578,7 +577,7 @@ class Giveaways(commands.GroupCog, name="giveaways"):
     @app_commands.autocomplete(item=item_autocomplete)
     async def _start(self, interaction: discord.Interaction, winners: app_commands.Range[int, 1, 20], prize: str,
                      duration: app_commands.Transform[int, TimeConverter],
-                     dank: bool,
+                     dank: bool=True,
                      item:str=None,
                      req_roles: app_commands.Transform[discord.Role, MutipleRole]=None, 
                      bypass_role: app_commands.Transform[discord.Role, MutipleRole]=None, 
@@ -595,7 +594,6 @@ class Giveaways(commands.GroupCog, name="giveaways"):
         if not set(user_role) & set(config['manager_roles']): return await interaction.followup.send("You do not have permission to start giveaways!", ephemeral=True)
         if dank == True:
             prize = await DMCConverter_Ctx().convert(interaction, prize)
-            print(prize)
             if not prize:
                 return await interaction.followup.send("Invalid Prize!", ephemeral=True)
         data = {
@@ -625,7 +623,10 @@ class Giveaways(commands.GroupCog, name="giveaways"):
             if item:
                 embed.description += f"## {prize}x {item}\n"
             else:
-                embed.description += f"## ⏣ {prize:,}\n"
+                try:
+                    embed.description += f"## ⏣ {prize:,}\n"
+                except:
+                    embed.description += f"## ⏣ {prize}\n"
         else:
             embed.description += f"## Prize: {prize}\n"
 
