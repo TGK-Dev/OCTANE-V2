@@ -59,9 +59,9 @@ class Giveaway(View):
             if (set(user_roles) & set(data['req_roles'])):
                 pass
             else:
-                req_roles = [f'<@&{role}>' for role in data['req_level']]
+                req_roles = [f'<@&{role}>' for role in data['req_roles']]
                 result['roles'] = f"You don't have the required role to join this giveaway.\n> Required role: {', '.join(req_roles)}"
-        bypassed = False
+        bypassed = False    
         if len(result.keys()) > 0:
             if data['bypass_role'] and (set(user_roles) & set(data['bypass_role'])):
                 bypassed = True
