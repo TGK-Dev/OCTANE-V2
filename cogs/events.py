@@ -57,7 +57,10 @@ class Events(commands.Cog):
             if user['banned'] == False or user['unbanAt'] is None: continue
             if user['unbanAt'] < now:
                 user = await self.bot.fetch_user(user['_id'])
-                await guild.unban(user, reason="Freeloader ban expired")
+                try:
+                    await guild.unban(user, reason="Freeloader ban expired")
+                except discord.HTTPException:
+                    pass
                 user['unbanAt'] = None
                 user['banned'] = False
                 await self.bot.free.update(user)
