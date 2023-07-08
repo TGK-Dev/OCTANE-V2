@@ -270,12 +270,6 @@ class Level(commands.GroupCog):
             await annouce.send(embed=level_up_embed, content=message.author.mention)
     
         await self.levels.update_member_level(message.author, data)
-    
-    @commands.command()
-    @commands.has_permissions(administrator=True)
-    async def rank_config(self, ctx):
-        await self.levels.get_config(ctx.guild)
-        await ctx.send("Rank config has been created!")
 
     @app_commands.command(name="rank", description="View your rank card")
     @app_commands.checks.cooldown(1, 10, key=lambda i:(i.guild_id, i.user.id))
@@ -387,8 +381,7 @@ class Giveaways(commands.GroupCog, name="giveaways"):
         self.giveaway_in_prosses = []
     
     def cog_unload(self):
-        self.giveaway_task.cancel()
-    
+        self.giveaway_task.cancel()    
 
     @tasks.loop(seconds=10)
     async def giveaway_loop(self):
