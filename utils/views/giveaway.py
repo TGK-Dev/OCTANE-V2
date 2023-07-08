@@ -91,9 +91,9 @@ class Giveaway(View):
     async def _entries(self, interaction: discord.Interaction, button: discord.ui.Button):
         data = await interaction.client.giveaway.get_giveaway(interaction.message)
         if data is None: return await interaction.followup.send("This giveaway is not available anymore/invalid.", ephemeral=True)
+        if len(data['entries'].keys()) == 0: return await interaction.response.send_message("No one has joined this giveaway yet.", ephemeral=True)
         entries = data['entries']
         entries = sorted(entries.items(), key=lambda x: x[1], reverse=True)
-        #split entries into sections of 10
         entries = [entries[i:i + 10] for i in range(0, len(entries), 10)]
         pages = []
         i = 1
