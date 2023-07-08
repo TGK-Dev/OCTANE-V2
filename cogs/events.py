@@ -54,11 +54,13 @@ class Events(commands.Cog):
         now = datetime.datetime.utcnow()
         guild = self.bot.get_guild(785839283847954433)
         for user in data:
-            if user['banned'] == False or user['unbanAt'] is None: continue
+            if user['banned'] == False or user['unbanAt'] is None: 
+                continue
             if user['unbanAt'] < now:
-                user = await self.bot.fetch_user(user['_id'])
+                member = await self.bot.fetch_user(user['_id'])
+                if not isinstance(member, discord.User): continue
                 try:
-                    await guild.unban(user, reason="Freeloader ban expired")
+                    await guild.unban(member, reason="Freeloader ban expired")
                 except discord.HTTPException:
                     pass
                 user['unbanAt'] = None
