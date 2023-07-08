@@ -17,6 +17,7 @@ from utils.paginator import Contex_Paginator, Paginator
 from utils.transformer import TimeConverter
 from humanfriendly import format_timespan
 from utils.db import Document
+from utils.views.buttons import Reload
 
 
 class Dev(commands.Cog, name="dev", description="Dev commands"):
@@ -39,11 +40,15 @@ class Dev(commands.Cog, name="dev", description="Dev commands"):
     @app_commands.check(is_dev)
     async def reload(self, interaction: discord.Interaction, cog: str):
         await interaction.response.send_message(embed=discord.Embed(description=f"Reloading cog `{cog}`...", color=interaction.client.default_color))
+        view = Reload(cog)
+        view.children[0].label = f"{cog}"
         try:
             await self.bot.reload_extension(cog)
-            await interaction.edit_original_response(embed=discord.Embed(description=f"Successfully reloaded cog `{cog}`", color=interaction.client.default_color))
+            await interaction.edit_original_response(embed=discord.Embed(description=f"Successfully reloaded cog `{cog}`", color=interaction.client.default_color), view=view)
         except Exception as e:
-            await interaction.edit_original_response(content=None, embed=discord.Embed(description=f"Error while reloading cog `{cog}`: {e}", color=interaction.client.default_color))
+            await interaction.edit_original_response(content=None, embed=discord.Embed(description=f"Error while reloading cog `{cog}`: {e}", color=interaction.client.default_color), view=view)
+        
+        view.message = await interaction.original_response()
 
     @dev.command(name="sync", description="Syncs a guild/gobal command")
     @app_commands.check(is_dev)
@@ -215,6 +220,26 @@ class Blacklist(commands.GroupCog, name="blacklist"):
         
         await Paginator(interaction, page).start(embeded=True, quick_navigation=False)
 
+
+class Admin(commands.Cog):
+    def __init__(self, bot):
+        self.bot = bot
+    
+    @commands.group(name="admin", description="Admin commands", invoke_without_command=False)
+    @commands.has_any_role(785845265118265376, 785842380565774368)
+    async def admin(self, ctx):
+        pass
+
+    @admin.command(name="snipe", description="resets the channels snipes and editsnipes", aliases=['rs', 'rsnipe'])
+    @commands.has_any_role(785845265118265376, 785842380565774368)
+    async def reset_snipe(self, ctx, channel: discord.TextChannel = None):
+        if not channel: channel = ctx.channel
+        if channel.id not in self.bot.snipes.keys() and channel.id not in self.bot.esnipes.keys(): return await ctx.send(embed=discord.Embed(description=f"There are no snipes in {channel.mention}", color=self.bot.default_color))
+        if channel.id in self.bot.snipes.keys(): del self.bot.snipes[channel.id]
+        if channel.id in self.bot.esnipes.keys(): del self.bot.esnipes[channel.id]
+        await ctx.send(embed=discord.Embed(description=f"Snipes in {channel.mention} have been reset", color=self.bot.default_color))
+
 async def setup(bot):
     await bot.add_cog(Blacklist(bot), guilds=[discord.Object(999551299286732871), discord.Object(785839283847954433)])
     await bot.add_cog(Dev(bot), guilds=[discord.Object(999551299286732871), discord.Object(785839283847954433)])
+    await bot.add_cog(Admin(bot), guilds=[discord.Object(999551299286732871), discord.Object(785839283847954433)])
