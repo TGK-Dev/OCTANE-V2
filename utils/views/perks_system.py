@@ -1,12 +1,20 @@
 import enum
 import discord
 import datetime
-from discord import Interaction, SelectOption, TextStyle
+from discord import Interaction, SelectOption, TextStyle, app_commands
 from discord.interactions import Interaction
 from discord.ui import View, Button, button, TextInput, Item, Select, select
 from .selects import Role_select, Select_General, Channel_select, User_Select
 from .modal import General_Modal
 import traceback
+
+
+class ButtonCooldown(app_commands.CommandOnCooldown):
+    def __init__(self, retry_after: float):
+        self.retry_after = retry_after
+
+    def key(interaction: discord.Interaction):
+        return interaction.user
 
 class PerkConfig(View):
     def __init__(self, user:discord.Member, data:dict, message: discord.Message=None):
@@ -101,11 +109,16 @@ class friends_manage(View):
         self.data = data
         self.message = message
         self.type = type
+        self.cd = app_commands.Cooldown(1, 10)
         if type not in ["roles", "channels"]:
             raise ValueError("type must be either roles or channels")
         super().__init__(timeout=120)
     
     async def interaction_check(self, interaction: Interaction):
+        retry_after = self.cd.update_rate_limit()
+        if retry_after:
+            raise ButtonCooldown(retry_after)
+
         if interaction.user.id == self.user.id:
             return True
         else:
@@ -116,6 +129,10 @@ class friends_manage(View):
         for child in self.children:child.disabled = True; await self.message.edit(view=self)
     
     async def on_error(self, interaction: Interaction, error: Exception, item: Item):
+        if isinstance(error, ButtonCooldown):
+            seconds = int(error.retry_after)
+            unit = 'second' if seconds == 1 else 'seconds'
+            return await interaction.response.send_message(f"You're on cooldown for {seconds} {unit}!", ephemeral=True)
         try:
             await interaction.followup.send(embed=discord.Embed(description=f"```py\n{traceback.format_exception(type(error), error, error.__traceback__, 4)}\n```", color=discord.Color.red()), ephemeral=True)
         except discord.HTTPException:
