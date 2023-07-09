@@ -690,6 +690,23 @@ class Giveaways(commands.GroupCog, name="giveaways"):
         self.bot.dispatch("giveaway_end", giveaway_data)
         await interaction.response.send_message("Giveaway ended successfully!", ephemeral=True)
 
+    @commands.command(name="multiplier", description="Set the giveaway multiplier", aliases=['multi'])
+    async def _multiplier(self, ctx, user: discord.Member=None):
+        user = user if user else ctx.author
+        config = await self.backend.get_config(ctx.guild)
+        if not config: return await ctx.send("This server is not set up!")
+        if len(config['multipliers'].keys()) == 0: return await ctx.send("This server does not have any multipliers!")
+        user_role = [role.id for role in user.roles]
+        embed = discord.Embed(color=self.bot.default_color, description=f"@everyone - `1x`\n")
+        embed.set_author(name=f"{user}'s Multipliers", icon_url=user.avatar.url if user.avatar else user.default_avatar)
+        total = 1
+        for role, multi in config['multipliers'].items():
+            if int(role) in user_role:
+                embed.description += f"<@&{role}> - `{multi}x`\n"
+                total += multi
+        embed.description += f"**Total Multiplier** - `{total}x`"
+        await ctx.reply(embed=embed, allowed_mentions=discord.AllowedMentions.none())
+
 async def setup(bot):
     await bot.add_cog(Level(bot))
     await bot.add_cog(Giveaways(bot))
