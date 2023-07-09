@@ -796,6 +796,7 @@ class Perks(commands.GroupCog, name="perks", description="manage your custom per
     @commands.Cog.listener()
     async def on_message(self, message: discord.Message):
         if message.author.bot: return
+        if message.guild is None: return
         if len(message.mentions) > 0:
             self.bot.dispatch('auto_react', message)
         if message.content is not None or message.content != "":
@@ -859,6 +860,7 @@ class Perks(commands.GroupCog, name="perks", description="manage your custom per
                 user_data = guild_data[user_data]
                 if word in user_data['triggers']:
                     user = message.guild.get_member(user_data['user_id'])
+                    if user is None: continue
                     perm = message.channel.permissions_for(user)
                     if not perm.view_channel or perm.view_channel == False: continue
                     self.bot.dispatch('highlight_found', message, user_data)
