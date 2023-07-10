@@ -14,12 +14,8 @@ class Giveaway(View):
     def __init__(self):
         super().__init__(timeout=None)
     
-    async def on_error(self, interaction: Interaction, error: Exception):
-        try:
-            await interaction.response.edit_message(content=f"An error occured: {error}", view=None)
-        except:
-            await interaction.followup.send(content=f"An error occured: {error}", ephemeral=True)
-
+    async def on_error(self, interaction: Interaction, error: Exception, item: Item):
+        return await interaction.followup.send(content=f"An error occured: {error}", ephemeral=True)
 
     @discord.ui.button(emoji="<a:tgk_tadaa:806631994770849843>", style=discord.ButtonStyle.gray, custom_id="giveaway:Join")
     async def _join(self, interaction: discord.Interaction, button: discord.ui.Button):
@@ -39,7 +35,7 @@ class Giveaway(View):
             return await interaction.followup.send(embed=embed, view=view)
         
         result = {}
-
+        if data['ended']: return await interaction.followup.send("This giveaway has ended.", ephemeral=True)
         if data['req_level'] or data['req_weekly']:
             user_level = await interaction.client.level.get_member_level(interaction.user)
 
@@ -93,6 +89,7 @@ class Giveaway(View):
         if data is None: return await interaction.followup.send("This giveaway is not available anymore/invalid.", ephemeral=True)
         if len(data['entries'].keys()) == 0: return await interaction.response.send_message("No one has joined this giveaway yet.", ephemeral=True)
         entries = data['entries']
+        entries = sorted(entries.items(), key=lambda x: x[1], reverse=True)
         entries = [entries[i:i + 10] for i in range(0, len(entries), 10)]
         pages = []
         i = 1
