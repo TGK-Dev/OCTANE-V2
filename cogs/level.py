@@ -470,8 +470,7 @@ class Giveaways(commands.GroupCog, name="giveaways"):
         
         view = Giveaway()
         view.children[0].disabled = True
-        embed.title = "Giveaway has ended"
-        await message.edit(embed=embed, view=view)
+        await message.edit(embed=embed, view=view, content="**Giveaway has ended**")
         if giveaway["item"]:
             item = await self.bot.dank_items.find(giveaway["item"])
         else:
@@ -499,14 +498,14 @@ class Giveaways(commands.GroupCog, name="giveaways"):
             except:
                 pass
         embed = discord.Embed(title="Congratulations", color=self.bot.default_color, description="")
-        embed.description += f"Winners: {', '.join([f'<@{winner}>' for winner in winners])}\n"
         if giveaway["dank"]:
             if giveaway["item"]:
-                embed.description += f"Prize: {giveaway['prize']}x {giveaway['item']}\n"
+                embed.description += f"<a:tgk_blackCrown:1097514279973961770> **Won:** {giveaway['prize']}x {giveaway['item']}\n"
             else:
-                embed.description += f"Prize: ⏣ {giveaway['prize']:,}\n"
+                embed.description += f"<a:tgk_blackCrown:1097514279973961770> **Won:** ⏣ {giveaway['prize']:,}\n"
         else:
-            embed.description += f"Prize: {giveaway['prize']}\n"
+            embed.description += f"<a:tgk_blackCrown:1097514279973961770>  **Won:** {giveaway['prize']}\n"
+        embed.set_footer(text="Make sure to claim your prize from claim channel!")
         await message.reply(embed=embed, content=",".join([f"<@{winner}>" for winner in winners]))
 
         host = guild.get_member(giveaway["host"])
@@ -520,7 +519,7 @@ class Giveaways(commands.GroupCog, name="giveaways"):
             else:
                 host_dm.title += f"{giveaway['prize']} has ended"
         
-            embed.description += f"total entries: {len(giveaway['entries'].keys())}\n"
+            embed.description += f"Total entries: {len(giveaway['entries'].keys())}\n"
             embed.description += f"Total Winners: {len(winners)}\n"
             i = 1
             for winner in winners:
@@ -587,8 +586,8 @@ class Giveaways(commands.GroupCog, name="giveaways"):
         if not set(user_role) & set(config['manager_roles']): return await interaction.followup.send("You do not have permission to start giveaways!", ephemeral=True)
         if dank == True:
             prize = await DMCConverter_Ctx().convert(interaction, prize)
-            if not prize:
-                return await interaction.followup.send("Invalid Prize!", ephemeral=True)
+            if not isinstance(prize, int):
+                return await interaction.followup.send("Invalid Prize!", ephemeral=True, delete_after=5)
         data = {
             "_id": None,
             "channel": interaction.channel.id,
@@ -622,8 +621,8 @@ class Giveaways(commands.GroupCog, name="giveaways"):
                     embed.description += f"## ⏣ {prize}\n"
         else:
             embed.description += f"## Prize: {prize}\n"
-
-        embed.description += f"End Time: <t:{int(data['end_time'].timestamp())}:R> (<t:{int(data['end_time'].timestamp())}:F>)\n"
+        embed.description += "‎\n"
+        embed.description += f"End Time: <t:{int(data['end_time'].timestamp())}:R> (<t:{int(data['end_time'].timestamp())}:T>)\n"
         embed.description += f"Winners: {winners}\n"
         embed.description += f"Host: {interaction.user.mention}\n"
         if donor:
@@ -649,8 +648,17 @@ class Giveaways(commands.GroupCog, name="giveaways"):
         
         await interaction.followup.send(embed=embed, view=Giveaway(), content="<a:tgk_tadaa:806631994770849843> **GIVEAWAY STARTED** <a:tgk_tadaa:806631994770849843>")
         if message:
-            embed = discord.Embed(color=interaction.client.default_color, description=message)
-            await interaction.followup.send(embed=embed)
+            host_webhook = None
+            for webhook in await interaction.channel.webhooks():
+                if webhook.user.id == self.bot.user.id:
+                    host_webhook = webhook
+                    break
+            if not host_webhook:
+                pfp = await self.bot.user.avatar.read()
+                host_webhook = await interaction.channel.create_webhook(name="Giveaway Host", avatar=pfp)
+            
+            author = donor if donor else interaction.user
+            await host_webhook.send(content=message, username=author.global_name, avatar_url=author.avatar.url if author.avatar else author.default_avatar, allowed_mentions=discord.AllowedMentions.none())
 
         msg = await interaction.original_response()
         data['_id'] = msg.id
