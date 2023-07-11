@@ -3,7 +3,7 @@ import discord
 import math
 import datetime
 import random
-import humanfriendly
+import pytz
 from discord import app_commands
 from discord import Interaction
 from discord.ext import commands, tasks
@@ -11,6 +11,7 @@ from utils.db import Document
 from utils.transformer import TimeConverter, MutipleRole, DMCConverter
 from utils.views.giveaway import Giveaway
 from utils.converters import DMCConverter_Ctx
+from utils.views.modal import General_Modal
 
 
 
@@ -379,16 +380,25 @@ class Giveaways(commands.GroupCog, name="giveaways"):
         self.giveaway_task = self.giveaway_loop.start()
         self.giveaway_task_progress = False
         self.giveaway_in_prosses = []
+        self.context_end = app_commands.ContextMenu(name="End Giveaway", callback=self._giveaway_end)
+        self.context_reroll = app_commands.ContextMenu(name="Reroll Giveaway", callback=self._giveaway_reroll)
+        self.bot.tree.add_command(self.context_reroll)
+        self.bot.tree.add_command(self.context_end)
     
     def cog_unload(self):
-        self.giveaway_task.cancel()    
+        self.giveaway_task.cancel() 
+    
+    async def now(self):
+        ist = pytz.timezone('Asia/Kolkata')
+        now = datetime.datetime.now(ist)
+        return now
 
     @tasks.loop(seconds=10)
     async def giveaway_loop(self):
         if self.giveaway_task_progress == True:
             return
         self.giveaway_task_progress = True
-        now = datetime.datetime.now()
+        now = await self.now()
         giveaways = self.backend.giveaways_cache.copy()
         for giveaway in giveaways.values():
             if giveaway["end_time"] <= now:
@@ -491,8 +501,6 @@ class Giveaways(commands.GroupCog, name="giveaways"):
         for winner in winners:
             winner = guild.get_member(winner)
             if winner is None: continue
-            if giveaway['dank'] != False:
-                await self.bot.create_payout(event="Giveaway", winner=winner, host=guild.get_member(giveaway["host"]), prize=giveaway["prize"], message=message, item=item)
             try:
                 await winner.send(embed=dm_embed, view=link_view)
             except:
@@ -506,8 +514,9 @@ class Giveaways(commands.GroupCog, name="giveaways"):
         else:
             embed.description += f"<a:tgk_blackCrown:1097514279973961770>  **Won:** {giveaway['prize']}\n"
         embed.set_footer(text="Make sure to claim your prize from claim channel!")
-        await message.reply(embed=embed, content=",".join([f"<@{winner}>" for winner in winners]))
-
+        win_message = await message.reply(embed=embed, content=",".join([f"<@{winner}>" for winner in winners]))
+        if giveaway['dank'] != False:                
+            await self.bot.create_payout(event="Giveaway", winner=winner, host=guild.get_member(giveaway["host"]), prize=giveaway["prize"], message=win_message, item=item['_id'])
         host = guild.get_member(giveaway["host"])
         if host: 
             host_dm = discord.Embed(title=f"Your Giveaway ", description="", color=self.bot.default_color)
@@ -587,7 +596,7 @@ class Giveaways(commands.GroupCog, name="giveaways"):
         if dank == True:
             prize = await DMCConverter_Ctx().convert(interaction, prize)
             if not isinstance(prize, int):
-                return await interaction.followup.send("Invalid Prize!", ephemeral=True, delete_after=5)
+                return await interaction.followup.send("Invalid Prize!", ephemeral=True)
         data = {
             "_id": None,
             "channel": interaction.channel.id,
@@ -601,8 +610,8 @@ class Giveaways(commands.GroupCog, name="giveaways"):
             "req_level": req_level,
             "req_weekly": req_weekly,
             "entries": {},
-            "start_time": datetime.datetime.now(),
-            "end_time": datetime.datetime.now() + datetime.timedelta(seconds=duration),
+            "start_time": await self.now(),
+            "end_time": await self.now() + datetime.timedelta(seconds=duration),
             "ended": False,
             "host": interaction.user.id,
             "donor": donor.id if donor else None,
@@ -671,6 +680,12 @@ class Giveaways(commands.GroupCog, name="giveaways"):
         winners="Numbers of winners to reroll"
     )
     async def _reroll(self, interaction: discord.Interaction, message: str, winners: app_commands.Range[int, 1, 10]=1):
+        config = await self.backend.get_config(interaction.guild)
+        if not config:
+            return await interaction.followup.send("Giveaways are not enabled in this server!", ephemeral=True)
+        user_role = [role.id for role in interaction.user.roles]
+        if not set(user_role) & set(config['manager_roles']): return await interaction.response.send_message("You do not have permission to start giveaways!", ephemeral=True)
+
         try:
             message = await interaction.channel.fetch_message(int(message))
         except:
@@ -682,6 +697,50 @@ class Giveaways(commands.GroupCog, name="giveaways"):
         giveawa_data['winners'] = winners
         self.bot.dispatch("giveaway_end", giveawa_data)
         await interaction.response.send_message("Giveaway rerolled successfully! Make sure to cancel the already queued payouts use `/payout search`", ephemeral=True)
+
+    async def _giveaway_end(self, interaction: discord.Interaction, message: discord.Message):        
+        if message.author.id != self.bot.user.id: return await interaction.response.send_message("This message is not a giveaway!", ephemeral=True)
+
+        config = await self.backend.get_config(interaction.guild)
+        if not config:
+            return await interaction.response.send_message("Giveaways are not enabled in this server!", ephemeral=True)
+        
+        user_role = [role.id for role in interaction.user.roles]
+        if not set(user_role) & set(config['manager_roles']): return await interaction.response.send_message("You do not have permission to start giveaways!", ephemeral=True)
+        
+        giveaway_data = await self.backend.get_giveaway(message)
+        if not giveaway_data: return await interaction.response.send_message("This message is not a giveaway!", ephemeral=True)
+        if giveaway_data['ended']: return await interaction.response.send_message("This giveaway has already ended!", ephemeral=True)
+        self.bot.dispatch("giveaway_end", giveaway_data)
+        await interaction.response.send_message("Giveaway ended successfully!", ephemeral=True)
+    
+    async def _giveaway_reroll(self, interaction: discord.Interaction, message: discord.Message):
+        config = await self.backend.get_config(interaction.guild)
+        if not config:
+            return await interaction.response.send_message("Giveaways are not enabled in this server!", ephemeral=True)
+        
+        user_role = [role.id for role in interaction.user.roles]
+        if not set(user_role) & set(config['manager_roles']): return await interaction.response.send_message("You do not have permission to start giveaways!", ephemeral=True)
+
+        if message.author.id != self.bot.user.id: return await interaction.response.send_message("This message is not a giveaway!", ephemeral=True)
+        giveaway_data = await self.backend.get_giveaway(message)
+        titile = "Reroll Giveaway for"
+        modal = General_Modal(title="Reroll Giveawy", interaction=interaction)
+        modal.winner_num = discord.ui.TextInput(label="Number of Winners", placeholder=giveaway_data['winners'], required=True)
+        modal.add_item(modal.winner_num)
+        await interaction.response.send_modal(modal)
+        await modal.wait()
+
+        if modal.value:
+            try:
+                winners = int(modal.winner_num.value)
+            except:
+                return await modal.interaction.response.send_message("Invalid number of winners!", ephemeral=True)
+            giveaway_data['winners'] = winners
+            self.bot.dispatch("giveaway_end", giveaway_data)
+            await modal.interaction.response.send_message("Giveaway rerolled successfully! Make sure to cancel the already queued payouts use `/payout search`", ephemeral=True)
+        else:
+            return
 
     @app_commands.command(name="end", description="End a giveaway")
     @app_commands.describe(
