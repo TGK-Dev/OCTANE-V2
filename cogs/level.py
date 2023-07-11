@@ -224,6 +224,11 @@ class Level(commands.GroupCog):
             annouce = message.guild.get_channel(config['announcement_channel'])
             if annouce is None: return
             await annouce.send(embed=level_up_embed, content=user.mention)
+        if data['weekly'] >= 100:
+            role = message.guild.get_role(1128307039672737874)
+            if role is None: return
+            if role in user.roles: return
+            await user.add_roles(role, reason="Reached 100 messages in a week")
 
     @commands.Cog.listener()
     async def on_level_up(self, message: discord.Message, data: dict):
@@ -271,6 +276,11 @@ class Level(commands.GroupCog):
             await annouce.send(embed=level_up_embed, content=message.author.mention)
     
         await self.levels.update_member_level(message.author, data)
+        if data['weekly'] >= 100:
+            role = message.guild.get_role(1128307039672737874)
+            if role is None: return
+            if role in message.author.roles: return
+            await message.author.add_roles(role, reason="100 messages in a week")
 
     @app_commands.command(name="rank", description="View your rank card")
     @app_commands.checks.cooldown(1, 10, key=lambda i:(i.guild_id, i.user.id))
