@@ -65,7 +65,6 @@ class Dank_Events(commands.GroupCog, name="dank"):
             data['last_prices'].append(update_data)
             data['price'] = price
             data['last_updated'] = datetime.datetime.now()
-            print(data)
             if len(data['last_prices']) > 10:
                 data['last_prices'].pop(0)
             await self.bot.dank_items.update(data)
@@ -91,8 +90,9 @@ class Dank_Events(commands.GroupCog, name="dank"):
             await self.bot.dank_items.insert(data)
         else:
             old_price = data['price']
+            if old_price == price: return
             update_data = {"day": data['last_updated'].strftime("%d/%m/%Y"),"old_price": old_price, "new_price": price}
-            data['last_prices'].append(update_data)
+            data['last_prices'].append(update_data)            
             data['price'] = price
             if len(data['last_prices']) > 10:
                 data['last_prices'].pop(0)
@@ -149,6 +149,19 @@ class Dank_Events(commands.GroupCog, name="dank"):
         embed = discord.Embed(description=f"Updated `{item['_id']}` from `⏣ {old_price}` to `⏣ {price}`", color=interaction.client.default_color)
         await interaction.response.send_message(embed=embed)
 
+    @item.command(name="delete", description="Delete an item")
+    @app_commands.autocomplete(item=item_autocomplete)
+    @app_commands.checks.has_permissions(manage_guild=True)
+    @app_commands.describe(item="The item to delete")
+    async def item_delete(self, interaction: discord.Interaction, item: str):
+        item = await self.bot.dank_items.find(item)
+        if not item: return await interaction.response.send_message("Item not found", ephemeral=True)
+        await self.bot.dank_items.delete(item)
+        try:
+            del self.bot.dank_items_cache[item["_id"]]
+        except KeyError:
+            pass
+        await interaction.response.send_message("Item deleted successfully", ephemeral=True)    
     
     @item.command(name="bulk_update", description="Bulk update items")
     @app_commands.describe(message="The message to bulk update items from")
