@@ -425,7 +425,7 @@ class Giveaways(commands.GroupCog, name="giveaways"):
 
     @commands.Cog.listener()
     async def on_giveaway_end(self, giveaway: dict):
-        guild = self.bot.get_guild(giveaway["guild"])
+        guild: discord.Guild = self.bot.get_guild(giveaway["guild"])
         channel = guild.get_channel(giveaway["channel"])
         try:
             message = await channel.fetch_message(giveaway["_id"])
@@ -438,9 +438,8 @@ class Giveaways(commands.GroupCog, name="giveaways"):
             embed = message.embeds[0]
             view = Giveaway()
             view.children[0].disabled = True
-            embed.title = "Giveaway has ended"
-            await message.edit(embed=embed, view=view)
-            embed = discord.Embed(description="No one entered the giveaway", color=discord.Color.red())
+            await message.edit(embed=embed, view=view, content="**Giveaway has ended**")
+            embed = discord.Embed(description="No one entered the giveaway", color=self.bot.default_color)
             await message.reply(embed=embed)
             await self.backend.giveaways.delete(giveaway["_id"])
             try:
@@ -481,12 +480,12 @@ class Giveaways(commands.GroupCog, name="giveaways"):
         if len(embed.fields) != 0:
             fields_names = [field.name for field in embed.fields]
             if "Winners" in fields_names:
-                embed.set_field_at(fields_names.index("Winners"), name="Winners", value=", ".join([f"<@{winner}>" for winner in winners]))
+                embed.set_field_at(fields_names.index("Winners"), name="Winners", value=", ".join([f"<@{winner}>" for winner in winners]), inline=False)
             else:
                 embed.description += f"\nTotal Entries: {len(giveaway['entries'].keys())}"
-                embed.add_field(name="Winners", value=", ".join([f"<@{winner}>" for winner in winners]))
+                embed.add_field(name="Winners", value=", ".join([f"<@{winner}>" for winner in winners]), inline=False)
         else:
-            embed.add_field(name="Winners", value=", ".join([f"<@{winner}>" for winner in winners]))
+            embed.add_field(name="Winners", value=", ".join([f"<@{winner}>" for winner in winners]), inline=False)
         
         view = Giveaway()
         view.children[0].disabled = True
@@ -525,8 +524,10 @@ class Giveaways(commands.GroupCog, name="giveaways"):
             embed.description += f"<a:tgk_blackCrown:1097514279973961770>  **Won:** {giveaway['prize']}\n"
         embed.set_footer(text="Make sure to claim your prize from claim channel!")
         win_message = await message.reply(embed=embed, content=",".join([f"<@{winner}>" for winner in winners]))
-        if giveaway['dank'] != False:                
-            await self.bot.create_payout(event="Giveaway", winner=winner, host=guild.get_member(giveaway["host"]), prize=giveaway["prize"], message=win_message, item=item['_id'])
+        if giveaway['dank'] != False:
+            for winner in winners:
+                await self.bot.create_payout(event="Giveaway", winner=winner, host=guild.get_member(giveaway['host']), prize=giveaway["prize"], message=win_message, item=item)
+            
         host = guild.get_member(giveaway["host"])
         if host: 
             host_dm = discord.Embed(title=f"Your Giveaway ", description="", color=self.bot.default_color)

@@ -32,7 +32,7 @@ class Payout(commands.GroupCog, name="payout", description="Payout commands"):
 		self.bot.payout_queue = Document(self.db, "payout_queue")
 		self.bot.payout_pending = Document(self.db, "payout_pending")
 		self.bot.payout_delete_queue = Document(self.db, "payout_delete_queue")
-		#self.claim_task = self.check_unclaim.start()
+		self.claim_task = self.check_unclaim.start()
 		self.bot.create_payout = self.create_payout
 		self.claim_task_progress = False
 		self.comman_event = ["Mega Giveaway", "Daily Giveaway", "Silent Giveaway", "Black Tea", "Rumble Royale", "Hunger Games", "Guess The Number", "Split Or Steal", "Mafia", "Typerace", "Bingo", "Heist Giveaway"]
@@ -84,6 +84,7 @@ class Payout(commands.GroupCog, name="payout", description="Payout commands"):
 		return embed
 
 	async def create_payout(self, event: str, winner: discord.Member, host: discord.Member, prize: int, message: discord.Message, item: dict=None):
+		print("Creating Payout")
 		config = await self.bot.payout_config.find(message.guild.id)
 		queue_data = {
 			'_id': None,
@@ -91,7 +92,7 @@ class Payout(commands.GroupCog, name="payout", description="Payout commands"):
 			'guild': message.guild.id,
 			'winner': winner.id,
 			'prize': prize,
-			'item': item if item else None,
+			'item': item['_id'] if item else None,
 			'event': event,
 			'claimed': False,
 			'set_by': host.id,
