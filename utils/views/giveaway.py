@@ -52,11 +52,15 @@ class Giveaway(View):
                     result['weekly'] = "You don't have the required weekly XP to join this giveaway.\n> `Required weekly XP: {}`".format(data['req_weekly'])
         
         if data['req_roles']:
-            if (set(user_roles) & set(data['req_roles'])):
+            #check if data['req_roles'] is the subset of user_roles
+            if set(data['req_roles']) <= set(user_roles):
                 pass
             else:
-                req_roles = [f'<@&{role}>' for role in data['req_roles']]
-                result['roles'] = f"You don't have the required role to join this giveaway.\n> Required role: {', '.join(req_roles)}"
+                #find the missing roles
+                missing_roles = set(data['req_roles']) - set(user_roles)
+                missing_roles = [f"<@&{role}>" for role in missing_roles]
+                result['roles'] = f"You don't have the required role(s) to join this giveaway.\n> Missing roles: {', '.join(missing_roles)}"
+
         bypassed = False    
         if len(result.keys()) > 0:
             if data['bypass_role'] and (set(user_roles) & set(data['bypass_role'])):
