@@ -411,12 +411,15 @@ class Giveaways(commands.GroupCog, name="giveaways"):
         now = await self.now()
         giveaways = self.backend.giveaways_cache.copy()
         for giveaway in giveaways.values():
-            if giveaway["end_time"] <= now:
-                if giveaway["_id"] in self.giveaway_in_prosses:
-                    continue
-                self.bot.dispatch("giveaway_end", giveaway)
-                self.giveaway_in_prosses.append(giveaway["_id"])
-                del self.backend.giveaways_cache[giveaway["_id"]]
+            try:
+                if giveaway["end_time"] <= now:
+                    if giveaway["_id"] in self.giveaway_in_prosses:
+                        continue
+                    self.bot.dispatch("giveaway_end", giveaway)
+                    self.giveaway_in_prosses.append(giveaway["_id"])
+                    del self.backend.giveaways_cache[giveaway["_id"]]
+            except TypeError:
+                pass
         self.giveaway_task_progress = False
 
     @giveaway_loop.before_loop

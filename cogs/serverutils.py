@@ -125,6 +125,7 @@ class Payout(commands.GroupCog, name="payout", description="Payout commands"):
 		for payout in data:
 			now = datetime.datetime.utcnow()
 			if now > payout['queued_at'] + datetime.timedelta(seconds=payout['claim_time']):
+				await asyncio.sleep(2)
 				view = discord.ui.View()
 				view.add_item(discord.ui.Button(label="Claim period expired!", style=discord.ButtonStyle.gray, disabled=True, emoji="<a:nat_cross:1010969491347357717>"))
 				payout_config = await self.bot.payout_config.find(payout['guild'])
@@ -148,6 +149,9 @@ class Payout(commands.GroupCog, name="payout", description="Payout commands"):
 				user = guild.get_member(payout['winner'])
 
 				event_channel = guild.get_channel(payout['channel'])
+				if not event_channel:
+					await self.bot.payout_queue.delete(payout['_id'])
+					continue
 				try:
 					event_message = await event_channel.fetch_message(payout['winner_message_id'])
 					loading_emoji = await self.bot.emoji_server.fetch_emoji(998834454292344842)
