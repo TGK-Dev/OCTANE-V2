@@ -305,7 +305,7 @@ class Level(commands.GroupCog):
         await interaction.response.send_message(embed=embed)
 
     @app_commands.command(name="set", description="Set a user's level")
-    @app_commands.checks.has_permissions(aministrator=True)
+    @app_commands.checks.has_permissions(administrator=True)
     async def set(self, interaction: Interaction, member: discord.Member, level: int):
         data = await self.levels.get_member_level(member)
         data['xp'] = await self.levels.count_xp(level)
@@ -323,7 +323,7 @@ class Level(commands.GroupCog):
             await member.add_roles(*roles)
     
     @app_commands.command(name="reset", description="Reset a user's level")
-    @app_commands.checks.has_permissions(aministrator=True)
+    @app_commands.checks.has_permissions(administrator=True)
     async def reset(self, interaction: Interaction, member: discord.Member):
         data = await self.levels.get_member_level(member)
         await self.levels.ranks.delete(member.id)
