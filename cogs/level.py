@@ -408,7 +408,7 @@ class Giveaways(commands.GroupCog, name="giveaways"):
         if self.giveaway_task_progress == True:
             return
         self.giveaway_task_progress = True
-        now = await self.now()
+        now = datetime.datetime.utcnow()
         giveaways = self.backend.giveaways_cache.copy()
         for giveaway in giveaways.values():
             try:
@@ -624,8 +624,8 @@ class Giveaways(commands.GroupCog, name="giveaways"):
             "req_level": req_level,
             "req_weekly": req_weekly,
             "entries": {},
-            "start_time": await self.now(),
-            "end_time": await self.now() + datetime.timedelta(seconds=duration),
+            "start_time": datetime.datetime.utcnow(),
+            "end_time": (datetime.datetime.utcnow() + datetime.timedelta(seconds=duration)),
             "ended": False,
             "host": interaction.user.id,
             "donor": donor.id if donor else None,
@@ -645,7 +645,8 @@ class Giveaways(commands.GroupCog, name="giveaways"):
         else:
             embed.description += f"## Prize: {prize}\n"
         embed.description += "‎\n"
-        embed.description += f"End Time: <t:{int(data['end_time'].timestamp())}:R> (<t:{int(data['end_time'].timestamp())}:T>)\n"
+        timnestamp = int((datetime.datetime.now() + datetime.timedelta(seconds=duration)).timestamp())
+        embed.description += f"End Time: <t:{timnestamp}:R> (<:{timnestamp}:T>)\n"
         embed.description += f"Winners: {winners}\n"
         embed.description += f"Host: {interaction.user.mention}\n"
         if donor:

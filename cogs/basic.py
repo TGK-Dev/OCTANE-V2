@@ -522,6 +522,40 @@ class Logging(commands.Cog):
             gc = self.bot.get_channel(785847439579676672)
             await gc.send(f"Hey fellow tree lovers!, Server tree is ready to be watered! {message.jump_url}", delete_after=10)
             return
+
+
+class karuta(commands.Cog):
+    def __init__(self, bot):
+        self.bot = bot
+    
+    @commands.command(name='karuta-access', aliases=['ka'])
+    async def karuta_access(self, ctx):
+        blacklist_role = ctx.guild.get_role(1121782006628503683)
+        access_role = ctx.guild.get_role(1034072149247397938)
+        if blacklist_role in ctx.author.roles:
+            await ctx.author.remove_roles(access_role)
+            return await ctx.send("You are blacklisted from using this command!")
+        level_role = ctx.guild.get_role(811307879318945872)
+        donor_role = ctx.guild.get_role(810128688267919381)
+        if level_role or donor_role in ctx.author.roles:
+            await ctx.author.add_roles(access_role)
+            return await ctx.send("You now have access to the karuta commands!")
+        else:
+            await ctx.send("You need to be level 10 or a donor to use this command!")
+    
+    @commands.command(name="karuta-bl")
+    @commands.has_permissions(ban_members=True)
+    async def karuta_bl(self, ctx, user:discord.Member):
+        blacklist_role = ctx.guild.get_role(1121782006628503683)
+        access_role = ctx.guild.get_role(1034072149247397938)
+        if blacklist_role in user.roles:
+            await user.remove_roles(access_role)
+            await user.add_roles(blacklist_role)
+            await ctx.send("User is already blacklisted")
+        else:
+            await user.add_roles(blacklist_role)
+            await user.remove_roles(access_role)
+            await ctx.send("User has been blacklisted")        
                 
 async def setup(bot):
     await bot.add_cog(Basic(bot), guilds=[discord.Object(785839283847954433)])
@@ -535,3 +569,4 @@ async def setup(bot):
 
         
     
+
