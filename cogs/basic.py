@@ -530,6 +530,8 @@ class karuta(commands.Cog):
     
     @commands.command(name='karuta-access', aliases=['ka'])
     async def karuta_access(self, ctx):
+        if not ctx.guild: return
+        if ctx.author.guild.id != 785839283847954433: return
         blacklist_role = ctx.guild.get_role(1121782006628503683)
         access_role = ctx.guild.get_role(1034072149247397938)
         if blacklist_role in ctx.author.roles:
@@ -546,6 +548,8 @@ class karuta(commands.Cog):
     @commands.command(name="karuta-bl")
     @commands.has_permissions(ban_members=True)
     async def karuta_bl(self, ctx, user:discord.Member):
+        if not ctx.guild: return
+        if ctx.author.guild.id != 785839283847954433: return
         blacklist_role = ctx.guild.get_role(1121782006628503683)
         access_role = ctx.guild.get_role(1034072149247397938)
         if blacklist_role in user.roles:
@@ -560,6 +564,7 @@ class karuta(commands.Cog):
 async def setup(bot):
     await bot.add_cog(Basic(bot), guilds=[discord.Object(785839283847954433)])
     await bot.add_cog(Appeal_server(bot), guilds=[discord.Object(988761284956799038)])
+    await bot.add_cog(karuta(bot))
     await bot.add_cog(Logging(bot))
 
 
