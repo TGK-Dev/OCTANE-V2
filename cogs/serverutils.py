@@ -603,7 +603,7 @@ class Payout(commands.GroupCog, name="payout", description="Payout commands"):
 				await msg.add_reaction("<:tgk_active:1082676793342951475>")
 				await winner_message.edit(embed=embed, view=view)
 				self.bot.dispatch("more_pending", data['winner_message_id'])
-				if not data['item']
+				if not data['item']:
 					interaction.client.dispatch("payout_paid", msg, interaction.user, interaction.guild.get_member(data['winner']), data['prize'])
 				else:
 					interaction.client.dispatch("payout_paid", msg, interaction.user, interaction.guild.get_member(data['winner']), f"{data['prize']}x{data['item']}")
