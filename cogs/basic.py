@@ -540,6 +540,9 @@ class karuta(commands.Cog):
         level_role = ctx.guild.get_role(811307879318945872)
         donor_role = ctx.guild.get_role(810128688267919381)
         if level_role or donor_role in ctx.author.roles:
+            if access_role in ctx.author.roles:
+                await ctx.author.remove_roles(access_role)
+                return await ctx.send("Your access to the karuta has been revoked!")
             await ctx.author.add_roles(access_role)
             return await ctx.send("You now have access to the karuta commands!")
         else:
