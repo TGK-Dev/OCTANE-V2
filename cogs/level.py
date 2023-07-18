@@ -1,3 +1,4 @@
+import asyncio
 from typing import List
 import discord
 import math
@@ -76,6 +77,10 @@ class Level_DB:
                 "channels": {},
             },
             "rewards": {},
+            "weekly":{
+                "required_messages": None,
+                "role": None,
+            }
         }
         await self.config.insert(data)
         return data
@@ -100,6 +105,8 @@ class Level(commands.GroupCog):
         self.bot.level = self.levels
         self.webhook = None
     
+    weekly = app_commands.Group(name="weekly", description="Weekly commands")
+
     @commands.Cog.listener()
     async def on_ready(self):
         for guild in await self.levels.config.get_all():
@@ -225,11 +232,11 @@ class Level(commands.GroupCog):
             annouce = message.guild.get_channel(config['announcement_channel'])
             if annouce is None: return
             await annouce.send(embed=level_up_embed, content=user.mention)
-        if data['weekly'] >= 100:
-            role = message.guild.get_role(1128307039672737874)
+        if data['weekly'] >= config['weekly']['required_messages']:
+            role = message.guild.get_role(config['weekly']['role'])
             if role is None: return
             if role in user.roles: return
-            await user.add_roles(role, reason="Reached 100 messages in a week")
+            await user.add_roles(role, reason="Reached required messages for weekly role")
 
     @commands.Cog.listener()
     async def on_level_up(self, message: discord.Message, data: dict):
@@ -322,6 +329,7 @@ class Level(commands.GroupCog):
                 roles.append(role)
         if len(roles) > 0:
             await member.add_roles(*roles)
+        await self.levels.update_member_level(member, data)
     
     @app_commands.command(name="reset", description="Reset a user's level")
     @app_commands.checks.has_permissions(administrator=True)
@@ -337,6 +345,27 @@ class Level(commands.GroupCog):
             if role is None: continue
             roles.append(role)
         await member.remove_roles(*roles)
+        await self.levels.update_member_level(member, {"xp": 0, "level": 0, "weekly": 0, "last_updated": datetime.datetime.utcnow()})
+
+    @weekly.command(name="reset", description="Reset a server's weekly xp")
+    @app_commands.checks.has_permissions(administrator=True)
+    async def weekly_reset(self, interaction: Interaction):
+        await interaction.response.send_message(embed=discord.Embed(description="Please wait... This may take a while"), ephemeral=True)
+        data = await self.levels.ranks.get_all()
+        new_data = []
+        for i in data:
+            i['weekly'] = 0
+            new_data.append(i)
+        await self.levels.ranks.bulk_update(new_data)
+        config = await self.levels.get_config(interaction.guild)
+        if config['weekly']['required_messages'] != 0:
+            role = interaction.guild.get_role(1128307039672737874)
+            if role is None: return
+            for member in interaction.guild.members:
+                if role in member.roles:
+                    await member.remove_roles(role, reason="Weekly reset")
+                    await asyncio.sleep(0.5)
+        await interaction.edit_original_message(content="Succesfully reset weekly xp", embed=None)            
 
 class Giveaways_Backend:
     def __init__(self, bot):

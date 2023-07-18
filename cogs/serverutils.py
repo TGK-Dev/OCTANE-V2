@@ -506,6 +506,110 @@ class Payout(commands.GroupCog, name="payout", description="Payout commands"):
 			await interaction.message.edit(embeds=[embed], view=view)
 			await message.reply(f"{user.mention} This payout could not be confirmed in time. Please try again, if you think it's a mistake, please contact a `@jay2404`", delete_after=10)
 
+	@commands.Cog.listener()
+	async def on_more_pending(self, id, ):
+		data = await self.bot.payout_pending.find_many_by_custom({'winner_message_id': id})
+		if len(data) > 0:
+			loading_emoji = await self.bot.emoji_server.fetch_emoji(998834454292344842)
+			paid_emoji = await self.bot.emoji_server.fetch_emoji(1052528036043558942)
+			winner_channel = self.bot.get_channel(data['channel'])
+			try:
+				winner_message = await winner_channel.fetch_message(data['winner_message_id'])
+				await winner_message.remove_reaction(loading_emoji, self.bot.user)
+				await winner_message.add_reaction(paid_emoji)
+			except Exception as e:
+				pass
+		else:
+			return
+
+
+	@app_commands.command(name="express", description="Express Payout")
+	async def express_payout(self, interaction: discord.Interaction):
+		config = await self.bot.payout_config.find(interaction.guild.id)
+		if config is None: return
+		user_roles = [role.id for role in interaction.user.roles]
+		if not (set(user_roles) & set(config['manager_roles'])): 
+			await interaction.response.send_message("You don't have permission to use this command", ephemeral=True)
+			return
+		payouts = await self.bot.payout_pending.find_many_by_custom({'guild': interaction.guild.id})
+		if len(payouts) <= 0:
+			await interaction.response.send_message("There are no payouts pending", ephemeral=True)
+			return
+		
+		await interaction.response.send_message("### Highly Experimental Command ###\n\n**Starting Express Payout**", ephemeral=True)
+		queue_channel = interaction.guild.get_channel(config['queue_channel'])
+		for data in payouts:
+			print(f"https://discord.com/channels/{interaction.guild.id}//{data['_id']}")
+			def check(m: discord.Message):
+				if m.channel.id != interaction.channel.id: 
+					return False
+				if m.author.id != 270904126974590976:
+					return False
+				
+				if len(m.embeds) == 0: 
+					return False
+				embed = m.embeds[0]
+				if embed.description.startswith("Successfully paid"):
+
+					found_winner = interaction.guild.get_member(int(embed.description.split(" ")[2].replace("<", "").replace(">", "").replace("!", "").replace("@", ""))) 
+					if data['winner'] != found_winner.id: 
+						return False
+					items = re.findall(r"\*\*(.*?)\*\*", embed.description)[0]
+					if "⏣" in items:
+						items = int(items.replace("⏣", "").replace(",", ""))
+						if items == data['prize']:
+							return True
+						else:
+							return False
+					else:
+						emojis = list(set(re.findall(":\w*:\d*", items)))
+						for emoji in emojis :items = items.replace(emoji,"",100); items = items.replace("<>","",100);items = items.replace("<a>","",100);items = items.replace("  "," ",100)
+						mathc = re.search(r"(\d+)x (.+)", items)
+						item_found = mathc.group(2)
+						quantity_found = int(mathc.group(1))
+						if item_found == data['item'] and quantity_found == data['prize']:
+							return True
+
+			embed = discord.Embed(title="Payout Info", description="")
+			embed.description += f"**Winner:** <@{data['winner']}>\n"
+			if data['item']:
+				embed.description += f"**Price:** {data['prize']}x{data['item']}\n"
+			else:
+				embed.description += f"**Price:** ⏣ {data['prize']:,}\n"
+			embed.description += f"**Channel:** <#{data['channel']}>\n"
+			embed.description += f"**Host:** <@{data['set_by']}>\n"
+			cmd = ""
+			if not data['item']:
+				cmd += f"/serverevents payout user:{data['winner']} quantity:{data['prize']}"
+			else:
+				cmd += f"/serverevents payout user:{data['winner']} quantity:{data['prize']} item:{data['item']}"
+			embed.add_field(name="Command", value=f"{cmd}")
+
+			await interaction.followup.send(embed=embed, ephemeral=True)
+			try:
+				msg: discord.Message = await self.bot.wait_for('message', check=check, timeout=60)
+				view = discord.ui.View()
+				view.add_item(discord.ui.Button(label=f"Paid at", style=discord.ButtonStyle.url, url=msg.jump_url, emoji="<:tgk_link:1105189183523401828>"))
+				try:
+					winner_message = await queue_channel.fetch_message(data['_id'])
+				except discord.NotFound:
+					continue
+				embed = winner_message.embeds[0]
+				embed.description += f"\n**Payout Location:** {msg.jump_url}"
+				embed.description = embed.description.replace("`Awaiting Payment`", "`Successfuly Paid`")
+				embed.description = embed.description.replace("`Initiated`", "`Successfuly Paid`")
+				embed.title = "Successfully Paid"
+				await self.bot.payout_pending.delete(data['_id'])
+				await msg.add_reaction("<:tgk_active:1082676793342951475>")
+				await winner_message.edit(embed=embed, view=view)
+				self.bot.dispatch("more_pending", data['winner_message_id'])
+				interaction.client.dispatch("payout_paid", interaction.message, interaction.user, interaction.guild.get_member(data['winner']), data['prize'])
+				continue
+			except asyncio.TimeoutError:
+				await interaction.followup.send("Timed out you can try command again", ephemeral=True)
+				return
+		await interaction.followup.send("Finished Express Payout", ephemeral=True)
+
 utc = datetime.timezone.utc
 time = datetime.time(hour=4, minute=30, tzinfo=utc)
 

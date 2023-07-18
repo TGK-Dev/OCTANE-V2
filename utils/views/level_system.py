@@ -245,6 +245,44 @@ class LevelingConfig(View):
             await self.message.edit(embed=await self.update_embed(interaction, self.data))
             await interaction.client.level.update_config(interaction.guild, self.data)
             await view.select.interaction.delete_original_response()
+    
+    @button(label="Weekly Activity", style=discord.ButtonStyle.gray, emoji="<a:nat_message:1063077628036272158>", row=3)
+    async def weekly_activity(self, interaction: Interaction, button: Button):
+        view = General_Modal()
+        view.value = False
+        view.req = TextInput(label="Weekly Activity Requirement", placeholder="Enter the weekly activity requirement Enter (0) to disable", min_length=1, max_length=4)
+        view.add_item(view.req)
+        await interaction.response.send_modal(view)
+        await view.wait()
+
+        if not view.value: return
+        if view.req.value == "0":
+            self.data['weekly']['required_messages'] = 0
+            await view.interaction.response.send_message(content="Weekly activity has been disabled!", embed=None, view=None)
+        else:
+            try:
+                self.data['weekly']['required_messages'] = int(view.req.value)
+            except ValueError:
+                return await view.interaction.response.send_message(content="Invalid value entered!", embed=None, view=None)
+            await view.interaction.response.send_message(content=f"Weekly activity requirement has been set to {view.req.value} messages!\nNote: You can't this info in config embed", embed=None, view=None)
+        await interaction.client.level.update_config(interaction.guild, self.data)
+        await self.message.edit(embed=await self.update_embed(interaction, self.data))
+
+    @button(label="Weekly Role", style=discord.ButtonStyle.gray, emoji="<:tgk_role:1073908306713780284>", row=3)
+    async def weekly_role(self, interaction: Interaction, button: Button):
+        view = Role_select(placeholder="Select the role you want to reward",min_values=1, max_values=1)
+        view.value = False
+        view.add_item(view)
+        await interaction.response.send_message(view=view, ephemeral=True)
+        await view.wait()
+
+        if not view.value: return
+        self.data['weekly']['role'] = view.values[0].id
+        await interaction.client.level.update_config(interaction.guild, self.data)
+        await self.message.edit(embed=await self.update_embed(interaction, self.data))
+        await interaction.delete_original_response()
+
+
         
     @button(label="Reward Roles", style=discord.ButtonStyle.gray, emoji="<:level_roles:1123938667212312637>", row=3)
     async def reward_roles(self, interaction: Interaction, button: Button):
