@@ -141,6 +141,7 @@ class Level(commands.GroupCog):
 
         if member.bot: return
         if payload.guild_id is None: return
+        if member.guild_id != 785839283847954433: return
         member_data = await self.levels.get_member_level(member)
         if member_data['weekly'] < 10 or member_data['level'] < 5:
             data = await self.bot.free.find(member.id)
