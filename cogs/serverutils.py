@@ -603,7 +603,11 @@ class Payout(commands.GroupCog, name="payout", description="Payout commands"):
 				await msg.add_reaction("<:tgk_active:1082676793342951475>")
 				await winner_message.edit(embed=embed, view=view)
 				self.bot.dispatch("more_pending", data['winner_message_id'])
-				interaction.client.dispatch("payout_paid", interaction.message, interaction.user, interaction.guild.get_member(data['winner']), data['prize'])
+				if not data['item']
+					interaction.client.dispatch("payout_paid", msg, interaction.user, interaction.guild.get_member(data['winner']), data['prize'])
+				else:
+					interaction.client.dispatch("payout_paid", msg, interaction.user, interaction.guild.get_member(data['winner']), f"{data['prize']}x{data['item']}")
+
 				continue
 			except asyncio.TimeoutError:
 				await interaction.followup.send("Timed out you can try command again", ephemeral=True)
