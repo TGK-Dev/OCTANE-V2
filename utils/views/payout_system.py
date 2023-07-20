@@ -414,7 +414,7 @@ class Payout_Buttton(discord.ui.View):
         await interaction.message.edit(view=edit_view, embed=embed, content=None)
         await interaction.client.payout_pending.delete(data['_id'])
     
-    @discord.ui.button(label="Manual Verification", style=discord.ButtonStyle.gray, moji="<:caution:1122473257338151003>", custom_id="manual_verification", disabled=False)
+    @discord.ui.button(label="Manual Verification", style=discord.ButtonStyle.gray, emoji="<:caution:1122473257338151003>", custom_id="manual_verification", disabled=False)
     async def manual_verification(self, interaction: discord.Interaction, button: discord.ui.Button):
         view = General_Modal(title="Manual Verification", interaction=interaction)
         view.msg = discord.ui.TextInput(label="Message Link", placeholder="Enter the message link of te confirmation message", max_length=100, required=True, style=discord.TextStyle.long)
