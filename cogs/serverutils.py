@@ -84,7 +84,6 @@ class Payout(commands.GroupCog, name="payout", description="Payout commands"):
 		return embed
 
 	async def create_payout(self, event: str, winner: discord.Member, host: discord.Member, prize: int, message: discord.Message, item: dict=None):
-		print("Creating Payout")
 		config = await self.bot.payout_config.find(message.guild.id)
 		queue_data = {
 			'_id': None,
@@ -507,14 +506,14 @@ class Payout(commands.GroupCog, name="payout", description="Payout commands"):
 			await message.reply(f"{user.mention} This payout could not be confirmed in time. Please try again, if you think it's a mistake, please contact a `@jay2404`", delete_after=10)
 
 	@commands.Cog.listener()
-	async def on_more_pending(self, id, ):
-		data = await self.bot.payout_pending.find_many_by_custom({'winner_message_id': id})
-		if len(data) > 0:
+	async def on_more_pending(self, info: dict):
+		data = await self.bot.payout_pending.find_many_by_custom({'winner_message_id': info['id']})
+		if len(data) <= 0:
 			loading_emoji = await self.bot.emoji_server.fetch_emoji(998834454292344842)
 			paid_emoji = await self.bot.emoji_server.fetch_emoji(1052528036043558942)
-			winner_channel = self.bot.get_channel(data['channel'])
+			winner_channel = self.bot.get_channel(info['channel'])
 			try:
-				winner_message = await winner_channel.fetch_message(data['winner_message_id'])
+				winner_message = await winner_channel.fetch_message(info['winner_message_id'])
 				await winner_message.remove_reaction(loading_emoji, self.bot.user)
 				await winner_message.add_reaction(paid_emoji)
 			except Exception as e:
@@ -538,8 +537,9 @@ class Payout(commands.GroupCog, name="payout", description="Payout commands"):
 		
 		await interaction.response.send_message("### Highly Experimental Command ###\n\n**Starting Express Payout**", ephemeral=True)
 		queue_channel = interaction.guild.get_channel(config['queue_channel'])
+		config['express'] = True
+		await interaction.client.payout_config.update(config)
 		for data in payouts:
-			print(f"https://discord.com/channels/{interaction.guild.id}//{data['_id']}")
 			def check(m: discord.Message):
 				if m.channel.id != interaction.channel.id: 
 					return False
@@ -584,6 +584,8 @@ class Payout(commands.GroupCog, name="payout", description="Payout commands"):
 			else:
 				cmd += f"/serverevents payout user:{data['winner']} quantity:{data['prize']} item:{data['item']}"
 			embed.add_field(name="Command", value=f"{cmd}")
+			embed.set_footer(text=f"Queue Number: {payouts.index(data)+1}/{len(payouts)}")
+			await asyncio.sleep(1.25)
 
 			await interaction.followup.send(embed=embed, ephemeral=True)
 			try:
@@ -601,17 +603,22 @@ class Payout(commands.GroupCog, name="payout", description="Payout commands"):
 				embed.title = "Successfully Paid"
 				await self.bot.payout_pending.delete(data['_id'])
 				await msg.add_reaction("<:tgk_active:1082676793342951475>")
-				await winner_message.edit(embed=embed, view=view)
-				self.bot.dispatch("more_pending", data['winner_message_id'])
+				await winner_message.edit(embed=embed, view=view, content=None)
+				self.bot.dispatch("more_pending", data)
 				if not data['item']:
 					interaction.client.dispatch("payout_paid", msg, interaction.user, interaction.guild.get_member(data['winner']), data['prize'])
 				else:
 					interaction.client.dispatch("payout_paid", msg, interaction.user, interaction.guild.get_member(data['winner']), f"{data['prize']}x{data['item']}")
-
 				continue
+
 			except asyncio.TimeoutError:
+				config['express'] = False
+				await interaction.client.payout_config.update(config)
 				await interaction.followup.send("Timed out you can try command again", ephemeral=True)
 				return
+		
+		config['express'] = False
+		await interaction.client.payout_config.update(config)
 		await interaction.followup.send("Finished Express Payout", ephemeral=True)
 
 utc = datetime.timezone.utc
