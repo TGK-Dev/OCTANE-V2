@@ -557,11 +557,19 @@ class Giveaways(commands.GroupCog, name="giveaways"):
             embed.description += f"<a:tgk_blackCrown:1097514279973961770>  **Won:** {giveaway['prize']}\n"
         embed.set_footer(text="Make sure to claim your prize from claim channel!")
         win_message = await message.reply(embed=embed, content=",".join([f"<@{winner}>" for winner in winners]))
-        if giveaway['dank'] != False:
-            for winner in winners:
-                await self.bot.create_payout(event="Giveaway", winner=winner, host=guild.get_member(giveaway['host']), prize=giveaway["prize"], message=win_message, item=item)
-            
         host = guild.get_member(giveaway["host"])
+        
+        if giveaway['dank'] != False:
+            try:
+                for winner in winners:
+                    await self.bot.create_payout(event="Giveaway", winner=winner, host=guild.get_member(giveaway['host']), prize=giveaway["prize"], message=win_message, item=item)    
+            except:
+                if host:
+                    try:
+                        await host.send(f"I was unable to create a payout for some/all winners of your giveaway at {message.jump_url}")
+                    except discord.HTTPException:
+                        pass
+
         if host: 
             host_dm = discord.Embed(title=f"Your Giveaway ", description="", color=self.bot.default_color)
             if giveaway["dank"]:
@@ -676,7 +684,7 @@ class Giveaways(commands.GroupCog, name="giveaways"):
             embed.description += f"## Prize: {prize}\n"
         embed.description += "‎\n"
         timnestamp = int((datetime.datetime.now() + datetime.timedelta(seconds=duration)).timestamp())
-        embed.description += f"End Time: <t:{timnestamp}:R> (<:{timnestamp}:T>)\n"
+        embed.description += f"End Time: <t:{timnestamp}:R> (<t:{timnestamp}:T>)\n"
         embed.description += f"Winners: {winners}\n"
         embed.description += f"Host: {interaction.user.mention}\n"
         if donor:
