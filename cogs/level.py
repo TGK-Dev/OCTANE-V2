@@ -142,13 +142,10 @@ class Level(commands.GroupCog):
             self.bot.dispatch("level_up", message, data)
     
     @commands.Cog.listener()
-    async def on_raw_member_remove(self, payload: discord.RawMemberRemoveEvent):
-        member = payload.user
-        guild = self.bot.get_guild(payload.guild_id)
-
+    async def on_member_remove(self, member: discord.Member):
         if member.bot: return
-        if payload.guild_id is None: return
-        if member.guild_id != 785839283847954433: return
+        if member.guild.id != 785839283847954433: return
+        guild: discord.Guild = member.guild
         member_data = await self.levels.get_member_level(member)
         if member_data['weekly'] < 10 or member_data['level'] < 5:
             data = await self.bot.free.find(member.id)
@@ -171,7 +168,7 @@ class Level(commands.GroupCog):
             embed.description += f"**User:** {member.mention} | `{member.id}`\n"
             embed.description += f"**Total Freeloads:** {data['total_ff']}\n"
             embed.description += f"**Ban Duration:** {data['ban_days']} days\n"
-            embed.description += f"**Uban In:** <t:{round(data['unbanAt'].timestamp())}:R>\n"
+            embed.description += f"**Unban in** <t:{round(data['unbanAt'].timestamp())}:R>\n"
             embed.set_thumbnail(url=member.avatar.url if member.avatar else member.default_avatar)
             embed.set_footer(text="The Gambler's Kingdom", icon_url=guild.icon.url)
             await self.webhook.send(embed=embed)
