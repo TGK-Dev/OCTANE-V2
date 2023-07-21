@@ -996,6 +996,7 @@ class Voice(commands.GroupCog):
                 if len(channel.members) > 0:
                     dup['last_activity'] = None
                     await self.channels.update(dup)
+                    await member.move_to(channel)
                 return
             if channel.id not in self.config_cache.keys(): return
             overrite = {
