@@ -356,6 +356,7 @@ class Level(commands.GroupCog):
         for i in data:
             i['weekly'] = 0
             new_data.append(i)
+            self.levels.level_cache[i['_id']] = i
         await self.levels.ranks.bulk_update(new_data)
         config = await self.levels.get_config(interaction.guild)
         if config['weekly']['required_messages'] != 0:
@@ -365,7 +366,7 @@ class Level(commands.GroupCog):
                 if role in member.roles:
                     await member.remove_roles(role, reason="Weekly reset")
                     await asyncio.sleep(0.5)
-        await interaction.edit_original_message(content="Succesfully reset weekly xp", embed=None)            
+        await interaction.edit_original_response(content="Succesfully reset weekly xp", embed=None)            
 
 class Giveaways_Backend:
     def __init__(self, bot):
