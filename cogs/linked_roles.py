@@ -112,6 +112,10 @@ class Linked_Roles(commands.GroupCog, name="linkedroles"):
 			embed = discord.Embed(description=f"User {user.mention} is not linked with OCTANE but metadata has been created for them", color=discord.Color.red())
 			return await interaction.response.send_message(embed=embed, ephemeral=True)
 		
+		if data['access_token'] is None:
+			embed = discord.Embed(description=f"User {user.mention} is not linked with OCTANE", color=discord.Color.red())
+			return await interaction.response.send_message(embed=embed, ephemeral=True)
+		
 		metadata = await self.get_metadata(data["access_token"])
 		if metadata == "Error":
 			embed = discord.Embed(description=f"```py\n{await metadata}\n```", color=discord.Color.red())
