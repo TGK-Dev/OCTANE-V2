@@ -12,7 +12,9 @@ from typing import List, Union
 from utils.transformer import TimeConverter
 from utils.views.buttons import Confirm
 from utils.views.perks_system import friends_manage, Perk_Ignore
+from utils.views.voice_ui import Voice_UI
 from colour import Color
+
 class Perk_Type(enum.Enum):
     roles = "roles"
     channels = "channels"
@@ -923,6 +925,87 @@ class Perks(commands.GroupCog, name="perks", description="manage your custom per
                         user_data['last_react'] = datetime.datetime.utcnow()
                         await self.Perk.update_cache(Perk_Type.reacts, message.guild, user_data)
 
+
+
+class Voice(commands.GroupCog):
+    def __init__(self, bot):
+        self.bot = bot
+        self.db = bot.mongo["Voice"]
+        self.config = Document(self.db, "config")
+        self.channels = Document(self.db, "channels")
+        self.bot.vc_channel = self.channels
+        self.config_cache = {1069906467370565652: None}
+        self.voice_expire.start()
+        
+    
+    def cog_unload(self):
+        self.voice_expire.cancel()
+
+    @commands.Cog.listener()
+    async def on_ready(self):
+        for config in await self.config.get_all():
+            self.config_cache[config['join_create']] = config
+        for vs in await self.channels.get_all():
+            guild = self.bot.get_guild(vs['guild_id'])
+            if guild is None: await self.channels.delete(vs['_id'])
+            channel = guild.get_channel(vs['_id'])
+            if channel is None: await self.channels.delete(vs['_id'])
+            view = Voice_UI(self.bot.get_user(vs['owner']), channel, vs)
+            self.bot.add_view(view)
+
+    @tasks.loop(seconds=10)
+    async def voice_expire(self):
+        now = datetime.datetime.utcnow()
+        for data in await self.channels.get_all():
+            if data['last_activity'] is None: continue
+            if now > data['last_activity'] + datetime.timedelta(minutes=5):
+                channel = self.bot.get_channel(data['_id'])
+                if channel is None: 
+                    await self.channels.delete(data['_id'])
+                    continue
+                if len(channel.members) != 0: 
+                    data['last_activity'] = None
+                    await self.channels.update(data)
+                    continue
+                await channel.delete(reason="Voice channel expired")
+                await self.channels.delete(data['_id'])
+    
+    @voice_expire.before_loop
+    async def before_voice_expire(self):
+        await self.bot.wait_until_ready()
+
+
+    @commands.Cog.listener()
+    async def on_voice_state_update(self, member: discord.Member, before: discord.VoiceState, after: discord.VoiceState):
+        if before.channel is not None and after.channel is None:
+            data = await self.channels.find({"_id": before.channel.id})
+            if not data: return
+            if len(before.channel.members) == 0:
+                data['last_activity'] = datetime.datetime.utcnow()
+                await self.channels.update(data)
+        if before.channel is None and after.channel is not None:
+            channel: discord.VoiceChannel = after.channel
+            if channel.id not in self.config_cache.keys(): return
+            dup = await self.channels.find({"owner": member.id})
+            if dup: return
+            overrite = {
+                member: discord.PermissionOverwrite(view_channel=True,connect=True, speak=True, stream=True, use_voice_activation=True, priority_speaker=True),
+                member.guild.default_role: discord.PermissionOverwrite(connect=False, speak=False, stream=False, use_voice_activation=False, priority_speaker=False),
+                member.guild.me: discord.PermissionOverwrite(view_channel=True)
+            }
+            private_channel = await member.guild.create_voice_channel(name=f"{member.display_name}'s Voice", category=channel.category, overwrites=overrite, reason="Private Voice Channel")
+            await member.move_to(private_channel)
+            data = {
+                "_id": private_channel.id,
+                "owner": member.id,
+                "guild_id": member.guild.id,
+                "friends": [],
+                "last_activity": None,
+            }
+            await private_channel.send(f"Welcome to your private voice channel {member.mention}", view=Voice_UI(member, private_channel, data))
+            await self.channels.insert(data)
+
 async def setup(bot):
+    await bot.add_cog(Voice(bot))
     await bot.add_cog(Perks(bot))
 
