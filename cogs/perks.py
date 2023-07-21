@@ -983,11 +983,21 @@ class Voice(commands.GroupCog):
             if len(before.channel.members) == 0:
                 data['last_activity'] = datetime.datetime.utcnow()
                 await self.channels.update(data)
+
         if before.channel is None and after.channel is not None:
             channel: discord.VoiceChannel = after.channel
-            if channel.id not in self.config_cache.keys(): return
+            
             dup = await self.channels.find({"owner": member.id})
-            if dup: return
+            if dup: 
+                channel = self.bot.get_channel(dup['_id'])
+                if channel is None: 
+                    await self.channels.delete(dup['_id'])
+                    return                
+                if len(channel.members) > 0:
+                    dup['last_activity'] = None
+                    await self.channels.update(dup)
+                return
+            if channel.id not in self.config_cache.keys(): return
             overrite = {
                 member: discord.PermissionOverwrite(view_channel=True,connect=True, speak=True, stream=True, use_voice_activation=True, priority_speaker=True),
                 member.guild.default_role: discord.PermissionOverwrite(connect=False, speak=False, stream=False, use_voice_activation=False, priority_speaker=False),
