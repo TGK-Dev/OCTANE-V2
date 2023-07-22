@@ -82,6 +82,15 @@ async def on_ready():
     print(f"Cached Emoji Server: {bot.emoji_server.name} | {bot.emoji_server.id}")
     print(f"Bot Views: {len(bot.persistent_views)}")
     await bot.wait_until_ready()
+    with open("discord.log", "r+") as f:
+        code = f.read()
+        file = BytesIO(code.encode("utf-8"))
+        channel = bot.get_channel(1132371599778119751)
+        await channel.send(file=discord.File(file, filename=f"logs-{datetime.datetime.utcnow().strftime('%d-%m-%Y')}.log"))
+        f.seek(0)
+        f.truncate()
+        f.close()
+
     await bot.change_presence(activity=discord.Activity(type=discord.ActivityType.watching, name="Over Server Security"), status=discord.Status.dnd)
 
 @bot.tree.command(name="ping", description="Check bots leatency")
