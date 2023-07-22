@@ -372,6 +372,11 @@ class Perks(commands.GroupCog, name="perks", description="manage your custom per
             await interaction.response.send_message("You already have a custom role", ephemeral=True)
             return
         
+        if "AmariMod" in name:
+            await interaction.response.send_message("You can't use `AmariMod` in your role name", ephemeral=True)
+            owner = interaction.guild.get_member(488614633670967307)
+            if owner: await owner.send(f"{interaction.user.mention} ({interaction.user.id}) tried to use `AmariMod` in their role name")
+        
         await interaction.response.send_message(embed=discord.Embed(description="Processing your request", color=interaction.client.default_color))
 
         if icon:
@@ -503,6 +508,11 @@ class Perks(commands.GroupCog, name="perks", description="manage your custom per
         if not user_data['role_id']:
             return await interaction.response.send_message("You don't yet have to claim your custom role", ephemeral=True)
         
+        if "AmariMod" in name:
+            await interaction.response.send_message("You can't use `AmariMod` in your role name", ephemeral=True)
+            owner = interaction.guild.get_member(488614633670967307)
+            if owner: await owner.send(f"{interaction.user.mention} ({interaction.user.id}) tried to use `AmariMod` in their role name")
+            return
 
         role = interaction.guild.get_role(user_data['role_id'])
         if not role:
