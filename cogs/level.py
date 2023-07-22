@@ -474,6 +474,12 @@ class Giveaways(commands.GroupCog, name="giveaways"):
             view.children[0].disabled = True
             await message.edit(view=view, content="**Giveaway Ended**")
             await message.reply(embed=discord.Embed(description="No one entered the giveaway or there were not enough entries to pick a winner", color=self.bot.default_color))
+            await self.backend.giveaways.delete(giveaway['_id'])
+            self.giveaway_in_prosses.remove(giveaway['_id'])
+            try:
+                del self.backend.giveaways_cache[giveaway['_id']]
+            except:
+                pass
             return
         
         entries: List[int] = []
