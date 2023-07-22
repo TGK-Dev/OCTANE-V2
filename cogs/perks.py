@@ -996,7 +996,7 @@ class Voice(commands.GroupCog):
             if channel.id not in self.config_cache.keys(): return
             overrite = {
                 member: discord.PermissionOverwrite(view_channel=True,connect=True, speak=True, stream=True, use_voice_activation=True, priority_speaker=True),
-                member.guild.default_role: discord.PermissionOverwrite(connect=False, speak=False, stream=False, use_voice_activation=False, priority_speaker=False),
+                member.guild.default_role: discord.PermissionOverwrite(connect=False, speak=False, stream=False, use_voice_activation=False, priority_speaker=False, use_application_commands=True),
                 member.guild.me: discord.PermissionOverwrite(view_channel=True)
             }
             private_channel = await member.guild.create_voice_channel(name=f"{member.display_name}'s Voice", category=channel.category, overwrites=overrite, reason="Private Voice Channel")
