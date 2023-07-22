@@ -146,6 +146,8 @@ class Level(commands.GroupCog):
         if member.bot: return
         if member.guild.id != 785839283847954433: return
         guild: discord.Guild = member.guild
+        ban = await guild.fetch_ban(member)
+        if ban: return
         member_data = await self.levels.get_member_level(member)
         if member_data['weekly'] < 10:
             if member_data['level'] > 5: return
