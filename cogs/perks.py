@@ -945,13 +945,8 @@ class Voice(commands.GroupCog):
     async def on_ready(self):
         for config in await self.config.get_all():
             self.config_cache[config['join_create']] = config
-        for vs in await self.channels.get_all():
-            guild = self.bot.get_guild(vs['guild_id'])
-            if guild is None: await self.channels.delete(vs['_id'])
-            channel = guild.get_channel(vs['_id'])
-            if channel is None: await self.channels.delete(vs['_id'])
-            view = Voice_UI(self.bot.get_user(vs['owner']), channel, vs)
-            self.bot.add_view(view)
+        self.bot.add_view(Voice_UI())
+
 
     @tasks.loop(seconds=10)
     async def voice_expire(self):
@@ -1013,7 +1008,7 @@ class Voice(commands.GroupCog):
                 "friends": [],
                 "last_activity": None,
             }
-            await private_channel.send(f"Welcome to your private voice channel {member.mention}", view=Voice_UI(member, private_channel, data))
+            await private_channel.send(f"Welcome to your private voice channel {member.mention}", view=Voice_UI())
             await self.channels.insert(data)
 
 async def setup(bot):
