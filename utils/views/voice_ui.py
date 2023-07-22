@@ -96,7 +96,7 @@ class Voice_UI(View):
             else:
                 self.data['friends'].append(user.id)
                 added += f"{user.mention} "
-                overwrites = discord.PermissionOverwrite(connect=True, view_channel=True, speak=True, stream=True)
+                overwrites = discord.PermissionOverwrite(connect=True, view_channel=True, speak=True, stream=True, use_voice_activation=True)
                 await self.voice.set_permissions(user, overwrite=overwrites)
 
         await view.select.interaction.response.edit_message(content=f"Added: {added}\nRemoved: {removed}", view=None)
