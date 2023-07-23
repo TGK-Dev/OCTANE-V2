@@ -323,7 +323,7 @@ class JoinGateBackEnd(commands.Cog):
 
         if data["joingate"]["decancer"]:
             if member.name.startswith("カ"): return
-            if self.is_cancerous(member.global_name) or self.is_cancerous(member.display_name):
+            if self.is_cancerous(member.display_name if member.display_name else member.global_name):
                 new_nick = await self.nick_maker(member.guild, member.display_name)
                 
                 embed = discord.Embed(color=discord.Color.green(), title="Decancer", description="")
