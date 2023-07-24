@@ -245,7 +245,7 @@ class Perks(commands.GroupCog, name="perks", description="manage your custom per
         if perk == Perk_Type.highlights:
             await interaction.channel.send(f"{member.mention} Now you can use </perks highlight tadd:1107680822301032469>")
         if perk == Perk_Type.reacts:
-            await interaction.channel.send(f"{member.mention} Now you can use </perks react set:1107680822301032469>")
+            await interaction.channel.send(f"{member.mention} Now you can use </perks react add:1107680822301032469>")
         if perk == Perk_Type.roles:
             await interaction.channel.send(f"{member.mention} Now you can use </perks claim role:1107680822301032469>")
         if perk == Perk_Type.channels:
