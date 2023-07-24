@@ -41,7 +41,7 @@ class Bot_base(commands.Bot):
         self.aceDb = AsyncIOMotorClient(self.connection_url2)
         self.db2 = self.aceDb["TGK"]
         for file in os.listdir("./cogs"):
-            if file.endswith(".py") and not file.startswith("_") and file.startswith(("dev", "perks")):
+            if file.endswith(".py") and not file.startswith("_") and file.startswith(("dev", "dank", "serversettings", "serverutils", "auction")):
                 await self.load_extension(f"cogs.{file[:-3]}")
             
         if self.sync == True:
@@ -61,8 +61,7 @@ async def on_ready():
     print(f"loadded cogs: {len(bot.extensions)}")
     print(f"Cached Emoji Server: {bot.emoji_server.name} | {bot.emoji_server.id}")
     print(f"Bot Views: {len(bot.persistent_views)}")
-    await bot.wait_until_ready()
-    await bot.change_presence(activity=discord.Activity(type=discord.ActivityType.watching, name="Over Server Security"), status=discord.Status.dnd)
+    await bot.change_presence(activity=discord.Activity(type=discord.ActivityType.watching, name="Over Server Security"), status=discord.Status.offline)
 
 @bot.tree.command(name="ping", description="Check bots leatency")
 async def ping(interaction):
