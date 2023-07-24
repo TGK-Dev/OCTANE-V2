@@ -1,4 +1,5 @@
 import enum
+import random
 import discord
 import datetime
 import humanfriendly
@@ -11,6 +12,7 @@ from utils.db import Document
 from typing import List, Union
 from utils.transformer import TimeConverter
 from utils.views.buttons import Confirm
+from utils.views.selects import Select_General
 from utils.views.perks_system import friends_manage, Perk_Ignore
 from utils.views.voice_ui import Voice_UI
 from colour import Color
@@ -99,7 +101,7 @@ class Perks_DB:
                 return perk_data
             
             case Perk_Type.reacts | "reacts":
-                perk_data = {'guild_id': guild_id, 'user_id': user_id, 'emoji': None, 'last_react': None}
+                perk_data = {'guild_id': guild_id, 'user_id': user_id, 'emojis': [], 'last_react': None, 'max_emoji': friend_limit if friend_limit else 1}
                 await self.react.insert(perk_data)
                 return perk_data
 
@@ -306,8 +308,12 @@ class Perks(commands.GroupCog, name="perks", description="manage your custom per
             changes += f"Duration: {duration}\n"
             perk_data['duration'] = duration
         if friend_limit:
-            changes += f"Friend Limit: {friend_limit}\n"
-            perk_data['friend_limit'] = friend_limit
+            if perk == Perk_Type.reacts:
+                changes = f"Max Emoji: {friend_limit}\n"
+                perk_data['max_emoji'] = friend_limit
+            else:
+                changes += f"Friend Limit: {friend_limit}\n"
+                perk_data['friend_limit'] = friend_limit
         changes += f"\nDo you want to apply these changes?"
         view = Confirm(interaction.user, 30)
         await interaction.response.send_message(embed=discord.Embed(description=changes, color=interaction.client.default_color), view=view)
@@ -315,6 +321,8 @@ class Perks(commands.GroupCog, name="perks", description="manage your custom per
         await view.wait()
         if view.value:
             await self.Perk.update(perk, perk_data)
+            if perk == Perk_Type.reacts:
+                await self.Perk.update_cache(perk, interaction.guild, perk_data)
             await view.interaction.response.edit_message(embed=discord.Embed(description="Successfully updated the perk", color=interaction.client.default_color), view=None)
         else:
             await interaction.edit_original_response(embed=discord.Embed(description="Cancelled", color=interaction.client.default_color), view=None)
@@ -621,13 +629,13 @@ class Perks(commands.GroupCog, name="perks", description="manage your custom per
         else:
             await view.interaction.response.edit_message(embed=discord.Embed(description=f"Timed out", color=interaction.client.default_color), view=None)
 
-    @react.command(name="set", description="set your custom auto reaction perk")
+    @react.command(name="add", description="add a custom reaction to your react perk")
     @app_commands.describe(emoji="the emoji you want to set")
     async def _set(self, interaction: Interaction, emoji: str):
         user_data = await self.Perk.get_data(Perk_Type.reacts, interaction.guild.id, interaction.user.id)
         if not user_data: return await interaction.response.send_message("You don't have any custom reaction perks", ephemeral=True)
 
-        await interaction.response.send_message(embed=discord.Embed(description="Checking emoji...", color=interaction.client.default_color), ephemeral=False)
+        await interaction.response.send_message(embed=discord.Embed(description="Checking the validity of the emoji", color=interaction.client.default_color), ephemeral=False)
         msg = await interaction.original_response()
         try:
             await msg.add_reaction(emoji)
@@ -635,12 +643,38 @@ class Perks(commands.GroupCog, name="perks", description="manage your custom per
             await interaction.edit_original_response(embed=discord.Embed(description="Invalid emoji", color=interaction.client.default_color))
             return
         
-        user_data['emoji'] = emoji
+        if len(user_data['emojis']) >= user_data['max_emoji']:
+            await interaction.edit_original_response(embed=discord.Embed(description=f"You have reached the maximum amount `{user_data['max_emoji']}` of emojis", color=interaction.client.default_color))
+            await msg.remove_reaction(emoji, interaction.client.user)
+            return
+        
+        user_data['emojis'].append(emoji)
         await self.Perk.update(Perk_Type.reacts, user_data)
-        await interaction.followup.send(embed=discord.Embed(description=f"Your custom reaction has been set to {emoji}", color=interaction.client.default_color), ephemeral=True)
+        await interaction.followup.send(embed=discord.Embed(description=f"Your {emoji} has been added to your custom reaction list", color=interaction.client.default_color), ephemeral=True)
         await interaction.delete_original_response()
         await self.Perk.update_cache(Perk_Type.reacts, interaction.guild, user_data)
 
+    @react.command(name="remove", description="remove a custom reaction from your react perk")
+    async def _remove(self, interaction: Interaction):
+        data = await self.Perk.get_data(Perk_Type.reacts, interaction.guild.id, interaction.user.id)
+        if not data: return await interaction.response.send_message("You don't have any custom reaction perks", ephemeral=True)
+        if len(data['emojis']) == 0: return await interaction.response.send_message("You don't have any custom reactions", ephemeral=True)
+
+        view = discord.ui.View()
+        options = [
+            discord.SelectOption(label=emoji.split(":")[1], value=emoji, emoji=emoji) 
+            for emoji in data['emojis']
+        ]
+        view.select = Select_General(interaction,options=options, placeholder="Choose the emoji you want to remove", max_values=1)
+        view.add_item(view.select)
+        await interaction.response.send_message(view=view, ephemeral=True)
+        await view.wait()
+
+        if view.value:
+            data['emojis'].remove(view.select.values[0])
+            await self.Perk.update(Perk_Type.reacts, data)
+            await self.Perk.update_cache(Perk_Type.reacts, interaction.guild, data)
+            await view.select.interaction.response.edit_message(embed=discord.Embed(description=f"Your {view.select.values[0]} has been removed from your custom reaction list", color=interaction.client.default_color), view=None)
 
     @highlight.command(name="tadd", description="add a trigger to your highlight perk")
     @app_commands.describe(trigger="the trigger you want to add")
@@ -822,26 +856,6 @@ class Perks(commands.GroupCog, name="perks", description="manage your custom per
                 self.bot.dispatch('check_cmd_activity', message, self.Perk.cach['channels'][message.guild.id][message.channel.id])
 
     @commands.Cog.listener()
-    async def on_auto_react(self, message: discord.Message, data):
-        channel_data = await self.Perk.channel.find({'channel_id': message.channel.id})
-        if channel_data is None: return
-        user = message.interaction.user
-        if user.id != channel_data['user_id']: return
-        if data['activity']['cooldown'] == None:
-            data['activity']['messages'] += 1
-            data['activity']['cooldown'] = datetime.datetime.utcnow()
-            await self.Perk.channel.update(data)
-            self.Perk.cach['channels'][message.guild.id][message.channel.id] = data
-            return
-        now = datetime.datetime.utcnow()
-        if now > data['activity']['cooldown'] + datetime.timedelta(seconds=8):
-            data['activity']['messages'] += 1
-            data['activity']['cooldown'] = datetime.datetime.utcnow()
-            await self.Perk.channel.update(data)
-            self.Perk.cach['channels'][message.guild.id][message.channel.id] = data
-            return
-
-    @commands.Cog.listener()
     async def on_check_activity(self, message: discord.Message, data):
         channel_data = await self.Perk.channel.find({'channel_id': message.channel.id})
         if channel_data is None: return
@@ -922,20 +936,19 @@ class Perks(commands.GroupCog, name="perks", description="manage your custom per
                 user_data = guild_data[mention.id]
                 if user_data['last_react'] is None:
                     try:
-                        await message.add_reaction(user_data['emoji'])
+                        await message.add_reaction(random.choice(user_data['emojis']))
                     except:
                         continue
                     user_data['last_react'] = datetime.datetime.utcnow()
                     await self.Perk.update_cache(Perk_Type.reacts, message.guild, user_data)
                 else:
-                    if now > user_data['last_react'] + datetime.timedelta(seconds=20):
+                    if now > user_data['last_react'] + datetime.timedelta(seconds=5):
                         try:
-                            await message.add_reaction(user_data['emoji'])
-                        except:
+                            await message.add_reaction(random.choice(user_data['emojis']))
+                        except Exception as e:
                             continue
                         user_data['last_react'] = datetime.datetime.utcnow()
                         await self.Perk.update_cache(Perk_Type.reacts, message.guild, user_data)
-
 
 
 class Voice(commands.GroupCog):
