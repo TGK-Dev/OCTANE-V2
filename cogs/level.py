@@ -504,7 +504,7 @@ class Giveaways(commands.GroupCog, name="giveaways"):
         embed: discord.Embed = message.embeds[0]
         if len(embed.fields) != 0:
             fields_name = [field.name for field in embed.fields]
-            if "Winenrs" in fields_name:
+            if "Winners" in fields_name:
                 embed.set_field_at(fields_name.index("Winners"), name="Winners", value=",".join([winner.mention for winner in winners]), inline=False)
             else:
                 embed.description += f"\nTotal Entries: {len(giveaway['entries'].keys())}"
@@ -537,11 +537,12 @@ class Giveaways(commands.GroupCog, name="giveaways"):
             host_embed.title += f"{giveaway['prize']} has ended"
 
         win_message = await message.reply(embed=win_embed, content=",".join([winner.mention for winner in winners]))
+        link_view = discord.ui.View()
+        link_view.add_item(discord.ui.Button(label="Jump", url=message.jump_url, style=discord.ButtonStyle.link))
 
-        
         for winner in winners:
             try:
-                await winner.send(embed=dm_embed)
+                await winner.send(embed=dm_embed, view=link_view)
             except:
                 pass
             if giveaway['dank']:
@@ -553,7 +554,7 @@ class Giveaways(commands.GroupCog, name="giveaways"):
         host_embed.description += f"**Winners:** \n"
         for winner in winners: host_embed.description += f"> {winners.index(winner)+1}. {winner.mention}\n"
         try:
-            await host.send(embed=host_embed)
+            await host.send(embed=host_embed, view=link_view)
         except:
             pass
 
@@ -696,6 +697,7 @@ class Giveaways(commands.GroupCog, name="giveaways"):
         message="Message to accompany the reroll",
         winners="Numbers of winners to reroll"
     )
+    @app_commands.rename(message="message_id")
     async def _reroll(self, interaction: discord.Interaction, message: str, winners: app_commands.Range[int, 1, 10]=1):
         config = await self.backend.get_config(interaction.guild)
         if not config:
@@ -763,6 +765,7 @@ class Giveaways(commands.GroupCog, name="giveaways"):
     @app_commands.describe(
         message="Message to accompany the end"
     )
+    @app_commands.rename(message="message_id")
     async def _end(self, interaction: discord.Interaction, message: str):
         try:
             message = await interaction.channel.fetch_message(int(message))
