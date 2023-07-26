@@ -265,7 +265,9 @@ class Payout_claim(discord.ui.View):
 
         await interaction.edit_original_response(embed=discord.Embed(description="<:octane_yes:1019957051721535618> | Sucessfully claimed payout, you will be paid in 24hrs", color=interaction.client.default_color))
 
-        msg = await queue_channel.send(embed=queue_embed, view=Payout_Buttton(), content=f"> Payouts will be done within 24h.\n> Else make ticket from <#785901543349551104>.\n> {interaction.user.mention}")
+        view = Payout_Buttton()
+        view.remove_item(view.children[0])
+        msg = await queue_channel.send(embed=queue_embed, view=view, content=f"> Payouts will be done within 24h.\n> Else make ticket from <#785901543349551104>.\n> {interaction.user.mention}")
         pending_data = data
         pending_data['_id'] = msg.id
         delete_queue_data = {'_id': interaction.message.id,'channel': interaction.message.channel.id,'now': datetime.datetime.utcnow(),'delete_after': 1800, 'reason': 'payout_claim'}
@@ -332,64 +334,9 @@ class Payout_Buttton(discord.ui.View):
 
     @discord.ui.button(label="Payout", style=discord.ButtonStyle.gray, emoji="<a:nat_check:1010969401379536958>", custom_id="payout")
     async def payout(self, interaction: discord.Interaction, button: discord.ui.Button):
-        loadin_embed = discord.Embed(description="<a:loading:998834454292344842> | Generating command...", color=interaction.client.default_color)
-        await interaction.response.send_message(embed=loadin_embed, ephemeral=True)
-
-        data = await interaction.client.payout_pending.find(interaction.message.id)
-        config = await interaction.client.payout_config.find(interaction.guild.id)
-
-        if not data:
-            return await interaction.edit_original_response(embed=discord.Embed(description="<:octane_no:1019957208466862120> | This payout has already been claimed or invalid", color=discord.Color.red()))
-        
-        if config['express'] == True: return await interaction.edit_original_response(embed=discord.Embed(description="<:octane_no:1019957208466862120> | Express Payout is enabled, you can't use this button", color=discord.Color.red()))
-        winner = interaction.guild.get_member(data['winner'])
-        amount = data['prize']
-        if 'item' in data.keys():
-            item = data['item']
-        else:
-            item = None
-
-        if config['payout_channel'] != None:
-            payout_channel = interaction.guild.get_channel(config['payout_channel'])
-            if not payout_channel:
-                return await interaction.edit_original_response(embed=discord.Embed(description="<:octane_no:1019957208466862120> | Payout channel not found", color=discord.Color.red()))
-            
-            embed = discord.Embed(title="Auto Payout Command", description="")
-            embed.description += f"**Winner:** {winner.mention}\n"
-            embed.description += f"**Amount:** {amount}\n"
-            if item:
-                embed.description += f"**Item:** {item}\n"
-            
-            embed.add_field(name="Command", value=await self.get_command(winner, amount, item))
-            embed.set_footer(text="This command will be deleted in 30 seconds")
-            payout_cmd = await payout_channel.send(embed=embed, delete_after=60)
-
-            view = discord.ui.View()
-            view.add_item(discord.ui.Button(label="Jump", style=discord.ButtonStyle.url, url=payout_cmd.jump_url))
-            await interaction.edit_original_response(embed=discord.Embed(description="<:octane_yes:1019957051721535618> | Sucessfully generated payout command", color=interaction.client.default_color), view=view)
-            
-            update_embed = interaction.message.embeds[0]
-            new_description = update_embed.description
-            update_embed.title = "Payout Initiated"
-            update_embed.description = ""
-            new_description = new_description.replace("`Awaiting Payment`", "`Initiated`")
-            update_embed.description = new_description
-            edit_view = discord.ui.View()
-            edit_view.add_item(discord.ui.Button(label=f'Waiting for Confirmation', style=discord.ButtonStyle.gray, emoji="<:caution:1122473257338151003>", disabled=True))
-
-            winner_channel = interaction.guild.get_channel(data['channel'])
-            winner_message = await winner_channel.fetch_message(data['winner_message_id'])
-
-            winner_view = discord.ui.View()
-            winner_view.add_item(discord.ui.Button(label=f'Winner Message', url=f"{winner_message.jump_url}"))
-            winner_view.add_item(discord.ui.Button(label=f'Payout Queue Message', url=f"{interaction.message.jump_url}"))
-            success_embed = discord.Embed(description="<:octane_yes:1019957051721535618> | Payout Marked as Initiated", color=interaction.client.default_color)
-
-            await interaction.edit_original_response(embed=success_embed)
-            await interaction.message.edit(embed=update_embed, view=edit_view, content=None)
-            
-            interaction.client.dispatch("payout_paid", interaction.message, interaction.user, winner, data['prize'])
-            interaction.client.dispatch("payout_confirmed", interaction.message, interaction.user, winner, payout_channel,data, interaction)
+        await interaction.response.send_message("This button is now no longer supported, please use the new payout command `/payout express`", ephemeral=True)
+        button.disabled = True
+        await interaction.message.edit(view=self)
     
     @discord.ui.button(label="Reject", style=discord.ButtonStyle.gray, emoji="<a:nat_cross:1010969491347357717>", custom_id="reject")
     async def reject(self, interaction: discord.Interaction, button: discord.ui.Button):
@@ -471,7 +418,7 @@ class Payout_Buttton(discord.ui.View):
             await interaction.message.edit(embed=payot_embed, view=view)   
             await interaction.client.payout_pending.delete(data['_id'])             
         except:
-            return await view.interaction.response.send_message("Invalid Message Link", ephemeral=True)
+            return await view.interaction.edit_original_response("Invalid Message Link")
 
     async def on_error(self, interaction: Interaction, error: Exception, item: discord.ui.Item):
         if isinstance(error, ButtonCooldown):
@@ -480,7 +427,8 @@ class Payout_Buttton(discord.ui.View):
             return await interaction.response.send_message(f"You're on cooldown for {seconds} {unit}!", ephemeral=True)
         try:
             await interaction.response.send_message(f"Error: {error}", ephemeral=True)
-        except:
+        except Exception as e:
+            print(e)
             await interaction.edit_original_response(content=f"Error: {error}")
 
     async def interaction_check(self, interaction: Interaction):
