@@ -20,7 +20,7 @@ from PIL import Image, ImageDraw, ImageFont, ImageChops
 auto_payout = {
 	1040975933772931172: {'prize': 10000000, 'event': 'Daily Rumble'},
 	1042408506181025842: {'prize': 25000000, 'event': 'Weekly Rumble'},
-	1110476759062827008: {'prize': 6900000, 'event': '69-Players Rumble'},
+	1110476759062827008: {'prize': 6900000, 'event': '100-Players Rumble'},
 	1111603846943354930: {'prize': 5000000, 'event': '30-Min Rumble'},
 }		
 
