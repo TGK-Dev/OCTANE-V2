@@ -151,7 +151,7 @@ class Events(commands.Cog):
             link_view.add_item(discord.ui.Button(label="Go to Payout Message", url=command_message.jump_url))
             log_channel = self.bot.get_channel(1076586539368333342)
             await log_channel.send(embed=log_embed, view=link_view)
-        elif embed.description.startswith('Successfully donated!') and message.channel.id in [851663580620521472, 812711254790897714, 1051387593318740009, 1116295238584111155]:
+        elif embed.description.startswith('Successfully donated!') and message.channel.id in [851663580620521472, 812711254790897714, 1051387593318740009, 1116295238584111155, 1086323496788963328]:
             command_message = await message.channel.fetch_message(message.reference.message_id)
             if command_message.interaction is None: return
             if command_message.interaction.name != "serverevents donate": return
