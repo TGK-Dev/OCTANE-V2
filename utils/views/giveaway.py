@@ -79,7 +79,8 @@ class Giveaway(View):
         for key, value in config['multipliers'].items():
             if int(key) in user_roles:
                 entries += value
-                
+        
+        data['entries'][str(interaction.user.id)] = entries
         await interaction.client.giveaway.update_giveaway(interaction.message, data)
         embed = discord.Embed(description="You have successfully joined the giveaway.", color=discord.Color.green())
         if bypassed:
