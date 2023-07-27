@@ -80,14 +80,13 @@ class Giveaway(View):
             if int(key) in user_roles:
                 entries += value
                 
-        data['entries'][str(interaction.user.id)] = entries
         await interaction.client.giveaway.update_giveaway(interaction.message, data)
         embed = discord.Embed(description="You have successfully joined the giveaway.", color=discord.Color.green())
         if bypassed:
-            embed.description += "\nYou have bypassed the requirements due to your role(s)."
+            embed.description += "\nYou have bypassed the requirements due to your bypass role."            
         await interaction.followup.send(embed=embed)
 
-    @discord.ui.button(label="Entries", style=discord.ButtonStyle.gray, emoji="<:tgk_entries:1124995375548338176>", custom_id="giveaway:Entries")
+    @discord.ui.button(label="Participants", style=discord.ButtonStyle.gray, emoji="<:tgk_entries:1124995375548338176>", custom_id="giveaway:Entries")
     async def _entries(self, interaction: discord.Interaction, button: discord.ui.Button):
         data = await interaction.client.giveaway.get_giveaway(interaction.message)
         if data is None: return await interaction.followup.send("This giveaway is not available anymore/invalid.", ephemeral=True)
@@ -100,8 +99,12 @@ class Giveaway(View):
         for page in entries:
             embed = discord.Embed(title="Giveaway Entries", description="", color=interaction.client.default_color)
             for user in page:
-                embed.description += f"{i}. <@{user[0]}> - **Entries: {user[1]}**\n"
+                embed.description += f"{i}. <@{user[0]}>\n"                
                 i += 1
+            try:
+                embed.set_footer(text=f"Your Entries: {data['entries'][str(interaction.user.id)]}")
+            except:
+                pass
             pages.append(embed)
         
         await Paginator(interaction, pages).start(embeded=True, hidden=True, quick_navigation=False)

@@ -507,10 +507,10 @@ class Giveaways(commands.GroupCog, name="giveaways"):
             if "Winners" in fields_name:
                 embed.set_field_at(fields_name.index("Winners"), name="Winners", value=",".join([winner.mention for winner in winners]), inline=False)
             else:
-                embed.description += f"\nTotal Entries: {len(giveaway['entries'].keys())}"
+                embed.description += f"\n**Total Participants:** {len(giveaway['entries'].keys())}"
                 embed.add_field(name="Winners", value=",".join([winner.mention for winner in winners]), inline=False)
         else:
-            embed.description += f"\nTotal Entries: {len(giveaway['entries'].keys())}"
+            embed.description += f"\n**Total Participants:** {len(giveaway['entries'].keys())}"
             embed.add_field(name="Winners", value=",".join([winner.mention for winner in winners]), inline=False)
 
         view = Giveaway()
@@ -613,7 +613,7 @@ class Giveaways(commands.GroupCog, name="giveaways"):
         if dank == True:
             prize = await DMCConverter_Ctx().convert(interaction, prize)
             if not isinstance(prize, int):
-                return await interaction.followup.send("Invalid Prize!", ephemeral=True)
+                dank = False
         data = {
             "_id": None,
             "channel": interaction.channel.id,
@@ -649,11 +649,11 @@ class Giveaways(commands.GroupCog, name="giveaways"):
             embed.description += f"## Prize: {prize}\n"
         embed.description += "‎\n"
         timnestamp = int((datetime.datetime.now() + datetime.timedelta(seconds=duration)).timestamp())
-        embed.description += f"End Time: <t:{timnestamp}:R> (<t:{timnestamp}:T>)\n"
-        embed.description += f"Winners: {winners}\n"
-        embed.description += f"Host: {interaction.user.mention}\n"
+        embed.description += f"**End Time:** <t:{timnestamp}:R> (<t:{timnestamp}:T>)\n"
+        embed.description += f"**Winners:** {winners}\n"
+        embed.description += f"**Host:** {interaction.user.mention}\n"
         if donor:
-            embed.description += f"Donor: {donor.mention}"
+            embed.description += f"**Donor:** {donor.mention}"
         if req_roles:
             value = ""
             if len(req_roles) == 2:
@@ -672,7 +672,8 @@ class Giveaways(commands.GroupCog, name="giveaways"):
             embed.add_field(name="Required Level", value=str(req_level), inline=True)
         if req_weekly:
             embed.add_field(name="Required Weekly XP", value=str(req_weekly), inline=False)
-        
+        embed.timestamp = datetime.datetime.now() + datetime.timedelta(seconds=duration)
+        embed.set_footer(text=f"{winners} winner{'s' if winners > 1 else ''} | Ends at")
         await interaction.followup.send(embed=embed, view=Giveaway(), content="<a:tgk_tadaa:806631994770849843> **GIVEAWAY STARTED** <a:tgk_tadaa:806631994770849843>")
         if message:
             host_webhook = None
@@ -734,6 +735,10 @@ class Giveaways(commands.GroupCog, name="giveaways"):
         if giveaway_data['ended']: return await interaction.response.send_message("This giveaway has already ended!", ephemeral=True)
         self.bot.dispatch("giveaway_end", giveaway_data)
         await interaction.response.send_message("Giveaway ended successfully!", ephemeral=True)
+        try:
+            del self.backend.giveaways_cache[message.id]
+        except:
+            pass
     
     async def _giveaway_reroll(self, interaction: discord.Interaction, message: discord.Message):
         config = await self.backend.get_config(interaction.guild)
@@ -780,6 +785,10 @@ class Giveaways(commands.GroupCog, name="giveaways"):
         if giveaway_data['ended']: return await interaction.response.send_message("This giveaway has already ended!", ephemeral=True)
         self.bot.dispatch("giveaway_end", giveaway_data)
         await interaction.response.send_message("Giveaway ended successfully!", ephemeral=True)
+        try:
+            del self.backend.giveaways_cache[message.id]
+        except:
+            pass
 
     @commands.command(name="multiplier", description="Set the giveaway multiplier", aliases=['multi'])
     async def _multiplier(self, ctx, user: discord.Member=None):
