@@ -144,8 +144,7 @@ class Perks_DB:
                 self.cach['react'][data['_id']] = {}
         
         for react in reacts:
-            if react['emoji'] != None:
-                self.cach['react'][react['guild_id']][react['user_id']] = react
+            self.cach['react'][react['guild_id']][react['user_id']] = react
     
     async def setup_highlights(self, configs: list[dict]):
         highlights = await self.highlight.get_all()
@@ -229,7 +228,7 @@ class Perks(commands.GroupCog, name="perks", description="manage your custom per
         
         user_roles = [role.id for role in interaction.user.roles]
         if (set(user_roles) & set(config['admin_roles'])) == set():
-            await interaction.response.send_message("You need to have admin roles to use this command", ephemeral=True)
+            await interaction.response.send_message("You need to have admin roles to use this command", ephemeral=True, allowed_mentions=discord.AllowedMentions.none())
             return
 
         if perk == Perk_Type.config:
