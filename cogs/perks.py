@@ -899,7 +899,7 @@ class Perks(commands.GroupCog, name="perks", description="manage your custom per
         user = message.guild.get_member(user_data['user_id'])
 
         if user_data['last_trigger'] is not None:
-            if not now > user_data['last_trigger'] + datetime.timedelta(minutes=15):
+            if not now > user_data['last_trigger'] + datetime.timedelta(minutes=1):
                 return
         
         if message.channel.id in user_data['ignore_channel'] or message.author.id in user_data['ignore_users']:

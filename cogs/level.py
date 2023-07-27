@@ -437,7 +437,7 @@ class Giveaways(commands.GroupCog, name="giveaways"):
         now = datetime.datetime.now(ist)
         return now
 
-    @tasks.loop(seconds=10)
+    @tasks.loop(minutes=3)
     async def giveaway_loop(self):
         if self.giveaway_task_progress == True:
             return
@@ -452,7 +452,7 @@ class Giveaways(commands.GroupCog, name="giveaways"):
                     self.bot.dispatch("giveaway_end", giveaway)
                     self.giveaway_in_prosses.append(giveaway["_id"])
                     del self.backend.giveaways_cache[giveaway["_id"]]
-            except TypeError:
+            except:
                 pass
         self.giveaway_task_progress = False
 
@@ -716,6 +716,8 @@ class Giveaways(commands.GroupCog, name="giveaways"):
         giveawa_data['winners'] = winners
         self.bot.dispatch("giveaway_end", giveawa_data)
         await interaction.response.send_message("Giveaway rerolled successfully! Make sure to cancel the already queued payouts use `/payout search`", ephemeral=True)
+        chl = interaction.client.get_channel(1130057933468745849)
+        await chl.send(f"Rerolled giveaway by {interaction.user.mention} in {interaction.guild.name} for {winners} winners {message.jump_url}")
 
     async def _giveaway_end(self, interaction: discord.Interaction, message: discord.Message):        
         if message.author.id != self.bot.user.id: return await interaction.response.send_message("This message is not a giveaway!", ephemeral=True)
@@ -758,6 +760,8 @@ class Giveaways(commands.GroupCog, name="giveaways"):
             giveaway_data['winners'] = winners
             self.bot.dispatch("giveaway_end", giveaway_data)
             await modal.interaction.response.send_message("Giveaway rerolled successfully! Make sure to cancel the already queued payouts use `/payout search`", ephemeral=True)
+            chl = interaction.client.get_channel(1130057933468745849)
+            await chl.send(f"Rerolled giveaway by {interaction.user.mention} in {interaction.guild.name} for {winners} winners {message.jump_url}")
         else:
             return
 
