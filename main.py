@@ -59,7 +59,7 @@ class Bot_base(commands.Bot):
         self.aceDb = AsyncIOMotorClient(self.connection_url2)
         self.db2 = self.aceDb["TGK"]
         for file in os.listdir("./cogs"):
-            if file.endswith(".py") and not file.startswith(("_", "auction")):
+            if file.endswith(".py") and not file.startswith(("_")):
                 await self.load_extension(f"cogs.{file[:-3]}")
             
         if self.sync == True:
