@@ -229,9 +229,9 @@ class serversettings(commands.Cog):
                 embed.description += f"**Queue Channel:** {interaction.guild.get_channel(auction_data['queue_channel']).mention if auction_data['queue_channel'] else '`None`'}\n"
                 embed.description += f"**Bid Channel:** {interaction.guild.get_channel(auction_data['bid_channel']).mention if auction_data['bid_channel'] else '`None`'}\n"
                 embed.description += f"**Payment Channel:** {interaction.guild.get_channel(auction_data['payment_channel']).mention if auction_data['payment_channel'] else '`None`'}\n"
-                embed.description += f"**Payout Channel:** {interaction.guild.get_channel(auction_data['payout_channel']).mention if auction_data['payout_channel'] else '`None`'}\n"
                 embed.description += f"**Manager Roles:** {', '.join([f'<@&{role}>' for role in auction_data['manager_roles']]) if len(auction_data['manager_roles']) > 0 else '`None`'}\n"
-
+                embed.description += f"**Ping Role:** {interaction.guild.get_role(auction_data['ping_role']).mention if auction_data['ping_role'] else '`None`'}\n"
+                embed.description += f"**Minimum Worth:** {auction_data['minimum_worth']:,}\n" if auction_data['minimum_worth'] else '**Minimum Worth:** `None`'
                 if option == "Show":
                     await interaction.response.send_message(embed=embed)
                 if option == "Edit":
@@ -245,7 +245,8 @@ class serversettings(commands.Cog):
                 embed.description += f"**Manager Roles:** {', '.join([f'<@&{role}>' for role in giveaway_data['manager_roles']]) if len(giveaway_data['manager_roles']) > 0 else '`None`'}\n"
                 embed.description += f"**Logging Channel:** {interaction.guild.get_channel(giveaway_data['log_channel']).mention if giveaway_data['log_channel'] else '`None`'}\n"
                 embed.description += f"**Dm Message:** ```\n{giveaway_data['dm_message']}\n```\n"
-                embed.description += f"**Blacklist:**\n {', '.join([f'<@&{(role)}>' for role in giveaway_data['blacklist']]) if len(giveaway_data['blacklist']) > 0 else '`None`'}"
+                embed.description += f"**Blacklist:**\n {', '.join([f'<@&{(role)}>' for role in giveaway_data['blacklist']]) if len(giveaway_data['blacklist']) > 0 else '`None`'}\n"
+                embed.description += f"**Global Bypass:**\n {', '.join([f'<@&{(role)}>' for role in giveaway_data['global_bypass']]) if len(giveaway_data['global_bypass']) > 0 else '`None`'}\n"
                 mults = giveaway_data['multipliers']
                 mults = sorted(mults.items(), key=lambda x: int(x[1]))
                 embed.description += f"\n**Multipliers:**\n"

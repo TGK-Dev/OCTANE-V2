@@ -7,61 +7,78 @@ from discord.ext import commands
 from discord import app_commands
 from utils.transformer import DMCConverter
 from utils.converters import DMCConverter_Ctx
+from utils.views.buttons import Confirm
 from discord.ext import tasks
 from utils.db import Document
 from typing import List
 from copy import deepcopy
 
 
-class Auctions_DB:
-    def __init__(self, bot):
-        self.db = bot.mongo["Auctions"]
-        self.config = Document(self.db, "auctions_config")
-        self.auctions = Document(self.db, "auctions")
-        self.quque = Document(self.db, "auctions_queue")
-        self.cach = {}
-    
-    async def create_config(self, guild_id:int):
-        auction_data = {
-            "_id": guild_id,
-            "category": None,
-            "request_channel": None,
-            "queue_channel": None,
-            "bid_channel": None,
-            "payment_channel": None,
-            "payout_channel": None,
-            "log_channel": None,
-            "manager_roles": [],
-        }
-        await self.config.insert(auction_data)
-        return auction_data
-
-    async def get_config(self, guild_id:int):
-        if guild_id in self.cach.keys():
-            return self.cach[guild_id]
-        else:
-            guild = await self.config.find(guild_id)
-            if guild == None:
-                guild = await self.create_config(guild_id)
-            self.cach[guild_id] = guild
-            return guild
-    
-    async def setup_config_cach(self):
-        for guild in await self.config.get_all():
-            if guild["_id"] not in self.cach.keys():
-                self.cach[guild["_id"]] = guild
-    
-
-
-
-class Auction(commands.GroupCog, name="auction"):
+class Auction_db:
     def __init__(self, bot):
         self.bot = bot
-        self.bid_cache = {}
-        self.bot.auction = Auctions_DB(bot)
-        self.auction_loop_progress = False
-        self.auction_task = self.auction_loop.start()
+        self.db = bot.mongo['Auction']
+        self.config = Document(self.db, 'config')
+        self.auction = Document(self.db, 'auctions')
+        self.payment = Document(self.db, 'payments')
+        self.auction_cache = {}
+        self.config_cache = {}
+        self.payment_cache = {}
 
+    async def get_config(self, guild_id: int):
+        config = self.config_cache.get(guild_id)        
+        if not config:
+            config = await self.config.find({"_id": guild_id})
+            if not config:
+                config = {"_id": guild_id,"category": None,"request_channel": None,"queue_channel": None,"bid_channel": None,"payment_channel": None,"payout_channel": None,"log_channel": None,"manager_roles": [], "ping_role": None, "minimum_worth": None}
+                await self.config.insert(config)
+            self.config_cache[guild_id] = config
+        return config
+
+    async def update_config(self, guild_id: int, data: dict):
+        await self.config.update(data)
+        self.config_cache[guild_id] = data
+        return data
+    
+    async def verfiy_payment(self, user: discord.Member, thread: discord.Thread, item: str, quantity: int):
+        def check(m: discord.Message):
+            if m.author.id != 270904126974590976: return False
+            if m.channel.id != thread.id: return False
+            if len(m.embeds) == 0: return False
+            if m.embeds[0].description == "Successfully donated!": return True
+        
+        try:
+            message: discord.Message = await self.bot.wait_for('message', check=check, timeout=300)
+            message = await thread.fetch_message(message.reference.message_id)
+            embed = message.embeds[0]
+            items = re.findall(r"\*\*(.*?)\*\*", embed.description)[0]
+            emojis = list(set(re.findall(":\w*:\d*", items)))
+            for emoji in emojis :items = items.replace(emoji,"",100); items = items.replace("<>","",100);items = items.replace("<a>","",100);items = items.replace("  "," ",100)
+            mathc = re.search(r"(\d+)x (.+)", items)
+            item_found = mathc.group(2)
+            quantity_found = int(mathc.group(1))
+            if item.lower() == item_found.lower() and quantity == quantity_found:
+                return True
+            else:
+                return False
+        except asyncio.TimeoutError:
+            return False
+
+    async def setup(self):
+        for guild in await self.config.get_all():
+            self.config_cache[guild['_id']] = guild
+        for auction in await self.payment.get_all():
+            if auction['paid'] == True: continue
+            self.payment_cache[auction['thread']] = auction
+
+class Auction(commands.GroupCog):
+    def __init__(self, bot):
+        self.bot = bot
+        self.backend = Auction_db(bot)
+        self.bot.auction = self.backend
+        self.auction_loop_progress = False
+        self.auction_loop.start()
+            
     async def item_autocomplete(self, interaction: discord.Interaction, string: str) -> List[app_commands.Choice[str]]:
         choices = []
         for item in self.bot.dank_items_cache.keys():
@@ -74,251 +91,414 @@ class Auction(commands.GroupCog, name="auction"):
             ]
         else:
             return choices[:24]
-
-    async def get_embed(self, data, first=True, winner:discord.Member=None):
-        if winner:
-            embed = discord.Embed(title=f"Auction for {data['quantity']}x{data['item']}", description="", color=self.bot.default_color)
-            embed.description += f"**Starting Bid:** `⏣ {data['strating_price']:,}`\n"
-            embed.description += f"**Bet Multiplier:** `⏣ {data['bet_multiplier']:,}`\n"  
-            embed.description += f"**Bid Increment By:** `⏣ {data['current_bid']:,}`\n"
-            embed.description += f"**Current Bid By:** {winner.mention}\n"
-            embed.description += f"**Time Left:** `Auction Ended`\n"
-            embed.description += f"**Auctioneer:** <@{data['auctioneer']}>\n"
-            return embed
-        
+    
+    async def update_message(self, message: discord.Message, data: dict, first:bool):
         if first:
             timestamp30s = int((datetime.datetime.now() + datetime.timedelta(seconds=30)).timestamp())
-            embed = discord.Embed(title=f"Auction for {data['quantity']}x{data['item']}", description="", color=self.bot.default_color)
-            embed.description += f"**Starting Bid:** `⏣ {data['strating_price']:,}`\n"
-            embed.description += f"**Bet Multiplier:** `⏣ {data['bet_multiplier']:,}`\n"  
-            embed.description += f"**Bid Increment By:** `None`\n"
-            embed.description += f"**Current Bid By:** `None`\n"
+            embed = discord.Embed(title="Auction Started", description="", color=self.bot.default_color)
+            embed.description += f"**Item:** {data['quantity']}x{data['item']}\n"
+            embed.description += f"**Starting Bid:** ⏣ {data['starting_bid']:,}\n"
+            embed.description += f"**Bet Increment:** ⏣ {data['bet_increment']:,}\n"
+            embed.description += f"**Current Bid:** ⏣ {data['starting_bid']:,}\n"
+            embed.description += f"**Current Bidder:** `None`\n"
+            embed.description += f"**Requested by:** {message.guild.get_member(data['host']).mention}\n"
+            embed.description += f"**Auctioner:** {message.guild.get_member(data['auctioner']).mention}\n"
             embed.description += f"**Time Left:** <t:{timestamp30s}:R>\n"
-            embed.description += f"**Auctioneer:** <@{data['auctioneer']}>\n"
-            return embed
+            await message.edit(embed=embed)
         else:
             timestamp10s = int((datetime.datetime.now() + datetime.timedelta(seconds=10)).timestamp())
-            embed = discord.Embed(title=f"Auction for {data['quantity']}x{data['item']}", description="", color=self.bot.default_color)
-            embed.description += f"**Starting Bid:** `⏣ {data['strating_price']:,}`\n"
-            embed.description += f"**Bet Multiplier:** `⏣ {data['bet_multiplier']:,}`\n"
-            embed.description += f"**Bid Increment By:** `⏣ {data['current_bid']:,}`\n"
-            embed.description += f"**Current Bidder:** <@{data['current_bid_by']}>\n"
+            embed = discord.Embed(title="Auction Started", description="", color=self.bot.default_color)
+            embed.description += f"**Item:** {data['item']}x{data['quantity']}\n"
+            embed.description += f"**Starting Bid:** ⏣ {data['starting_bid']:,}\n"
+            embed.description += f"**Bet Increment:** ⏣ {data['bet_increment']:,}\n"
+            embed.description += f"**Current Bid:** ⏣ {data['current_bid']:,}\n"
+            embed.description += f"**Current Bidder:** {message.guild.get_member(data['current_bidder']).mention}\n"
+            embed.description += f"**Requested by:** {message.guild.get_member(data['host']).mention}\n"
+            embed.description += f"**Auctioner:** {message.guild.get_member(data['auctioner']).mention}\n"
             embed.description += f"**Time Left:** <t:{timestamp10s}:R>\n"
-            embed.description += f"**Auctioneer:** <@{data['auctioneer']}>\n"
-            return embed
+            await message.edit(embed=embed)
+        
 
+    def cog_unload(self):
+        self.auction_loop.cancel()
 
     @tasks.loop(seconds=3)
     async def auction_loop(self):
         if self.auction_loop_progress:
             return
         self.auction_loop_progress = True
-        data = self.bid_cache.copy()
-        for auction in data:
-            auction = self.bid_cache[auction]
-            if auction['last_bid'] == None: continue
-            if auction['last_bid'] + datetime.timedelta(seconds=auction['time_left']) < datetime.datetime.now():
-                if auction['call_started'] == True: continue
-                await auction['thread'].send(f"No Bet was place in last 10 seconds, starting closing calls")
+        auctions = self.backend.auction_cache.copy()
+        for key, value in auctions.items():
+            auction = self.backend.auction_cache[key]
+            if auction['call_started']: continue
+            call_time = auction['last_bet'] + datetime.timedelta(seconds=auction['time_left'])
+            if call_time < datetime.datetime.now():
                 auction['call_started'] = True
-                self.bot.dispatch("auction_calls", auction, 0, 10)
+                await auction['thread'].send(f"No Bet was place in last {auction['time_left']} seconds, starting closing calls")
+                self.backend.auction_cache[key] = auction
+                self.bot.dispatch("auction_calls", auction, 0)
         self.auction_loop_progress = False
-
+    
     @auction_loop.before_loop
     async def before_auction_loop(self):
         await self.bot.wait_until_ready()
-    
+
     @commands.Cog.listener()
-    async def on_auction_calls(self, data: dict, call_num:int, timeout:int):
-        message: discord.Message = data['message']
-        thread: discord.Thread = data['thread']
-        if call_num == 0:
-            embed = discord.Embed(description=f"# Going Once...", color=self.bot.default_color)
-        if call_num == 1:
-            embed = discord.Embed(description=f"# Going Twice...", color=self.bot.default_color)
-        if call_num == 2:
-            self.bot.dispatch("auction_end", data)
+    async def on_ready(self):
+       await self.backend.setup()
+    
+    @app_commands.command(name="request", description="Request an auction")
+    @app_commands.autocomplete(item=item_autocomplete)
+    async def request(self, interaction: discord.Interaction, item: str, quantity:int = 1):
+        config = await self.backend.get_config(interaction.guild_id)
+        if not config:
+            return await interaction.response.send_message("Auction is not setup yet!")
+        if not config['request_channel']:
+            return await interaction.response.send_message("Request channel is not setup yet!")
+
+        item = self.bot.dank_items_cache.get(item)
+        if not item:
+            return await interaction.response.send_message("Invalid item!")
+
+        embed = discord.Embed(title="Auction Request", description="", color=interaction.client.default_color)
+        embed.description += f"**Item:** {item['_id']}x{quantity}\n"
+        embed.description += f"**Requested by:** {interaction.user.mention}\n"
+        embed.description += f"**Market Price:** {item['price']}\n"
+        embed.description += f"**Total Price:** {item['price'] * quantity}\n"
+
+        await interaction.response.send_message(embed=embed)
+        msg = await interaction.original_response()
+        thread = await msg.create_thread(name=f"Auction Verification - {interaction.user.name}", auto_archive_duration=1440)
+        try:await thread.add_user(interaction.user)
+        except:pass
+        await thread.send(f"{interaction.user.mention}, Please donate the auction items in this thread to verify your request.")
+        await thread.send(f"`/serverevents donate quantity:{quantity} item: {item['_id']}`")
+        verified = await self.backend.verfiy_payment(interaction.user, thread, item['_id'], quantity)
+
+        if verified == False:
+            await thread.send(f"{interaction.user.mention}, Your request has been Failed to verify!")
+            await thread.edit(name=f"Auction Request - {interaction.user.name} - Failed", locked=True, archived=True)
+            embed.title += " - Failed"
+            await msg.edit(embed=embed)
             return
+        await thread.send(f"{interaction.user.mention}, Your request has been verified!")
+        data = {
+            "_id": interaction.user.id,
+            "item": item['_id'],
+            "quantity": quantity,
+            "donated_at": f"https://canary.discord.com/channels/{interaction.guild_id}/{thread.id}",
+            "guild_id": interaction.guild_id,
+            "message_id": None,
+            "channel_id": None,
+        }
+        await thread.edit(name=f"Auction Request - {interaction.user.name} - Verified", locked=True, archived=True)
+        embed.title += " - Verified"
+        await msg.edit(embed=embed)
+
+        queue_embed = discord.Embed(description="", color=interaction.client.default_color)
+        queue_embed.set_author(name=f"{interaction.user.name}'s Auction", icon_url=interaction.user.avatar.url if interaction.user.avatar else interaction.user.default_avatar)
+        queue_embed.description += f"**Item:** {item['_id']}\n"
+        queue_embed.description += f"**Quantity:** {quantity}\n"
+        queue_embed.description += f"**Requested by:** {interaction.user.mention}\n"
+        queue_embed.description += f"**Market Price:** ⏣ {item['price']}\n"
+        queue_embed.description += f"**Total Price:** ⏣ {item['price'] * quantity}\n"
+        queue_embed.description += f"**Donated at:** [Click Here]({data['donated_at']})"
+        queue_embed.set_footer(text=f"ID: {interaction.user.id}")
+
+        queue_channel = interaction.guild.get_channel(config['queue_channel'])
+        if not queue_channel: return
+        view = discord.ui.View()
+        view.add_item(discord.ui.Button(style=discord.ButtonStyle.link, url=data['donated_at'], emoji="<tgk_link:1105189183523401828>"))
+        qmsg = await queue_channel.send(embed=queue_embed)
+        data['message_id'] = qmsg.id
+        data['channel_id'] = qmsg.channel.id
+        await self.backend.auction.insert(data)
         
-        call_started_at = datetime.datetime.utcnow()
-        time_passed = 0
-        def check(m: discord.Message):
-            if m.channel == thread:
-                if m.author.id == data['auctioneer']: return False
-                if m.author.id == data['current_bid_by']: return False
-                if re.match('^[0-9]+', m.content):
-                    return True              
-        await thread.send(embed=embed)
+    @app_commands.command(name="start", description="Start an auction")
+    async def start(self, interaction: discord.Interaction):
+        config = await self.backend.get_config(interaction.guild_id)
+        if not config:
+            await interaction.response.send_message("Auction is not setup yet!")
+        user_roles = [role.id for role in interaction.user.roles]
+        if not (set(user_roles) & set(config['manager_roles'])):
+            return await interaction.response.send_message("You are not allowed to use this command!", ephemeral=True)
+        if not config['bid_channel']:
+            return await interaction.response.send_message("Bid channel is not setup yet!")
+        if interaction.channel.id != config['bid_channel']:
+            return await interaction.response.send_message("You can only use this command in bid channel!", ephemeral=True)
+        
+        auction_data = await self.backend.auction.find({"guild_id": interaction.guild_id})
+        if not auction_data:
+            return await interaction.response.send_message("There are no auctions pending!", ephemeral=True)
+        item = self.bot.dank_items_cache.get(auction_data['item'])
 
-        while True:
-            try:
-                timeout = 10 - time_passed
-                if timeout <= 0: raise asyncio.TimeoutError
-                msg = await self.bot.wait_for('message', check=check, timeout=timeout)
-                ammout = await DMCConverter_Ctx().convert(msg, msg.content)
-                if not ammout:
-                    time_passed = int((datetime.datetime.utcnow() - call_started_at).total_seconds())
-                    continue
-                if ammout % data["bet_multiplier"] != 0:
-                    time_passed = int((datetime.datetime.utcnow() - call_started_at).total_seconds())
-                    await thread.send(f"Mininum Bid Increment is ⏣ {data['bet_multiplier']:,}")
-                    continue
-                if ammout >= 50000000000:
-                    time_passed = int((datetime.datetime.utcnow() - call_started_at).total_seconds())
-                    await thread.send("You can't bid more than ⏣ 50,000,000,000")
-                    continue
-                if msg.author.id == data['current_bid_by']:
-                    time_passed = int((datetime.datetime.utcnow() - call_started_at).total_seconds())
-                    await msg.reply("You are already the highest bidder")
-                    continue
-                if ammout > data["current_bid"]:
-                    data['current_bid'] = ammout
-                    data['current_bid_by'] = msg.author.id
-                    data['time_left'] = 10
-                    data['last_bid'] = datetime.datetime.now()
-                    data['call_started'] = False
-                    data['call_count'] = 0
-                    self.bid_cache[data['message'].id] = data
-                    await msg.reply(f"You have bid ⏣ {ammout:,} on {data['item']}")
-                    embed = await self.get_embed(data)
-                    await data['message'].edit(embed=embed)
-                    return
-            except asyncio.TimeoutError:
-                data['call_count'] += 1
-                self.bot.dispatch('auction_calls', data, data['call_count'], 10)
-                return        
-                
-    
-    @commands.Cog.listener()
-    async def on_bet(self, message: discord.Message, data):
-        ammount = await DMCConverter_Ctx().convert(message, message.content)
-        if message.author.id == data['auctioneer']: 
-            return await message.reply("You can't bid on your own auction")
-        if ammount % data["bet_multiplier"] != 0:
-            await message.reply(f"Mininum Bid Increment is ⏣ {data['bet_multiplier']:,}")
-            return
-        if ammount >= 50000000000:
-            await message.reply("You can't bid more than ⏣ 50,000,000,000")
-            return
-        if message.author.id == data['current_bid_by']:
-            await message.reply("You are already the highest bidder")
-            return
-        if ammount > data["current_bid"]:
-            data['current_bid'] = ammount
-            data['current_bid_by'] = message.author.id
-            data['time_left'] = 10
-            data['last_bid'] = datetime.datetime.now()
-            await message.reply(f"You have bid ⏣ {ammount:,} on {data['item']}")
-            embed = await self.get_embed(data, False)
-            await data['message'].edit(embed=embed)
-            await message.add_reaction("✅")
-            self.bid_cache[data['_id']] = data
-        elif ammount <= data["current_bid"]:
-            await message.reply(f"You need to bid more than ⏣ {data['current_bid']:,}")
-    
-    @commands.Cog.listener()
-    async def on_auction_end(self, data):
-        try:
-            del self.bid_cache[data['_id']]
-        except:
-            pass
-        thread: discord.Thread = data['thread']
-        message: discord.Message = data['message']
-        await thread.send(embeds=[discord.Embed(description="# Going Thrice...", color=self.bot.default_color), discord.Embed(description=f"# Auction Ended Sold to <@{data['current_bid_by']}> for ⏣ {data['current_bid']:,}", color=0x00ff00)])
-        await thread.edit(locked=True, name=f"{data['item']} Auction Ended")
-        await message.reply(f"**Auction Ended**\n**Winner:** <@{data['current_bid_by']}>\n**Winning Bid:** ⏣ {data['current_bid']:,}")
+        starting_big = int((item['price'] * auction_data['quantity'])/2)
+        bet_incre = int((item['price'] * auction_data['quantity'])/20)
+        embed = discord.Embed(title="Auction Starting", description="", color=interaction.client.default_color)
+        embed.description += f"**Item:** {auction_data['quantity']}x{item['_id']}\n"
+        embed.description += f"**Starting Bid:** ⏣ {starting_big:,}\n"
+        embed.description += f"**Bet Increment:** ⏣ {bet_incre:,}\n"
+        embed.description += f"**Requested by:** {interaction.guild.get_member(auction_data['_id']).mention}\n"
+        embed.description += f"**Auctioner:** {interaction.user.mention}\n"
 
+        view = Confirm(interaction.user, 60)
+        view.children[0].label = "Start Auction"
+        view.children[1].label = "Cancel Auction"
+        await interaction.response.send_message(embed=embed, view=view)
+        msg = await interaction.original_response()
+        view.message = msg
+        await view.wait()
+        if not view.value:
+            return await interaction.delete_original_response()
+        else:
+            await view.interaction.response.edit_message(view=None)
+        thread = await msg.create_thread(name=f"Auction for {item['_id']}", auto_archive_duration=1440)
+        data = {
+            "_id": thread.id,
+            "item": item['_id'],
+            "quantity": auction_data['quantity'],
+            "price": item['price'],
+            "starting_bid": starting_big,
+            "current_bid": starting_big,
+            "current_bidder": None,
+            "bet_increment": bet_incre,
+            "auctioner": interaction.user.id,
+            "donated_at": auction_data['donated_at'],
+            "host": auction_data['_id'],
+            "start_at": datetime.datetime.now(),
+            "last_bet": datetime.datetime.now(),
+            "time_left": 30,
+            "call_started": False,
+            "thread": thread,
+            "message": msg,
+            "ended": False
+        }
+        self.backend.auction_cache[thread.id] = data
+        await self.update_message(message=msg, data=data, first=True)
+        if config['ping_role']:
+            role = interaction.guild.get_role(config['ping_role'])
+            if role:
+                await interaction.followup.send(f"{role.mention} New auction has been started!", ephemeral=False)
+        if config['log_channel']:
+            channel = interaction.guild.get_channel(config['log_channel'])
+            self.bot.dispatch("auction_start_log", data['auctioner'], data['host'], data['item'], data['quantity'], channel)
 
     @commands.Cog.listener()
-    async def on_message(self, message):
-        if message.author.bot:
+    async def on_message(self, message: discord.Message):
+        if message.author.bot: 
+            if message.author.id != 270904126974590976: return
+            if message.channel.id in self.backend.payment_cache.keys():
+                if len(message.embeds) == 0: return
+                if message.embeds[0].description != "Successfully donated!": return
+                self.bot.dispatch("payment", message)
             return
-        if message.guild is None:
-            return
+        if not message.guild: return
         if not isinstance(message.channel, discord.Thread): return
         try:
-            data = self.bid_cache[message.channel.parent_id]
+            data = self.backend.auction_cache[message.channel.id]
             if data['call_started'] == True: return
         except KeyError:
             return
         ammount = await DMCConverter_Ctx().convert(message, message.content)
         if ammount is not None:
             self.bot.dispatch("bet", message, data)
-
-
-    @app_commands.command(name="request", description="Request an auction for an item you want to sell")
-    @app_commands.describe(item="The item to auction", quantity="The quantity of the item")
-    @app_commands.checks.has_any_role(785845265118265376, 785842380565774368)
-    @app_commands.autocomplete(item=item_autocomplete)
-    async def _request(self, interaction: discord.Interaction, item: str, quantity: int=1):
-        config = await self.bot.auction.config.find(interaction.guild.id)
-        if not config: 
-            return await interaction.response.send_message("Auction is not setup", ephemeral=True)
-        if interaction.channel.id != config['request_channel']: 
-            return await interaction.response.send_message("This is not the auction request channel please use the auction request channel", ephemeral=True)
-        
-        item_data = self.bot.dank_items_cache[item]
-        embed = discord.Embed(title="Auction Request", description="",color=self.bot.default_color)
-        embed.description += "**Item: **" + item + "\n"
-        embed.description += f"**Quantity: ** {quantity}\n"
-        embed.description += f"**Market Price: ** ⏣ {item_data['price']:,}\n"
-        embed.description += f"**Starting Price: ** ⏣ {int((item_data['price']*quantity) / 2):,}\n"
-        embed.description += "**Requested By: **" + interaction.user.mention + "\n"
-
-        await interaction.response.send_message(embed=embed, ephemeral=False)
-        message = await interaction.original_response()
-        thread = await message.create_thread(name=f"Auction Request for {item}", auto_archive_duration=1440)
-        await thread.send(f"{interaction.user.mention} To Complete this request, please donate item to serverpool in this thread, you can copy the generated command below and use it in this thread, request will be automatically expired in 5 minutes")
-        await thread.add_user(interaction.guild.get_member(270904126974590976))
-        await thread.send(f"/serverevents donate quantity: {quantity} item: {item}")
-        def check(m: discord.Message):
-            if m.author.id != 270904126974590976: return False
-            if m.embeds[0].description == "Successfully donated!": return True
-        try:
-            msg = await interaction.client.wait_for("message", check=check, timeout=500)
-            msg = await msg.channel.fetch_message(msg.reference.message_id)
-            embed = msg.embeds[0].to_dict()
-            items = re.findall(r"\*\*(.*?)\*\*", embed['description'])[0]
-            emojis = list(set(re.findall(":\w*:\d*", items)))
-            for emoji in emojis :items = items.replace(emoji,"",100); items = items.replace("<>","",100);items = items.replace("<a>","",100);items = items.replace("  "," ",100)
-            mathc = re.search(r"(\d+)x (.+)", items)
-            item_found = mathc.group(2)
-            quantity_found = int(mathc.group(1))
-            if item.lower() == item_found.lower() and quantity == quantity_found:
-                await thread.send(f"{interaction.user.mention} Request Confirmed, creating auction now nad locking this thread")
-                await thread.edit(locked=True,archived=True)
-                data = {
-                    "_id": thread.id,
-                    "channel": thread.parent_id,
-                    "item": item,
-                    "quantity": quantity,
-                    "requested_by": interaction.user.id,
-                }
-                self.bot.dispatch("auction_request", data, item_data, interaction)
-                return
-        except asyncio.TimeoutError:
-            await thread.send(f"{interaction.user.mention} Request Cancelled, you took too long to confirm, deleting this thread in 20 seconds, you many create new request if you want")
-            await asyncio.sleep(20)
-            await thread.delete()
-            await interaction.delete_original_response()
-            return
     
     @commands.Cog.listener()
-    async def on_auction_request(self, data, item_data, interaction: discord.Interaction):
+    async def on_bet(self, message: discord.Message, data: dict):
+        ammout = await DMCConverter_Ctx().convert(message, message.content)
+        if not isinstance(ammout, int):
+            return
+        if message.author.id == data['host']:
+            return await message.reply("You can't bet on your own auction!")
+        if not data['current_bidder']:
+            pass
+        else:
+            if message.author.id == data['current_bidder']:
+                return await message.reply("You are already the highest bidder!")
+        if ammout >= 50000000000:
+            return await message.reply("You can't bet more than ⏣ 50,000,000,000!")
+        if ammout > data['current_bid']:
+            if ammout - data['current_bid'] < data['bet_increment']:
+                return await message.reply(f"You can't bet less than ⏣ {data['bet_increment']:,} more than the current bid!")
+            data['current_bid'] = ammout
+            data['current_bidder'] = message.author.id
+            data['last_bet'] = datetime.datetime.now()
+            data['time_left'] = 10
+            await message.reply(f"You are now the highest bidder with ⏣ {ammout:,}!")
+            await message.add_reaction("<:tgk_active:1082676793342951475>")
+            await self.update_message(data['message'], data, first=False)
+    
+    @commands.Cog.listener()
+    async def on_auction_calls(self, data: dict, call_num:int):
+        message: discord.Message = data['message']
+        thread: discord.Thread = data['thread']
+        if call_num == 0:
+            embed = discord.Embed(description=f"# Going Once...", color=self.bot.default_color)
+        if call_num == 1:
+            embed = discord.Embed(description=f"# Going Twice...", color=self.bot.default_color)
+        if call_num >= 2:
+            self.bot.dispatch("auction_ended", data)
+            return
+        call_started = datetime.datetime.now()
+        time_passed = 0
 
-        embed = discord.Embed(title="Auction Request", description="",color=self.bot.default_color)
-        embed.description += "**Item: **" + data['item'] + "\n"
-        embed.description += f"**Quantity: ** {data['quantity']}\n"
-        embed.description += f"**Market Price: ** ⏣ {item_data['price']:,}\n"
-        embed.description += f"**Requested By: ** <@{data['requested_by']}>\n"
-
-        guild_config = await self.bot.auction.get_config(interaction.guild_id)
-        channel = interaction.guild.get_channel(guild_config['queue_channel'])
-        message = await channel.send(embed=embed)
-        data['_id'] = message.id
-        await self.bot.auction.request.insert(data)
+        def check(m: discord.Message):
+            if m.author.bot: return False
+            if m.channel != thread: return False
+            if m.author.id == data['host']: return False
+            if m.author.id == data['current_bidder']: return False  
+            if re.match('^[0-9]+', m.content):
+                    return True
         
+        await thread.send(embed=embed)
+        while True:
+            try:
+                timeout = 10 - time_passed
+                if timeout <= 0: raise asyncio.TimeoutError
+                msg = await self.bot.wait_for('message', check=check, timeout=timeout)
+                ammout = await DMCConverter_Ctx().convert(msg, msg.content)
+                if not isinstance(ammout, int):
+                    time_passed = int((datetime.datetime.now() - call_started).total_seconds())
+                    continue
+                if not ammout:
+                    time_passed = int((datetime.datetime.now() - call_started).total_seconds())
+                    continue
+                if ammout >= 50000000000:
+                    await msg.reply("You can't bet more than ⏣ 50,000,000,000!")
+                    time_passed = int((datetime.datetime.now() - call_started).total_seconds())
+                    continue
+                if ammout > data['current_bid']:
+                    if ammout - data['current_bid'] < data['bet_increment']:
+                        await msg.reply(f"You can't bet less than ⏣ {data['bet_increment']:,} more than the current bid!")
+                        time_passed = int((datetime.datetime.now() - call_started).total_seconds())
+                        continue
+                    else:
+                        data['current_bid'] = ammout
+                        data['current_bidder'] = msg.author.id
+                        data['last_bet'] = datetime.datetime.now()
+                        data['time_left'] = 10
+                        data['call_started'] = False
+                        await msg.reply(f"You are now the highest bidder with ⏣ {ammout:,}!")
+                        await msg.add_reaction("<:tgk_active:1082676793342951475>")
+                        await self.update_message(data['message'], data, first=False)
+                        return
+            except asyncio.TimeoutError:
+                self.bot.dispatch("auction_calls", data, call_num+1)
+                return
+    
+    @commands.Cog.listener()
+    async def on_auction_ended(self, data: dict):
+        config = await self.backend.get_config(data['message'].guild.id)
+        message: discord.Message = data['message']
+        thread: discord.Thread = data['thread']
+        third_call = discord.Embed(description="# Going Thrice...", color=self.bot.default_color)
+        embed = discord.Embed(description=f"# Sold to <@{data['current_bidder']}> for ⏣ {data['current_bid']:,}!", color=0x00ff00)
+        await thread.send(embeds=[third_call, embed])
+        await thread.edit(locked=True, archived=True)
+        main_embed = message.embeds[0]
+        main_embed.description += f"\n**Sold to <@{data['current_bidder']}> for ⏣ {data['current_bid']:,}!**"
+        await message.edit(embed=main_embed)
+        if data['current_bidder'] == None and data['current_bid'] == data['starting_bid']:
+            await message.reply("No one bid on your auction, so it has been cancelled.")
+            return
+        payout_data = {
+            'host': data['host'],
+            'bidder': data['current_bidder'],
+            'bid': data['current_bid'],
+            'item': data['item'],
+            'quantity': data['quantity'],
+            "paid": False,
+        }
+        payout_channel = self.bot.get_channel(config['payment_channel'])
+
+        embed = discord.Embed(color=self.bot.default_color, description="")
+        embed.set_author(name="Auction Manager", icon_url="https://cdn.discordapp.com/emojis/1134834084728815677.webp?size=96&quality=lossless")
+        embed.description += f"**Auction Winner:** <@{payout_data['bidder']}>\n"
+        embed.description += f"**Auction Host:** <@{payout_data['host']}>\n"
+        embed.description += f"**Item:** {payout_data['quantity']}{payout_data['item']}\n"
+        embed.description += f"**Price:** ⏣ {payout_data['bid']:,}\n"
+
+        msg:discord.Message = await payout_channel.send(embed=embed, content=f"<@{payout_data['bidder']}>, Please pay {payout_data['bid']:,} in the thread below to confirm your purchase!")
+        payout_data['_id'] = msg.id
+        thread = await msg.create_thread(name=f"Auction Payment", auto_archive_duration=1440)
+        await thread.send(f"/serverevents donate quantity: {payout_data['bid']}")
+        payout_data['thread'] = thread.id
+        self.backend.payment_cache[thread.id] = payout_data
+        await self.backend.payment.insert(payout_data)
+        try:
+            self.backend.auction_cache.pop(thread.id)
+        except:
+            pass
+        queue_data = await self.backend.auction.find({'_id': data['host']})
+        await self.backend.auction.delete({'_id': data['host']})
+        if queue_data:
+            channel = message.guild.get_channel(config['queue_channel'])
+            try:
+                msg = await channel.fetch_message(queue_data['message_id'])
+                embed = msg.embeds[0]
+                embed.author.name += " (Ended)"
+                await msg.edit(embed=embed)
+            except:
+                pass
+        config = await self.backend.get_config(message.guild.id)
+        if config['log_channel']:
+            log_channel = message.guild.get_channel(config['log_channel'])
+            self.bot.dispatch("auction_ended", data['auctioner'], data['host'], data['message'], log_channel, data['item'], data['quantity'], payout_data['bid'])
+
+    
+    @commands.Cog.listener()
+    async def on_payment(self, message: discord.Message):
+        data = await self.backend.payment.find({'thread': message.channel.id})
+        if not message.reference:
+            return
+        try:
+            donate_mesage = await message.channel.fetch_message(message.reference.message_id)
+        except:
+            return
+        embed: discord.Embed = donate_mesage.embeds[0]
+        items = re.findall(r"\*\*(.*?)\*\*", embed.description)[0]
+        quantity = int(items.replace("⏣", "", 100).replace(",", "", 100))        
+        if not isinstance(quantity, int): 
+            return
+        if quantity !=  data['bid']:
+            return await message.channel.send(f"<@{data['bidder']}>, You have to pay ⏣ {data['bid']:,}!")
+        await message.channel.send(f"<@{data['bidder']}>, Thank you for your payment! your items will be delivered shortly!")
+        data['paid'] = True
+        await self.backend.payment.update(data)
+        await message.channel.send(f"<@{data['host']}>, We have received the payment for your auction! your payment will be credited shortly!")
+        try:
+            self.backend.payment_cache.pop(data['thread'])
+        except:
+            pass
+        await message.channel.send("Dank Manager, Here is your commands for this auction:")
+        await message.channel.send(f"/serverevents payout user:{data['host']} quantity:{data['bid']}")
+        await message.channel.send(f"/serverevents payout user:{data['bidder']} quantity:{data['quantity']} item:{data['item']}")
+
+    @commands.Cog.listener()
+    async def on_auction_start_log(self, user: int, host: int, message: discord.Message, log_channel: discord.TextChannel, item: str, quantity: str, ):
+        embed = discord.Embed(color=self.bot.default_color, description="", title="Auction | Started")
+        embed.set_author(name="Auction Manager", icon_url="https://cdn.discordapp.com/emojis/1134834084728815677.webp?size=96&quality=lossless")
+        embed.add_field(name="Auctioneer", value=f"<@{user}>")
+        embed.add_field(name="Host", value=f"<@{host}>")
+        embed.add_field(name="Item", value=f"{quantity}x{item}")
+        embed.add_field(name="Message", value=f"[Click Here]({message.jump_url})")
+        view = discord.ui.View()
+        view.add_item(discord.ui.Button(label="Jump", style=discord.ButtonStyle.link, url=message.jump_url, emoji="<:tgk_link:1105189183523401828>"))
+        await log_channel.send(embed=embed, view=view)
+
+    @commands.Cog.listener()
+    async def on_auction_end_log(self, user: int, host: int, winner: int, message: discord.Message, log_channel: discord.TextChannel, item: str, quantity: str, bid: int):
+        embed = discord.Embed(color=self.bot.default_color, description="", title="Auction | Ended")
+        embed.set_author(name="Auction Manager", icon_url="https://cdn.discordapp.com/emojis/1134834084728815677.webp?size=96&quality=lossless")
+        embed.add_field(name="Auctioneer", value=f"<@{user}>")
+        embed.add_field(name="Host", value=f"<@{host}>")
+        embed.add_field(name="Winner", value=f"<@{winner}>")
+        embed.add_field(name="Item", value=f"{quantity}x{item}")
+        embed.add_field(name="Bid", value=f"⏣ {bid:,}")
+        embed.add_field(name="Message", value=f"[Click Here]({message.jump_url})")
+        view = discord.ui.View()
+        view.add_item(discord.ui.Button(label="Jump", style=discord.ButtonStyle.link, url=message.jump_url, emoji="<:tgk_link:1105189183523401828>"))
+        await log_channel.send(embed=embed, view=view)
 
 async def setup(bot):
     await bot.add_cog(Auction(bot))
-    
