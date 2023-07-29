@@ -159,7 +159,8 @@ class Auction(commands.GroupCog):
         item = self.bot.dank_items_cache.get(item)
         if not item:
             return await interaction.response.send_message("Invalid item!")
-
+        if item['price'] * quantity < config['minimum_worth']:
+            return await interaction.response.send_message(f"Minimum price of auction is ⏣ {config['min_price']:,}!")
         embed = discord.Embed(title="Auction Request", description="", color=interaction.client.default_color)
         embed.description += f"**Item:** {item['_id']}x{quantity}\n"
         embed.description += f"**Requested by:** {interaction.user.mention}\n"

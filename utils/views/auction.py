@@ -54,7 +54,7 @@ class AuctionConfig(View):
             await interaction.delete_original_response()
             embed = await self.update_embed(interaction, self.data)
             await interaction.message.edit(embed=embed, view=self)
-            await interaction.client.auction.config.update_config(interaction.guild.id, self.data)
+            await interaction.client.auction.update_config(interaction.guild.id, self.data)
     
     @button(label="Request Channel", style=discord.ButtonStyle.gray, emoji="<:tgk_channel:1073908465405268029>", row=0)
     async def Request_channel(self, interaction: Interaction, button: Button):
@@ -73,7 +73,7 @@ class AuctionConfig(View):
             await interaction.delete_original_response()
             embed = await self.update_embed(interaction, self.data)
             await interaction.message.edit(embed=embed, view=self)
-            await interaction.client.auction.config.update_config(interaction.guild.id, self.data)
+            await interaction.client.auction.update_config(interaction.guild.id, self.data)
     
     @button(label="Queue Channel", style=discord.ButtonStyle.gray, emoji="<:tgk_channel:1073908465405268029>", row=0)
     async def Queue_channel(self, interaction: Interaction, button: Button):
@@ -92,7 +92,7 @@ class AuctionConfig(View):
             await interaction.delete_original_response()
             embed = await self.update_embed(interaction, self.data)
             await interaction.message.edit(embed=embed, view=self)
-            await interaction.client.auction.config.update_config(interaction.guild.id, self.data)
+            await interaction.client.auction.update_config(interaction.guild.id, self.data)
     
     @button(label="Bid Channel", style=discord.ButtonStyle.gray, emoji="<:tgk_channel:1073908465405268029>", row=1)
     async def Bid_channel(self, interaction: Interaction, button: Button):
@@ -111,7 +111,7 @@ class AuctionConfig(View):
             await interaction.delete_original_response()
             embed = await self.update_embed(interaction, self.data)
             await interaction.message.edit(embed=embed, view=self)
-            await interaction.client.auction.config.update_config(interaction.guild.id, self.data)
+            await interaction.client.auction.update_config(interaction.guild.id, self.data)
     
     @button(label="Payment Channel", style=discord.ButtonStyle.gray, emoji="<:tgk_channel:1073908465405268029>", row=1)
     async def Payment_channel(self, interaction: Interaction, button: Button):
@@ -129,7 +129,7 @@ class AuctionConfig(View):
             self.data["payment_channel"] = view.select.values[0].id
             await interaction.delete_original_response()
             embed = await self.update_embed(interaction, self.data)
-            await interaction.client.auction.config.update_config(interaction.guild.id, self.data)
+            await interaction.client.auction.update_config(interaction.guild.id, self.data)
     
     @button(label="Log Channel", style=discord.ButtonStyle.gray, emoji="<:tgk_channel:1073908465405268029>", row=1)
     async def Log_channel(self, interaction: Interaction, button: Button):
@@ -148,7 +148,7 @@ class AuctionConfig(View):
             await interaction.delete_original_response()
             embed = await self.update_embed(interaction, self.data)
             await interaction.message.edit(embed=embed, view=self)
-            await interaction.client.auction.config.update_config(interaction.guild.id, self.data)
+            await interaction.client.auction.update_config(interaction.guild.id, self.data)
     
     @button(label="Manager Roles", style=discord.ButtonStyle.gray, emoji="<:tgk_role:1073908306713780284>", row=2)
     async def manager_roles(self, interaction: Interaction, button: Button):
@@ -172,7 +172,7 @@ class AuctionConfig(View):
                     self.data["manager_roles"].remove(role.id)
                     removed += f"{role.mention}\n"
             await view.select.interaction.response.edit_message(content=f"Added:\n{added}\nRemoved:\n{removed}", view=None)
-            await interaction.client.auction.config.update_config(interaction.guild.id, self.data)
+            await interaction.client.auction.update_config(interaction.guild.id, self.data)
             embed = await self.update_embed(interaction, self.data)
             await interaction.message.edit(embed=embed, view=self)
     
@@ -192,7 +192,7 @@ class AuctionConfig(View):
             await interaction.delete_original_response()
             embed = await self.update_embed(interaction, self.data)
             await interaction.message.edit(embed=embed, view=self)
-        await interaction.client.auction.config.update_config(interaction.guild.id, self.data)
+        await interaction.client.auction.update_config(interaction.guild.id, self.data)
 
     @button(label="Mini Worth", style=discord.ButtonStyle.gray, emoji="<:tgk_bank:1073920882130558987>", row=2)
     async def mini_worth(self, interaction: Interaction, button: Button):
@@ -211,7 +211,7 @@ class AuctionConfig(View):
                 return
             self.data["minimum_worth"] = ammount
             await modal.interaction.response.edit_message(embed=await self.update_embed(interaction, self.data), view=self)
-        await interaction.client.auction.config.update_config(interaction.guild.id, self.data)
+        await interaction.client.auction.update_config(interaction.guild.id, self.data)
 
     @button(label="Automatic Config", style=discord.ButtonStyle.gray, emoji="<:tgk_create:1107262030399930428>", row=3)
     async def auto_config(self, interaction: Interaction, button: Button):
@@ -246,7 +246,7 @@ class AuctionConfig(View):
         logs_channel = await interaction.guild.create_text_channel(name="Logs", category=category, overwrites=overwrite)
         self.data["logs_channel"] = logs_channel.id
 
-        await interaction.client.auction.config.update_config(interaction.guild.id, self.data)
+        await interaction.client.auction.update_config(interaction.guild.id, self.data)
         embed = await self.update_embed(interaction, self.data)
         await interaction.edit_original_response(content="I have finished configuring the auction system for you, you still need to configure the manager roles")
         await interaction.message.edit(embed=embed, view=self)

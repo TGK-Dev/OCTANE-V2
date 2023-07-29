@@ -219,9 +219,7 @@ class serversettings(commands.Cog):
                     view.message = await interaction.original_response()
             
             case "auctions":
-                auction_data = await self.bot.auction.config.find(interaction.guild.id)
-                if not auction_data:
-                    auction_data = await self.bot.auction.create_config(interaction.guild.id)
+                auction_data = await self.bot.auction.get_config(interaction.guild.id)
 
                 embed = discord.Embed(title=f"{interaction.guild.name} Auction Config", color=self.bot.default_color, description="")
                 embed.description += f"**Category:** {interaction.guild.get_channel(auction_data['category']).mention if auction_data['category'] else '`None`'}\n"
