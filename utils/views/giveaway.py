@@ -66,6 +66,9 @@ class Giveaway(View):
             if data['bypass_role'] and (set(user_roles) & set(data['bypass_role'])):
                 bypassed = True
                 pass
+            elif set(user_roles) & set(config['global_bypass']):
+                bypassed = True
+                pass
             else:
                 embed = discord.Embed(description="", title="You Failed to meet the following requriements")
                 i = 1
@@ -84,7 +87,7 @@ class Giveaway(View):
         await interaction.client.giveaway.update_giveaway(interaction.message, data)
         embed = discord.Embed(description="You have successfully joined the giveaway.", color=discord.Color.green())
         if bypassed:
-            embed.description += "\nYou have bypassed the requirements due to your bypass role."            
+            embed.description += "\nYou have bypassed the requirements due to your bypass role."       
         await interaction.followup.send(embed=embed)
 
     @discord.ui.button(label="Participants", style=discord.ButtonStyle.gray, emoji="<:tgk_entries:1124995375548338176>", custom_id="giveaway:Entries")
@@ -98,7 +101,7 @@ class Giveaway(View):
         pages = []
         i = 1
         for page in entries:
-            embed = discord.Embed(title="Giveaway Entries", description="", color=interaction.client.default_color)
+            embed = discord.Embed(title="Giveaway Participants", description="", color=interaction.client.default_color)
             for user in page:
                 embed.description += f"{i}. <@{user[0]}>\n"                
                 i += 1
@@ -147,7 +150,8 @@ class GiveawayConfig(View):
         embed.description += f"**Manager Roles:** {', '.join([f'<@&{role}>' for role in giveaway_data['manager_roles']]) if len(giveaway_data['manager_roles']) > 0 else '`None`'}\n"
         embed.description += f"**Logging Channel:** {interaction.guild.get_channel(giveaway_data['log_channel']).mention if giveaway_data['log_channel'] else '`None`'}\n"
         embed.description += f"**Dm Message:** ```\n{giveaway_data['dm_message']}\n```\n"
-        embed.description += f"**Blacklist:**\n {', '.join([f'<@&{(role)}>' for role in giveaway_data['blacklist']]) if len(giveaway_data['blacklist']) > 0 else '`None`'}"
+        embed.description += f"**Blacklist:**\n {', '.join([f'<@&{(role)}>' for role in giveaway_data['blacklist']]) if len(giveaway_data['blacklist']) > 0 else '`None`'}\n"
+        embed.description += f"**Global Bypass:**\n {', '.join([f'<@&{(role)}>' for role in giveaway_data['global_bypass']]) if len(giveaway_data['global_bypass']) > 0 else '`None`'}\n"
         mults = giveaway_data['multipliers']                
         mults = sorted(mults.items(), key=lambda x: int(x[1]))
         embed.description += f"\n**Multipliers:**\n"
@@ -180,7 +184,7 @@ class GiveawayConfig(View):
         await interaction.message.edit(embed=await self.update_embed(interaction, self.data))
         await interaction.client.giveaway.update_config(interaction.guild, self.data)
     
-    @discord.ui.button(label="Logging Channel", style=discord.ButtonStyle.gray, emoji="<:tgk_channel:1073908465405268029>", custom_id="giveaway:LoggingChannel")
+    @discord.ui.button(label="Logging Channel", style=discord.ButtonStyle.gray, emoji="<:tgk_channel:1073908465405268029>", custom_id="giveaway:LoggingChannel", row=1)
     async def _logging_channel(self, interaction: discord.Interaction, button: discord.ui.Button):
         view = View()
         view.value = None
@@ -197,7 +201,7 @@ class GiveawayConfig(View):
         await interaction.message.edit(embed=await self.update_embed(interaction, self.data))
         await interaction.client.giveaway.update_config(interaction.guild, self.data)
 
-    @discord.ui.button(label="Dm Message", style=discord.ButtonStyle.gray, emoji="<:tgk_edit:1073902428224757850>", custom_id="giveaway:DmMessage")
+    @discord.ui.button(label="Dm Message", style=discord.ButtonStyle.gray, emoji="<:tgk_edit:1073902428224757850>", custom_id="giveaway:DmMessage", row=1)
     async def _dm_message(self, interaction: discord.Interaction, button: discord.ui.Button):
         view = General_Modal(title="Giveaway Dm Message", interaction=interaction)
         view.value = None
@@ -213,7 +217,33 @@ class GiveawayConfig(View):
         await view.interaction.response.edit_message(embed=await self.update_embed(interaction, self.data))
         await interaction.client.giveaway.update_config(interaction.guild, self.data)
 
-    @discord.ui.button(label="Blacklist", style=discord.ButtonStyle.gray, emoji="<:tgk_role:1073908306713780284>", custom_id="giveaway:Blacklist")
+    @discord.ui.button(label="Global Bypass", style=discord.ButtonStyle.gray, emoji="<:tgk_role:1073908306713780284>", custom_id="giveaway:GlobalBypass", row=0)
+    async def _global_bypass(self, interaction: discord.Interaction, button: discord.ui.Button):
+        view = View()
+        view.value = None
+        view.select = Role_select(placeholder="Please select the roles you want to add/remove.", min_values=1, max_values=10)
+        view.add_item(view.select)
+        await interaction.response.send_message(view=view, ephemeral=True)
+        await view.wait()
+
+        if view.value is None:
+            return await interaction.delete_original_response()
+        added = ""
+        removed = ""
+
+        for role in view.select.values:
+            if role.id not in self.data['global_bypass']:
+                self.data['global_bypass'].append(role.id)
+                added += f"<@&{role.id}> "
+            else:
+                self.data['global_bypass'].remove(role.id)
+                removed += f"<@&{role.id}> "
+        await view.select.interaction.response.edit_message(content=f"Added: {added}\nRemoved: {removed}", view=None)
+        await interaction.delete_original_response()
+        await interaction.message.edit(embed=await self.update_embed(interaction, self.data))
+        await interaction.client.giveaway.update_config(interaction.guild, self.data)
+
+    @discord.ui.button(label="Blacklist", style=discord.ButtonStyle.gray, emoji="<:tgk_role:1073908306713780284>", custom_id="giveaway:Blacklist", row=0)
     async def _blacklist(self, interaction: discord.Interaction, button: discord.ui.Button):
         view = View()
         view.value = None
@@ -237,8 +267,9 @@ class GiveawayConfig(View):
         await interaction.delete_original_response()
         await interaction.message.edit(embed=await self.update_embed(interaction, self.data))
         await interaction.client.giveaway.update_config(interaction.guild, self.data)
+
     
-    @discord.ui.button(label="Multipliers", style=discord.ButtonStyle.gray, emoji="<:tgk_role:1073908306713780284>", custom_id="giveaway:Multipliers")
+    @discord.ui.button(label="Multipliers", style=discord.ButtonStyle.gray, emoji="<:tgk_role:1073908306713780284>", custom_id="giveaway:Multipliers", row=0)
     async def _multipliers(self, interaction: discord.Interaction, button: discord.ui.Button):
         multi_view = View()
         multi_view.value = None
