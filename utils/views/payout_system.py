@@ -417,8 +417,9 @@ class Payout_Buttton(discord.ui.View):
             view.add_item(discord.ui.Button(label=f"Paid at", style=discord.ButtonStyle.url, url=message.jump_url, emoji="<:tgk_link:1105189183523401828>"))
             await interaction.message.edit(embed=payot_embed, view=view)   
             await interaction.client.payout_pending.delete(data['_id'])             
-        except:
-            return await view.interaction.edit_original_response("Invalid Message Link")
+        except Exception as e:
+            print(e)
+            return await view.interaction.edit_original_response(content="Invalid Message Link")
 
     async def on_error(self, interaction: Interaction, error: Exception, item: discord.ui.Item):
         if isinstance(error, ButtonCooldown):
