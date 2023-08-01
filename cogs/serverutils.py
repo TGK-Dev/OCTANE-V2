@@ -507,7 +507,7 @@ class Payout(commands.GroupCog, name="payout", description="Payout commands"):
 
 	@commands.Cog.listener()
 	async def on_more_pending(self, info: dict):
-		data = await self.bot.payout_pending.find_many_by_custom({'winner_message_id': info['id']})
+		data = await self.bot.payout_pending.find_many_by_custom({'winner_message_id': info['_id']})
 		if len(data) <= 0:
 			loading_emoji = await self.bot.emoji_server.fetch_emoji(998834454292344842)
 			paid_emoji = await self.bot.emoji_server.fetch_emoji(1052528036043558942)
@@ -549,6 +549,7 @@ class Payout(commands.GroupCog, name="payout", description="Payout commands"):
 				if len(m.embeds) == 0: 
 					return False
 				embed = m.embeds[0]
+				if embed.description is None or embed.description == "": return False
 				if embed.description.startswith("Successfully paid"):
 
 					found_winner = interaction.guild.get_member(int(embed.description.split(" ")[2].replace("<", "").replace(">", "").replace("!", "").replace("@", ""))) 
