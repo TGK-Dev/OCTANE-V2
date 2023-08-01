@@ -395,7 +395,8 @@ class Giveaways_Backend:
             "log_channel": None,
             "multipliers": {},
             "blacklist": [],
-            "dm_message": "Please dm Host to claim your prize!"
+            "dm_message": "Please dm Host to claim your prize!",
+            "global_bypass": []
         }
         await self.config.insert(data)
         return data
@@ -449,6 +450,8 @@ class Giveaways(commands.GroupCog, name="giveaways"):
                 if giveaway["end_time"] <= now:
                     if giveaway["_id"] in self.giveaway_in_prosses:
                         continue
+                    if giveaway["ended"] == True:
+                        continue
                     self.bot.dispatch("giveaway_end", giveaway)
                     self.giveaway_in_prosses.append(giveaway["_id"])
                     del self.backend.giveaways_cache[giveaway["_id"]]
@@ -465,6 +468,7 @@ class Giveaways(commands.GroupCog, name="giveaways"):
         guild: discord.Guild = self.bot.get_guild(giveaway['guild'])
         channel: discord.TextChannel = guild.get_channel(giveaway['channel'])
         host: discord.Member = guild.get_member(giveaway['host'])
+        if giveaway['ended'] == True: return
         try:
             message: discord.Message = await channel.fetch_message(giveaway['_id'])
         except discord.NotFound:
@@ -480,11 +484,26 @@ class Giveaways(commands.GroupCog, name="giveaways"):
             await message.edit(view=view, content="**Giveaway Ended**")
             await message.reply(embed=discord.Embed(description="No one entered the giveaway or there were not enough entries to pick a winner", color=self.bot.default_color))
             await self.backend.giveaways.delete(giveaway['_id'])
-            self.giveaway_in_prosses.remove(giveaway['_id'])
+            try:
+                self.giveaway_in_prosses.remove(giveaway['_id'])
+            except:
+                pass
             try:
                 del self.backend.giveaways_cache[giveaway['_id']]
             except:
                 pass
+            log_data = {
+            "guild": guild,
+            "channel": channel,
+            "message": message,
+            "prize": giveaway['prize'],
+            "winners": [],
+            "winner": [],
+            "host": host,
+            "item": giveaway['item'] if giveaway['dank'] else None,
+            "participants": len(giveaway['entries'].keys()),
+            }
+            self.bot.dispatch("giveaway_end_log", log_data)
             return
         
         entries: List[int] = []
@@ -560,8 +579,23 @@ class Giveaways(commands.GroupCog, name="giveaways"):
 
         giveaway['ended'] = True
         await self.backend.update_giveaway(message, giveaway)
-        try:self.giveaway_in_prosses.remove(giveaway['_id']); del self.backend.giveaways_cache[giveaway['_id']]
-        except:pass
+        try:
+            self.giveaway_in_prosses.remove(giveaway['_id']); 
+        except ValueError:
+            pass
+        log_data = {
+            "guild": guild,
+            "channel": channel,
+            "message": message,
+            "prize": giveaway['prize'],
+            "winners": winners,
+            "winner": giveaway['winners'],
+            "host": host,
+            "item": giveaway['item'] if giveaway['dank'] else None,
+            "participants": len(giveaway['entries'].keys()),
+
+        }
+        self.bot.dispatch("giveaway_end_log", log_data)
                 
     async def item_autocomplete(self, interaction: discord.Interaction, string: str) -> List[app_commands.Choice[str]]:
         choices = []
@@ -613,7 +647,7 @@ class Giveaways(commands.GroupCog, name="giveaways"):
         if dank == True:
             prize = await DMCConverter_Ctx().convert(interaction, prize)
             if not isinstance(prize, int):
-                dank = False
+                return await interaction.followup.send("Invalid prize!", delete_after=5)
         data = {
             "_id": None,
             "channel": interaction.channel.id,
@@ -692,6 +726,7 @@ class Giveaways(commands.GroupCog, name="giveaways"):
         data['_id'] = msg.id
         await self.backend.giveaways.insert(data)
         self.backend.giveaways_cache[msg.id] = data
+        self.bot.dispatch("giveaway_host", data)
     
     @app_commands.command(name="reroll", description="Reroll a giveaway")
     @app_commands.describe(
@@ -720,6 +755,95 @@ class Giveaways(commands.GroupCog, name="giveaways"):
         chl = interaction.client.get_channel(1130057933468745849)
         await chl.send(f"Rerolled giveaway by {interaction.user.mention} in {interaction.guild.name} for {winners} winners {message.jump_url}")
 
+    
+    
+
+    @app_commands.command(name="end", description="End a giveaway")
+    @app_commands.describe(
+        message="Message to accompany the end"
+    )
+    @app_commands.rename(message="message_id")
+    async def _end(self, interaction: discord.Interaction, message: str):
+        try:
+            message = await interaction.channel.fetch_message(int(message))
+        except:
+            return await interaction.response.send_message("Invalid message ID!", ephemeral=True)
+        giveaway_data = await self.backend.get_giveaway(message)
+        if not giveaway_data: return await interaction.response.send_message("This message is not a giveaway!", ephemeral=True)
+        if giveaway_data['ended']: return await interaction.response.send_message("This giveaway has already ended!", ephemeral=True)
+        self.bot.dispatch("giveaway_end", giveaway_data)
+        await interaction.response.send_message("Giveaway ended successfully!", ephemeral=True)
+        try:
+            self.bot.giveaway.giveaways_cache.pop(message.id)
+        except Exception as e:
+            raise e
+
+    @commands.command(name="multiplier", description="Set the giveaway multiplier", aliases=['multi'])
+    async def _multiplier(self, ctx, user: discord.Member=None):
+        user = user if user else ctx.author
+        config = await self.backend.get_config(ctx.guild)
+        if not config: return await ctx.send("This server is not set up!")
+        if len(config['multipliers'].keys()) == 0: return await ctx.send("This server does not have any multipliers!")
+        user_role = [role.id for role in user.roles]
+        embed = discord.Embed(color=self.bot.default_color, description=f"@everyone - `1x`\n")
+        embed.set_author(name=f"{user}'s Multipliers", icon_url=user.avatar.url if user.avatar else user.default_avatar)
+        total = 1
+        for role, multi in config['multipliers'].items():
+            if int(role) in user_role:
+                embed.description += f"<@&{role}> - `{multi}x`\n"
+                total += multi
+        embed.description += f"**Total Multiplier** - `{total}x`"
+        await ctx.reply(embed=embed, allowed_mentions=discord.AllowedMentions.none())
+
+    @commands.Cog.listener()
+    async def on_giveaway_end_log(self, giveaway_data: dict):
+        config = await self.backend.get_config(giveaway_data['guild'])
+        if not config: return
+        if not config['log_channel']: return
+        chl = self.bot.get_channel(config['log_channel'])
+        if not chl: return
+
+        embed = discord.Embed(color=self.bot.default_color,description="", title="Giveaway Ended", timestamp=datetime.datetime.now())
+        embed.add_field(name="Host", value=giveaway_data['host'].mention)
+        embed.add_field(name="Channel", value=giveaway_data['channel'].mention)
+        embed.add_field(name="Number of Winners", value=giveaway_data['winner'])
+        embed.add_field(name="Winners", value="\n".join([winner.mention for winner in giveaway_data['winners']] if giveaway_data['winners'] else ["`None`"]))
+        if giveaway_data['item']:
+            embed.add_field(name="Item", value=giveaway_data['item'])
+        if giveaway_data['prize']:
+            embed.add_field(name="Prize", value=giveaway_data['prize'])
+        embed.add_field(name="Participants", value=giveaway_data['participants'])
+        embed.add_field(name="Message", value=f"[Click Here]({giveaway_data['message'].jump_url})")
+        embed.add_field(name="Total Participants", value=giveaway_data['participants'])
+        view = discord.ui.View()
+        view.add_item(discord.ui.Button(label="Jump", style=discord.ButtonStyle.link, url=giveaway_data['message'].jump_url))
+        await chl.send(embed=embed, view=view)
+    
+    @commands.Cog.listener()
+    async def on_giveaway_host(self, data: dict):
+        config = await self.backend.get_config(self.bot.get_guild(data['guild']))
+        if not config: return
+        if not config['log_channel']: return
+        chl = self.bot.get_channel(config['log_channel'])
+        if not chl: return
+
+        embed = discord.Embed(color=self.bot.default_color,description="", title="Giveaway Hosted", timestamp=datetime.datetime.now())
+        embed.add_field(name="Host", value=f"<@{data['host']}>")
+        embed.add_field(name="Channel", value=f"<#{data['channel']}>")
+        
+        embed.add_field(name="Winners", value=data['winners'])
+        if data['dank'] == True:
+            if data['item']:
+                embed.add_field(name="Prize", value=f"{data['prize']}x {data['item']}")
+            else:
+                embed.add_field(name="Prize", value=f"{data['prize']:,}")
+        else:
+            embed.add_field(name="Prize", value=f"{data['prize']}")
+        embed.add_field(name="Link", value=f"[Click Here](https://discord.com/channels/{data['guild']}/{data['channel']}/{data['_id']})")
+        embed.add_field(name="Ends At", value=data['end_time'].strftime("%d/%m/%Y %H:%M:%S"))
+        await chl.send(embed=embed)
+
+
     async def _giveaway_end(self, interaction: discord.Interaction, message: discord.Message):        
         if message.author.id != self.bot.user.id: return await interaction.response.send_message("This message is not a giveaway!", ephemeral=True)
 
@@ -736,10 +860,10 @@ class Giveaways(commands.GroupCog, name="giveaways"):
         self.bot.dispatch("giveaway_end", giveaway_data)
         await interaction.response.send_message("Giveaway ended successfully!", ephemeral=True)
         try:
-            del self.backend.giveaways_cache[message.id]
-        except:
-            pass
-    
+            self.bot.giveaway.giveaways_cache.pop(message.id)
+        except Exception as e:
+            raise e
+
     async def _giveaway_reroll(self, interaction: discord.Interaction, message: discord.Message):
         config = await self.backend.get_config(interaction.guild)
         if not config:
@@ -770,42 +894,6 @@ class Giveaways(commands.GroupCog, name="giveaways"):
         else:
             return
 
-    @app_commands.command(name="end", description="End a giveaway")
-    @app_commands.describe(
-        message="Message to accompany the end"
-    )
-    @app_commands.rename(message="message_id")
-    async def _end(self, interaction: discord.Interaction, message: str):
-        try:
-            message = await interaction.channel.fetch_message(int(message))
-        except:
-            return await interaction.response.send_message("Invalid message ID!", ephemeral=True)
-        giveaway_data = await self.backend.get_giveaway(message)
-        if not giveaway_data: return await interaction.response.send_message("This message is not a giveaway!", ephemeral=True)
-        if giveaway_data['ended']: return await interaction.response.send_message("This giveaway has already ended!", ephemeral=True)
-        self.bot.dispatch("giveaway_end", giveaway_data)
-        await interaction.response.send_message("Giveaway ended successfully!", ephemeral=True)
-        try:
-            del self.backend.giveaways_cache[message.id]
-        except:
-            pass
-
-    @commands.command(name="multiplier", description="Set the giveaway multiplier", aliases=['multi'])
-    async def _multiplier(self, ctx, user: discord.Member=None):
-        user = user if user else ctx.author
-        config = await self.backend.get_config(ctx.guild)
-        if not config: return await ctx.send("This server is not set up!")
-        if len(config['multipliers'].keys()) == 0: return await ctx.send("This server does not have any multipliers!")
-        user_role = [role.id for role in user.roles]
-        embed = discord.Embed(color=self.bot.default_color, description=f"@everyone - `1x`\n")
-        embed.set_author(name=f"{user}'s Multipliers", icon_url=user.avatar.url if user.avatar else user.default_avatar)
-        total = 1
-        for role, multi in config['multipliers'].items():
-            if int(role) in user_role:
-                embed.description += f"<@&{role}> - `{multi}x`\n"
-                total += multi
-        embed.description += f"**Total Multiplier** - `{total}x`"
-        await ctx.reply(embed=embed, allowed_mentions=discord.AllowedMentions.none())
 
 async def setup(bot):
     await bot.add_cog(Level(bot))
