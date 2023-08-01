@@ -587,8 +587,9 @@ class Payout(commands.GroupCog, name="payout", description="Payout commands"):
 			embed.add_field(name="Command", value=f"{cmd}")
 			embed.set_footer(text=f"Queue Number: {payouts.index(data)+1}/{len(payouts)}")
 			await asyncio.sleep(1.25)
-
-			await interaction.followup.send(embed=embed, ephemeral=True)
+			link_view = discord.ui.View()
+			link_view.add_item(discord.ui.Button(label=f"Queue Link", style=discord.ButtonStyle.url, url=f"https://discord.com/channels/{interaction.guild.id}/{queue_channel.id}/{data['_id']}", emoji="<:tgk_link:1105189183523401828>"))
+			await interaction.followup.send(embed=embed, ephemeral=True, view=link_view)
 			try:
 				msg: discord.Message = await self.bot.wait_for('message', check=check, timeout=60)
 				view = discord.ui.View()
