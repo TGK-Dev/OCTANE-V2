@@ -1,6 +1,6 @@
 import discord
 from discord.ext import commands
-from typing import Any, Union
+from typing import Any, List, Union
 from discord import Interaction, SelectOption
 from discord.interactions import Interaction
 from discord.ui import View, Button, Select
@@ -123,6 +123,16 @@ class GiveawayLeave(View):
     async def on_timeout(self):
         await self.interaction.delete_original_response()
     
+    @discord.ui.button(label="View your chances", style=discord.ButtonStyle.gray, emoji="<:tgk_entries:1124995375548338176>", custom_id="giveaway:Chances")
+    async def _chances(self, interaction: discord.Interaction, button: discord.ui.Button):
+        entries: List[int] = []
+        for key, value in self.data['entries'].items():
+            if int(key) in entries: continue
+            entries.extend([int(key)] * value)
+        percentage = round(entries.count(self.user.id) / len(entries) * 100, 2)
+        embed = discord.Embed(description=f"You have a *{percentage}%* chance of winning this giveaway.", color=interaction.client.default_color)
+        await interaction.response.send_message(embed=embed, ephemeral=True)
+    
     @discord.ui.button(label="Leave", style=discord.ButtonStyle.gray, emoji="<:tgk_pepeexit:790189030569934849>", custom_id="giveaway:Leave")
     async def _leave(self, interaction: discord.Interaction, button: discord.ui.Button):
         try:
@@ -131,6 +141,7 @@ class GiveawayLeave(View):
         except:
             pass
         await interaction.response.edit_message(content="You have successfully left the giveaway.", view=None, delete_after=10, embed=None)        
+    
 
 class GiveawayConfig(View):
     def __init__(self, data: dict, user: discord.Member, message: discord.Message=None):
