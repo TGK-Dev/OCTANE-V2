@@ -95,29 +95,22 @@ class Auction(commands.GroupCog):
     async def update_message(self, message: discord.Message, data: dict, first:bool):
         if first:
             timestamp30s = int((datetime.datetime.now() + datetime.timedelta(seconds=30)).timestamp())
-            embed = discord.Embed(title="Auction Started", description="", color=self.bot.default_color)
-            embed.description += f"**Item:** {data['quantity']}x{data['item']}\n"
-            embed.description += f"**Starting Bid:** ⏣ {data['starting_bid']:,}\n"
-            embed.description += f"**Bet Increment:** ⏣ {data['bet_increment']:,}\n"
-            embed.description += f"**Current Bid:** ⏣ {data['starting_bid']:,}\n"
-            embed.description += f"**Current Bidder:** `None`\n"
-            embed.description += f"**Requested by:** {message.guild.get_member(data['host']).mention}\n"
-            embed.description += f"**Auctioner:** {message.guild.get_member(data['auctioner']).mention}\n"
-            embed.description += f"**Time Left:** <t:{timestamp30s}:R>\n"
+            embed = message.embeds[0]
+            fields = [field.name for field in embed.fields]
+            if "Time Left" in fields:
+                embed.set_field_at(fields.index("Time Left"), name="Time Left", value=f"<t:{timestamp30s}:R>")
             await message.edit(embed=embed)
         else:
             timestamp10s = int((datetime.datetime.now() + datetime.timedelta(seconds=10)).timestamp())
-            embed = discord.Embed(title="Auction Started", description="", color=self.bot.default_color)
-            embed.description += f"**Item:** {data['item']}x{data['quantity']}\n"
-            embed.description += f"**Starting Bid:** ⏣ {data['starting_bid']:,}\n"
-            embed.description += f"**Bet Increment:** ⏣ {data['bet_increment']:,}\n"
-            embed.description += f"**Current Bid:** ⏣ {data['current_bid']:,}\n"
-            embed.description += f"**Current Bidder:** {message.guild.get_member(data['current_bidder']).mention}\n"
-            embed.description += f"**Requested by:** {message.guild.get_member(data['host']).mention}\n"
-            embed.description += f"**Auctioner:** {message.guild.get_member(data['auctioner']).mention}\n"
-            embed.description += f"**Time Left:** <t:{timestamp10s}:R>\n"
-            await message.edit(embed=embed)
-        
+            embed: discord.Embed = message.embeds[0]
+            fields = [field.name for field in embed.fields]
+            if "Time Left" in fields:
+                embed.set_field_at(fields.index("Time Left"), name="Time Left", value=f"<t:{timestamp10s}:R>")
+            if "Current Bidder" in fields:
+                embed.set_field_at(fields.index("Current Bidder"), name="Current Bidder", value=f"<@{data['current_bidder']}>")
+            if "Current Bid" in fields:
+                embed.set_field_at(fields.index("Current Bid"), name="Current Bid", value=f"{data['current_bid']:,}")
+            await message.edit(embed=embed)        
 
     def cog_unload(self):
         self.auction_loop.cancel()
@@ -210,7 +203,7 @@ class Auction(commands.GroupCog):
         if not queue_channel: return
         view = discord.ui.View()
         view.add_item(discord.ui.Button(style=discord.ButtonStyle.link, url=data['donated_at'], emoji="<tgk_link:1105189183523401828>"))
-        qmsg = await queue_channel.send(embed=queue_embed)
+        qmsg = await queue_channel.send(embed=queue_embed, view=view)
         data['message_id'] = qmsg.id
         data['channel_id'] = qmsg.channel.id
         await self.backend.auction.insert(data)
@@ -235,12 +228,18 @@ class Auction(commands.GroupCog):
 
         starting_big = int((item['price'] * auction_data['quantity'])/2)
         bet_incre = int((item['price'] * auction_data['quantity'])/20)
-        embed = discord.Embed(title="Auction Starting", description="", color=interaction.client.default_color)
-        embed.description += f"**Item:** {auction_data['quantity']}x{item['_id']}\n"
-        embed.description += f"**Starting Bid:** ⏣ {starting_big:,}\n"
-        embed.description += f"**Bet Increment:** ⏣ {bet_incre:,}\n"
-        embed.description += f"**Requested by:** {interaction.guild.get_member(auction_data['_id']).mention}\n"
-        embed.description += f"**Auctioner:** {interaction.user.mention}\n"
+
+        embed = discord.Embed(title=f"Auction Starting", description="", color=interaction.client.default_color)
+        embed.set_author(name="Auction Manager", icon_url="https://cdn.discordapp.com/emojis/1134834084728815677.webp?size=96&quality=lossless")
+        embed.add_field(name="Host", value=interaction.guild.get_member(auction_data['_id']).mention)
+        embed.add_field(name="Item", value=f"`{auction_data['quantity']}x` **{item['_id']}**")
+        embed.add_field(name="Market Price", value=f"⏣ {item['price']:,}")
+        embed.add_field(name="Auctioner", value=interaction.user.mention)
+        embed.add_field(name="Starting Bid", value=f"⏣ {starting_big:,}")
+        embed.add_field(name="Bet Increment", value=f"⏣ {bet_incre:,}")
+        embed.add_field(name="Current Bidder", value="`None`")
+        embed.add_field(name="Current Bid", value=f"⏣ {starting_big:,}")
+        embed.add_field(name="Time Left", value="`Waiting for start`")
 
         view = Confirm(interaction.user, 60)
         view.children[0].label = "Start Auction"
@@ -399,7 +398,10 @@ class Auction(commands.GroupCog):
         await thread.send(embeds=[third_call, embed])
         await thread.edit(locked=True, archived=True)
         main_embed = message.embeds[0]
-        main_embed.description += f"\n**Sold to <@{data['current_bidder']}> for ⏣ {data['current_bid']:,}!**"
+        for i in range(3):main_embed.remove_field(-1)    
+        main_embed.add_field(name="Sold to", value=f"<@{data['current_bidder']}>")
+        main_embed.add_field(name="Winning Bid", value=f"⏣ {data['current_bid']:,}")
+        main_embed.add_field(name=" ", value=" ")
         await message.edit(embed=main_embed)
         if data['current_bidder'] == None and data['current_bid'] == data['starting_bid']:
             await message.reply("No one bid on your auction, so it has been cancelled.")
