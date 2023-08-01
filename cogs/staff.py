@@ -127,51 +127,6 @@ class Staff(commands.GroupCog, name="staff", description="Staff management comma
             embed = discord.Embed(title="Staff Update | Appointed", description=f"**New Staff:** {user.mention}\n**Position:** {post['name'].capitalize()}\n**Appointed By:** {interaction.user.mention}\n", color=self.bot.default_color)
             embed.timestamp = datetime.datetime.utcnow()
             self.bot.dispatch("staff_update", guild_config['webhook_url'], embed)
-    
-    # @app_commands.command(name="post-fix", description="Sync current staff members with the database")
-    # @app_commands.describe(post="The position to fix")
-    # @app_commands.autocomplete(post=staff_position_autocomplete)
-    # async def post_fix(self, interaction: discord.Interaction, post: str):
-    #     guild_config = await self.bot.staff_db.get_config(interaction.guild)
-
-    #     if interaction.user.id != interaction.guild.owner.id and interaction.user.id not in guild_config['owners'] and interaction.user.id not in guild_config['staff_manager']:
-    #         return await interaction.response.send_message(f"Only `{interaction.guild.name}'s` owners can use this command", ephemeral=True)
-    
-    #     if post not in guild_config['positions'].keys():
-    #         return await interaction.response.send_message(f"Position `{post.capitalize()}` does not exist", ephemeral=True)
-        
-    #     post_role = interaction.guild.get_role(guild_config['positions'][post]['role'])
-    #     if post_role is None: return await interaction.response.send_message(f"`{post.capitalize()}` role does not exist", ephemeral=True)
-
-    #     await interaction.response.send_message(embed=discord.Embed(description="Please wait while we fix the post...", color=self.bot.default_color))
-
-    #     added_users = []
-    #     removed_users = []
-
-    #     for member in post_role.members:
-    #         user_data = await self.bot.staff_db.get_staff(member)
-    #         if post not in user_data['positions'].keys():
-    #             user_data['positions'][post] = {'name': post, 'appointed_by': interaction.user.id, 'appointed_at': datetime.datetime.utcnow()}
-    #             await self.bot.staff_db.staff_collection.update(member.id, user_data)
-    #             added_users.append(member.mention)
-        
-    #     staff_members = await self.bot.staff_db.staff_collection.get_all()
-    #     for staff_member in staff_members:
-    #         user = interaction.guild.get_member(staff_member['_id'])
-    #         if user is None: 
-    #             await self.bot.staff_db.staff_collection.delete(staff_member['_id'])
-    #             continue
-
-    #         if post in staff_member['positions'].keys():
-    #             if post_role not in user.roles:
-    #                 del staff_member['positions'][post]
-    #                 await self.bot.staff_db.staff_collection.update(staff_member['_id'], staff_member)
-    #                 removed_users.append(user.mention)
-        
-    #     embed = discord.Embed(title="Post Fix", description=f"Successfully fixed `{post.capitalize()}`", color=self.bot.default_color)
-    #     embed.add_field(name="Added Users", value=", ".join(added_users) if len(added_users) > 0 else "None", inline=False)
-    #     embed.add_field(name="Removed Users", value=", ".join(removed_users) if len(removed_users) > 0 else "None", inline=False)
-    #     await interaction.edit_original_response(embed=embed)
 
     @app_commands.command(name="revoke", description="Revoke a user's position")
     @app_commands.describe(user="The user to revoke", position="The position to revoke")
