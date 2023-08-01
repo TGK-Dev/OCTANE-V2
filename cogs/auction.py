@@ -160,7 +160,7 @@ class Auction(commands.GroupCog):
         if not item:
             return await interaction.response.send_message("Invalid item!")
         if item['price'] * quantity < config['minimum_worth']:
-            return await interaction.response.send_message(f"Minimum price of auction is ⏣ {config['min_price']:,}!")
+            return await interaction.response.send_message(f"Minimum price of auction is ⏣ {config['minimum_worth']:,}!")
         embed = discord.Embed(title="Auction Request", description="", color=interaction.client.default_color)
         embed.description += f"**Item:** {item['_id']}x{quantity}\n"
         embed.description += f"**Requested by:** {interaction.user.mention}\n"
@@ -320,7 +320,7 @@ class Auction(commands.GroupCog):
             return await message.reply("You can't bet more than ⏣ 50,000,000,000!")
         if ammout > data['current_bid']:
             if ammout - data['current_bid'] < data['bet_increment']:
-                return await message.reply(f"You can't bet less than ⏣ {data['bet_increment']:,} more than the current bid!")
+                return await message.reply(f"Your bet must have at least ⏣ {data['bet_increment']:,} increment from the current bid!")
             data['current_bid'] = ammout
             data['current_bidder'] = message.author.id
             data['last_bet'] = datetime.datetime.now()
@@ -328,6 +328,8 @@ class Auction(commands.GroupCog):
             await message.reply(f"You are now the highest bidder with ⏣ {ammout:,}!")
             await message.add_reaction("<:tgk_active:1082676793342951475>")
             await self.update_message(data['message'], data, first=False)
+        else:
+            return await message.reply(f"Current bid is ⏣ {data['current_bid']:,}! You can't bet less than that!")
     
     @commands.Cog.listener()
     async def on_auction_calls(self, data: dict, call_num:int):
