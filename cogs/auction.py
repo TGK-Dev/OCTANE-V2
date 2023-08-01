@@ -202,7 +202,7 @@ class Auction(commands.GroupCog):
         queue_channel = interaction.guild.get_channel(config['queue_channel'])
         if not queue_channel: return
         view = discord.ui.View()
-        view.add_item(discord.ui.Button(style=discord.ButtonStyle.link, url=data['donated_at'], emoji="<tgk_link:1105189183523401828>"))
+        view.add_item(discord.ui.Button(style=discord.ButtonStyle.link, url=data['donated_at'], emoji="<tgk_link:1105189183523401828>", label="Donated At"))
         qmsg = await queue_channel.send(embed=queue_embed, view=view)
         data['message_id'] = qmsg.id
         data['channel_id'] = qmsg.channel.id
@@ -435,6 +435,16 @@ class Auction(commands.GroupCog):
         except:
             pass
         queue_data = await self.backend.auction.find({'_id': data['host']})
+        queue_channel = self.bot.get_channel(config['queue_channel'])
+
+        try:
+            qmsg = await queue_channel.fetch_message(queue_data['message_id'])
+            view = discord.ui.View.from_message(qmsg)
+            view.add_item(discord.ui.Button(label="Auctioned At", url=message.jump_url, emoji="<:tgk_link:1105189183523401828>"))
+            await qmsg.edit(view=view)
+        except:
+            pass
+
         await self.backend.auction.delete({'_id': data['host']})
         if queue_data:
             channel = message.guild.get_channel(config['queue_channel'])
