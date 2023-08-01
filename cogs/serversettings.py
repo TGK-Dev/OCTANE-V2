@@ -222,11 +222,11 @@ class serversettings(commands.Cog):
                 auction_data = await self.bot.auction.get_config(interaction.guild.id)
 
                 embed = discord.Embed(title=f"{interaction.guild.name} Auction Config", color=self.bot.default_color, description="")
-                embed.description += f"**Category:** {interaction.guild.get_channel(auction_data['category']).mention if auction_data['category'] else '`None`'}\n"
-                embed.description += f"**Request Channel:** {interaction.guild.get_channel(auction_data['request_channel']).mention if auction_data['request_channel'] else '`None`'}\n"
-                embed.description += f"**Queue Channel:** {interaction.guild.get_channel(auction_data['queue_channel']).mention if auction_data['queue_channel'] else '`None`'}\n"
-                embed.description += f"**Bid Channel:** {interaction.guild.get_channel(auction_data['bid_channel']).mention if auction_data['bid_channel'] else '`None`'}\n"
-                embed.description += f"**Payment Channel:** {interaction.guild.get_channel(auction_data['payment_channel']).mention if auction_data['payment_channel'] else '`None`'}\n"
+                embed.description += f"**Category:** <#{auction_data['category']}> \n" if auction_data['category'] else "**Category:** `None`\n"
+                embed.description += f"**Request Channel:** <#{auction_data['request_channel']}> \n" if auction_data['request_channel'] else "**Request Channel:** `None`\n"
+                embed.description += f"**Queue Channel:** <#{auction_data['queue_channel']}> \n" if auction_data['queue_channel'] else "**Queue Channel:** `None`\n"
+                embed.description += f"**Bid Channel:** <#{auction_data['bid_channel']}> \n" if auction_data['bid_channel'] else "**Bid Channel:** `None`\n"
+                embed.description += f"**Payment Channel:** <#{auction_data['payment_channel']}> \n" if auction_data['payment_channel'] else "**Payment Channel:** `None`\n"
                 embed.description += f"**Manager Roles:** {', '.join([f'<@&{role}>' for role in auction_data['manager_roles']]) if len(auction_data['manager_roles']) > 0 else '`None`'}\n"
                 embed.description += f"**Ping Role:** {interaction.guild.get_role(auction_data['ping_role']).mention if auction_data['ping_role'] else '`None`'}\n"
                 embed.description += f"**Minimum Worth:** {auction_data['minimum_worth']:,}\n" if auction_data['minimum_worth'] else '**Minimum Worth:** `None`'
