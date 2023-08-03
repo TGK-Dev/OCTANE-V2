@@ -284,7 +284,7 @@ class Auction(commands.GroupCog):
         if config['ping_role']:
             role = interaction.guild.get_role(config['ping_role'])
             if role:
-                await interaction.followup.send(f"{role.mention} New auction has been started!", ephemeral=False)
+                await interaction.channel.send(f"{role.mention} New auction has been started!")
         if config['log_channel']:
             channel = interaction.guild.get_channel(config['log_channel'])
             self.bot.dispatch("auction_start_log", data['auctioner'], data['host'], data['item'], data['quantity'], channel)
@@ -301,7 +301,7 @@ class Auction(commands.GroupCog):
         data['ended'] = False
         await self.backend.auction.update(data)
         await interaction.response.send_message("Auction has been re-queued!")
-        
+
     @commands.Cog.listener()
     async def on_message(self, message: discord.Message):
         if message.author.bot: 
