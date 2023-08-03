@@ -185,7 +185,7 @@ class Auction(commands.GroupCog):
             "channel_id": None,
             "ended": False,
         }
-        await thread.edit(name=f"Auction Request - {interaction.user.name} - Verified", locked=True, archived=True)
+        await thread.edit(name=f"Auction Request - {interaction.user.name} - Verified", auto_archive_duration=60)
         embed.title += " - Verified"
         await msg.edit(embed=embed)
 
