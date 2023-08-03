@@ -149,15 +149,19 @@ class Auction(commands.GroupCog):
         if not config['request_channel']:
             return await interaction.response.send_message("Request channel is not setup yet!")
 
+        queue_data = await self.backend.auction.find_many_by_custom({"user_id": interaction.user.id, "ended": False})
+        if len(queue_data) >= 2:
+            return await interaction.response.send_message("You already have 2 auction request in queue!")
+
         item = self.bot.dank_items_cache.get(item)
         if not item:
             return await interaction.response.send_message("Invalid item!")
         if item['price'] * quantity < config['minimum_worth']:
             return await interaction.response.send_message(f"Minimum price of auction is ⏣ {config['minimum_worth']:,}!")
         embed = discord.Embed(title="Auction Request", description="", color=interaction.client.default_color)
-        embed.description += f"**Item:** {quantity}x{item['_id']}\n"
+        embed.description += f"**Item:** `{quantity}x` {item['_id']}\n"
         embed.description += f"**Requested by:** {interaction.user.mention}\n"
-        embed.description += f"**Total Price:** {item['price'] * quantity}\n"
+        embed.description += f"**Total Price:** {(item['price'] * quantity):,}\n"
 
         await interaction.response.send_message(embed=embed)
         msg = await interaction.original_response()
@@ -176,7 +180,7 @@ class Auction(commands.GroupCog):
             return
         await thread.send(f"{interaction.user.mention}, Your request has been verified!")
         data = {
-            "_id": interaction.user.id,
+            "user_id": interaction.user.id,
             "item": item['_id'],
             "quantity": quantity,
             "donated_at": f"https://canary.discord.com/channels/{interaction.guild_id}/{thread.id}",
@@ -191,10 +195,9 @@ class Auction(commands.GroupCog):
 
         queue_embed = discord.Embed(description="", color=interaction.client.default_color)
         queue_embed.set_author(name=f"{interaction.user.name}'s Auction", icon_url=interaction.user.avatar.url if interaction.user.avatar else interaction.user.default_avatar)
-        queue_embed.description += f"**Item:** {quantity}x{item['_id']}\n"
-        queue_embed.description += f"**Quantity:** {quantity}\n"
+        queue_embed.description += f"**Item:** `{quantity}x` {item['_id']}\n"
         queue_embed.description += f"**Requested by:** {interaction.user.mention}\n"
-        queue_embed.description += f"**Total Price:** ⏣ {item['price'] * quantity}\n"
+        queue_embed.description += f"**Total Price:** ⏣ {(item['price'] * quantity):,}\n"
         queue_embed.description += f"**Donated at:** [Click Here]({data['donated_at']})"
         queue_embed.set_footer(text=f"ID: {interaction.user.id}")
 
@@ -303,8 +306,10 @@ class Auction(commands.GroupCog):
             if message.author.id != 270904126974590976: return
             if message.channel.id in self.backend.payment_cache.keys():
                 if len(message.embeds) == 0: return
-                if message.embeds[0].description != "Successfully donated!": return
-                self.bot.dispatch("payment", message)
+                if message.embeds[0].description == None or "": return
+                if message.embeds[0].description == "Successfully donated!": 
+                    self.bot.dispatch("payment", message)
+
             return
         if not message.guild: return
         if not isinstance(message.channel, discord.Thread): return
@@ -426,7 +431,9 @@ class Auction(commands.GroupCog):
             'bid': data['current_bid'],
             'item': data['item'],
             'quantity': data['quantity'],
-            "paid": False,
+            "paid_to_pool": False,
+            "paid_to_host": False,
+            "paid_to_bidder": False,
         }
         payout_channel = self.bot.get_channel(config['payment_channel'])
 
@@ -434,7 +441,7 @@ class Auction(commands.GroupCog):
         embed.set_author(name="Auction Manager", icon_url="https://cdn.discordapp.com/emojis/1134834084728815677.webp?size=96&quality=lossless")
         embed.description += f"**Auction Winner:** <@{payout_data['bidder']}>\n"
         embed.description += f"**Auction Host:** <@{payout_data['host']}>\n"
-        embed.description += f"**Item:** {payout_data['quantity']}{payout_data['item']}\n"
+        embed.description += f"**Item:** `{payout_data['quantity']}x` {payout_data['item']}\n"
         embed.description += f"**Price:** ⏣ {payout_data['bid']:,}\n"
 
         msg:discord.Message = await payout_channel.send(embed=embed, content=f"<@{payout_data['bidder']}>, Please pay {payout_data['bid']:,} in the thread below to confirm your purchase!")
@@ -448,9 +455,8 @@ class Auction(commands.GroupCog):
             self.backend.auction_cache.pop(thread.id)
         except:
             pass
-        queue_data = await self.backend.auction.find({'_id': data['host']})
+        queue_data = await self.backend.auction.find({'user_id': data['host']})
         queue_channel = self.bot.get_channel(config['queue_channel'])
-
         try:
             qmsg = await queue_channel.fetch_message(queue_data['message_id'])
             view = discord.ui.View.from_message(qmsg)
@@ -477,31 +483,28 @@ class Auction(commands.GroupCog):
     
     @commands.Cog.listener()
     async def on_payment(self, message: discord.Message):
-        data = await self.backend.payment.find({'thread': message.channel.id})
-        if not message.reference:
-            return
-        try:
-            donate_mesage = await message.channel.fetch_message(message.reference.message_id)
-        except:
-            return
-        embed: discord.Embed = donate_mesage.embeds[0]
-        items = re.findall(r"\*\*(.*?)\*\*", embed.description)[0]
-        quantity = int(items.replace("⏣", "", 100).replace(",", "", 100))        
-        if not isinstance(quantity, int): 
-            return
-        if quantity !=  data['bid']:
-            return await message.channel.send(f"<@{data['bidder']}>, You have to pay ⏣ {data['bid']:,}!")
-        await message.channel.send(f"<@{data['bidder']}>, Thank you for your payment! your items will be delivered shortly!")
-        data['paid'] = True
-        await self.backend.payment.update(data)
-        await message.channel.send(f"<@{data['host']}>, We have received the payment for your auction! your payment will be credited shortly!")
-        try:
-            self.backend.payment_cache.pop(data['thread'])
-        except:
-            pass
-        await message.channel.send("Dank Manager, Here is your commands for this auction:")
-        await message.channel.send(f"/serverevents payout user:{data['host']} quantity:{data['bid']}")
-        await message.channel.send(f"/serverevents payout user:{data['bidder']} quantity:{data['quantity']} item:{data['item']}")
+        if message.embeds[0].description == "Successfully donated!":
+            data = await self.backend.payment.find({'thread': message.channel.id})
+            if not message.reference:
+                return
+            try:
+                donate_mesage = await message.channel.fetch_message(message.reference.message_id)
+            except:
+                return
+            embed: discord.Embed = donate_mesage.embeds[0]
+            items = re.findall(r"\*\*(.*?)\*\*", embed.description)[0]
+            quantity = int(items.replace("⏣", "", 100).replace(",", "", 100))        
+            if not isinstance(quantity, int): 
+                return
+            if quantity !=  data['bid']:
+                return await message.channel.send(f"<@{data['bidder']}>, You have to pay ⏣ {data['bid']:,}!")
+            await message.channel.send(f"<@{data['bidder']}>, Thank you for your payment! your items will be delivered shortly!")
+            data['paid'] = True
+            await self.backend.payment.update(data)
+            await message.channel.send(f"<@{data['host']}>, We have received the payment for your auction! your payment will be credited shortly!")
+            await message.channel.send("Dank Manager, Here is your commands for this auction:")
+            await message.channel.send(f"/serverevents payout user:{data['host']} quantity:{data['bid']}")
+            await message.channel.send(f"/serverevents payout user:{data['bidder']} quantity:{data['quantity']} item:{data['item']}")
 
     @commands.Cog.listener()
     async def on_auction_start_log(self, user: int, host: int, message: discord.Message, log_channel: discord.TextChannel, item: str, quantity: str, ):
