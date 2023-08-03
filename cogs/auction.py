@@ -155,9 +155,8 @@ class Auction(commands.GroupCog):
         if item['price'] * quantity < config['minimum_worth']:
             return await interaction.response.send_message(f"Minimum price of auction is ⏣ {config['minimum_worth']:,}!")
         embed = discord.Embed(title="Auction Request", description="", color=interaction.client.default_color)
-        embed.description += f"**Item:** {item['_id']}x{quantity}\n"
+        embed.description += f"**Item:** {quantity}x{item['_id']}\n"
         embed.description += f"**Requested by:** {interaction.user.mention}\n"
-        embed.description += f"**Market Price:** {item['price']}\n"
         embed.description += f"**Total Price:** {item['price'] * quantity}\n"
 
         await interaction.response.send_message(embed=embed)
@@ -192,10 +191,9 @@ class Auction(commands.GroupCog):
 
         queue_embed = discord.Embed(description="", color=interaction.client.default_color)
         queue_embed.set_author(name=f"{interaction.user.name}'s Auction", icon_url=interaction.user.avatar.url if interaction.user.avatar else interaction.user.default_avatar)
-        queue_embed.description += f"**Item:** {item['_id']}\n"
+        queue_embed.description += f"**Item:** {quantity}x{item['_id']}\n"
         queue_embed.description += f"**Quantity:** {quantity}\n"
         queue_embed.description += f"**Requested by:** {interaction.user.mention}\n"
-        queue_embed.description += f"**Market Price:** ⏣ {item['price']}\n"
         queue_embed.description += f"**Total Price:** ⏣ {item['price'] * quantity}\n"
         queue_embed.description += f"**Donated at:** [Click Here]({data['donated_at']})"
         queue_embed.set_footer(text=f"ID: {interaction.user.id}")
@@ -280,11 +278,8 @@ class Auction(commands.GroupCog):
             "ended": False
         }
         self.backend.auction_cache[thread.id] = data
+        await interaction.followup.send(f"Auction started here {thread.mention}")
         await self.update_message(message=msg, data=data, first=True)
-        if config['ping_role']:
-            role = interaction.guild.get_role(config['ping_role'])
-            if role:
-                await interaction.channel.send(f"{role.mention} New auction has been started!")
         if config['log_channel']:
             channel = interaction.guild.get_channel(config['log_channel'])
             self.bot.dispatch("auction_start_log", data['auctioner'], data['host'], data['item'], data['quantity'], channel)
