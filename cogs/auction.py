@@ -184,6 +184,7 @@ class Auction(commands.GroupCog):
             "guild_id": interaction.guild_id,
             "message_id": None,
             "channel_id": None,
+            "ended": False,
         }
         await thread.edit(name=f"Auction Request - {interaction.user.name} - Verified", locked=True, archived=True)
         embed.title += " - Verified"
@@ -221,13 +222,18 @@ class Auction(commands.GroupCog):
         if interaction.channel.id != config['bid_channel']:
             return await interaction.response.send_message("You can only use this command in bid channel!", ephemeral=True)
         
-        auction_data = await self.backend.auction.find({"guild_id": interaction.guild_id})
+        auction_data = await self.backend.auction.find_by_custom({"guild_id": interaction.guild_id, "ended": False})
         if not auction_data:
             return await interaction.response.send_message("There are no auctions pending!", ephemeral=True)
         item = self.bot.dank_items_cache.get(auction_data['item'])
 
         starting_big = int((item['price'] * auction_data['quantity'])/2)
-        bet_incre = int((item['price'] * auction_data['quantity'])/20)
+        total_price = item['price'] * auction_data['quantity']
+
+        if total_price >= 100000000:
+            bet_incre = 1000000
+        else:
+            bet_incre = 50000
 
         embed = discord.Embed(title=f"Auction Starting", description="", color=interaction.client.default_color)
         embed.set_author(name="Auction Manager", icon_url="https://cdn.discordapp.com/emojis/1134834084728815677.webp?size=96&quality=lossless")
@@ -283,6 +289,19 @@ class Auction(commands.GroupCog):
             channel = interaction.guild.get_channel(config['log_channel'])
             self.bot.dispatch("auction_start_log", data['auctioner'], data['host'], data['item'], data['quantity'], channel)
 
+    @app_commands.command(name="re-queue", description="Re-queue an auction")
+    async def re_queue(self, interaction: discord.Interaction, message:str):
+        user_role = [role.id for role in interaction.user.roles]
+        config = await self.backend.get_config(interaction.guild_id)
+        if not config: return await interaction.response.send_message("Auction is not setup yet!")
+        if not (set(user_role) & set(config['manager_roles'])): return await interaction.response.send_message("You are not allowed to use this command!", ephemeral=True)
+        data = await self.backend.auction.find({"message_id": int(message)})
+        if not data: return await interaction.response.send_message("Auction not found!", ephemeral=True)
+        if not data['ended']: return await interaction.response.send_message("Auction is not ended yet!", ephemeral=True)
+        data['ended'] = False
+        await self.backend.auction.update(data)
+        await interaction.response.send_message("Auction has been re-queued!")
+        
     @commands.Cog.listener()
     async def on_message(self, message: discord.Message):
         if message.author.bot: 
@@ -444,8 +463,8 @@ class Auction(commands.GroupCog):
             await qmsg.edit(view=view)
         except:
             pass
-
-        await self.backend.auction.delete({'_id': data['host']})
+        queue_data['ended'] = True
+        await self.backend.auction.update(queue_data)
         if queue_data:
             channel = message.guild.get_channel(config['queue_channel'])
             try:
