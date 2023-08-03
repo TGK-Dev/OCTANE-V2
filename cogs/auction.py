@@ -8,6 +8,7 @@ from discord import app_commands
 from utils.transformer import DMCConverter
 from utils.converters import DMCConverter_Ctx
 from utils.views.buttons import Confirm
+from utils.paginator import Paginator
 from discord.ext import tasks
 from utils.db import Document
 from typing import List
@@ -161,7 +162,7 @@ class Auction(commands.GroupCog):
         embed = discord.Embed(title="Auction Request", description="", color=interaction.client.default_color)
         embed.description += f"**Item:** `{quantity}x` {item['_id']}\n"
         embed.description += f"**Requested by:** {interaction.user.mention}\n"
-        embed.description += f"**Total Price:** {(item['price'] * quantity):,}\n"
+        embed.description += f"**Worth:** {(item['price'] * quantity):,}\n"
 
         await interaction.response.send_message(embed=embed)
         msg = await interaction.original_response()
@@ -176,6 +177,7 @@ class Auction(commands.GroupCog):
             await thread.send(f"{interaction.user.mention}, Your request has been Failed to verify!")
             await thread.edit(name=f"Auction Request - {interaction.user.name} - Failed", locked=True, archived=True)
             embed.title += " - Failed"
+            embed.color = discord.Color.red()
             await msg.edit(embed=embed)
             return
         await thread.send(f"{interaction.user.mention}, Your request has been verified!")
@@ -191,13 +193,14 @@ class Auction(commands.GroupCog):
         }
         await thread.edit(name=f"Auction Request - {interaction.user.name} - Verified", auto_archive_duration=60)
         embed.title += " - Verified"
+        embed.color = discord.Color.green()
         await msg.edit(embed=embed)
 
         queue_embed = discord.Embed(description="", color=interaction.client.default_color)
         queue_embed.set_author(name=f"{interaction.user.name}'s Auction", icon_url=interaction.user.avatar.url if interaction.user.avatar else interaction.user.default_avatar)
         queue_embed.description += f"**Item:** `{quantity}x` {item['_id']}\n"
         queue_embed.description += f"**Requested by:** {interaction.user.mention}\n"
-        queue_embed.description += f"**Total Price:** ⏣ {(item['price'] * quantity):,}\n"
+        queue_embed.description += f"**Worth:** ⏣ {(item['price'] * quantity):,}\n"
         queue_embed.description += f"**Donated at:** [Click Here]({data['donated_at']})"
         queue_embed.set_footer(text=f"ID: {interaction.user.id}")
 
@@ -238,12 +241,12 @@ class Auction(commands.GroupCog):
 
         embed = discord.Embed(title=f"Auction Starting", description="", color=interaction.client.default_color)
         embed.set_author(name="Auction Manager", icon_url="https://cdn.discordapp.com/emojis/1134834084728815677.webp?size=96&quality=lossless")
-        embed.add_field(name="Host", value=interaction.guild.get_member(auction_data['_id']).mention)
+        embed.add_field(name="Seller", value=interaction.guild.get_member(auction_data['user_id']).mention)
         embed.add_field(name="Item", value=f"`{auction_data['quantity']}x` **{item['_id']}**")
         embed.add_field(name="Market Price", value=f"⏣ {item['price']:,}")
         embed.add_field(name="Auctioner", value=interaction.user.mention)
         embed.add_field(name="Starting Bid", value=f"⏣ {starting_big:,}")
-        embed.add_field(name="Bet Increment", value=f"⏣ {bet_incre:,}")
+        embed.add_field(name="Bid Increment", value=f"⏣ {bet_incre:,}")
         embed.add_field(name="Current Bidder", value="`None`")
         embed.add_field(name="Current Bid", value=f"⏣ {starting_big:,}")
         embed.add_field(name="Time Left", value="`Waiting for start`")
@@ -299,6 +302,28 @@ class Auction(commands.GroupCog):
         data['ended'] = False
         await self.backend.auction.update(data)
         await interaction.response.send_message("Auction has been re-queued!")
+
+    @app_commands.command(name="queue", description="Queue an auction")
+    async def queue(self, interaction: discord.Interaction):
+        config = await self.backend.get_config(interaction.guild_id)
+        if not config: return await interaction.response.send_message("Auction is not setup yet!")
+        user_role = [role.id for role in interaction.user.roles]
+        if not (set(user_role) & set(config['manager_roles'])): return await interaction.response.send_message("You are not allowed to use this command!", ephemeral=True)
+
+        data = await self.backend.auction.find_many_by_custom({"ended": False, 'guild_id': interaction.guild_id})
+        pages = []
+        if len(data) == 0:
+            return await interaction.response.send_message("No auction is running right now!", ephemeral=True)
+        for auction in data:
+            item = self.bot.dank_items_cache.get(auction['item'])
+            embed = discord.Embed(title=f"Auction for {auction['item']}", description="", color=interaction.client.default_color)
+            embed.set_author(name="Auction Manager", icon_url="https://cdn.discordapp.com/emojis/1134834084728815677.webp?size=96&quality=lossless")
+            embed.add_field(name="Seller", value=interaction.guild.get_member(auction['user_id']).mention)
+            embed.add_field(name="Item", value=f"`{auction['quantity']}x` **{auction['item']}**")
+            embed.add_field(name="Worth", value=f"⏣ {int(item['price'] * auction['quantity']):,}")
+            pages.append(embed)
+
+        await Paginator(interaction, pages).start(embeded=True, quick_navigation=False, hidden=True)
 
     @commands.Cog.listener()
     async def on_message(self, message: discord.Message):
@@ -440,9 +465,9 @@ class Auction(commands.GroupCog):
         embed = discord.Embed(color=self.bot.default_color, description="")
         embed.set_author(name="Auction Manager", icon_url="https://cdn.discordapp.com/emojis/1134834084728815677.webp?size=96&quality=lossless")
         embed.description += f"**Auction Winner:** <@{payout_data['bidder']}>\n"
-        embed.description += f"**Auction Host:** <@{payout_data['host']}>\n"
+        embed.description += f"**Seller:** <@{payout_data['host']}>\n"
         embed.description += f"**Item:** `{payout_data['quantity']}x` {payout_data['item']}\n"
-        embed.description += f"**Price:** ⏣ {payout_data['bid']:,}\n"
+        embed.description += f"**Winning Bid:** ⏣ {payout_data['bid']:,}\n"
 
         msg:discord.Message = await payout_channel.send(embed=embed, content=f"<@{payout_data['bidder']}>, Please pay {payout_data['bid']:,} in the thread below to confirm your purchase!")
         payout_data['_id'] = msg.id
