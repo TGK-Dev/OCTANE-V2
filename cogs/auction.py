@@ -274,14 +274,15 @@ class Auction(commands.GroupCog):
             "bet_increment": bet_incre,
             "auctioner": interaction.user.id,
             "donated_at": auction_data['donated_at'],
-            "host": auction_data['_id'],
+            "host": auction_data['user_id'],
             "start_at": datetime.datetime.now(),
             "last_bet": datetime.datetime.now(),
             "time_left": 30,
             "call_started": False,
             "thread": thread,
             "message": msg,
-            "ended": False
+            "ended": False,
+            "db_id": auction_data['_id'],
         }
         self.backend.auction_cache[thread.id] = data
         await interaction.followup.send(f"Auction started here {thread.mention}")
@@ -480,12 +481,12 @@ class Auction(commands.GroupCog):
             self.backend.auction_cache.pop(thread.id)
         except:
             pass
-        queue_data = await self.backend.auction.find({'user_id': data['host']})
+        queue_data = await self.backend.auction.find(data['db_id'])
         queue_channel = self.bot.get_channel(config['queue_channel'])
         try:
             qmsg = await queue_channel.fetch_message(queue_data['message_id'])
             view = discord.ui.View.from_message(qmsg)
-            view.add_item(discord.ui.Button(label="Auctioned At", url=message.jump_url, emoji="<:tgk_link:1105189183523401828>"))
+            view.add_item(discord.ui.Button(label="Sold At", url=message.jump_url, emoji="<:tgk_link:1105189183523401828>"))
             await qmsg.edit(view=view)
         except:
             pass
