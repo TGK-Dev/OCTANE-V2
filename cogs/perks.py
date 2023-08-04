@@ -660,10 +660,10 @@ class Perks(commands.GroupCog, name="perks", description="manage your custom per
         if len(data['emojis']) == 0: return await interaction.response.send_message("You don't have any custom reactions", ephemeral=True)
 
         view = discord.ui.View()
-        options = [
-            discord.SelectOption(label=emoji.split(":")[1], value=emoji, emoji=emoji) 
-            for emoji in data['emojis']
-        ]
+        options = []
+        for emoji in data['emojis']:
+            if ":" in emoji:options.append(discord.SelectOption(label=emoji.split(":")[1], value=emoji, emoji=emoji))
+            else:options.append(discord.SelectOption(label=emoji, value=emoji, emoji=emoji))
         view.select = Select_General(interaction,options=options, placeholder="Choose the emoji you want to remove", max_values=1)
         view.add_item(view.select)
         await interaction.response.send_message(view=view, ephemeral=True)
