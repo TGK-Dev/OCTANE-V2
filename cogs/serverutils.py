@@ -544,6 +544,9 @@ class Payout(commands.GroupCog, name="payout", description="Payout commands"):
 				if m.channel.id != interaction.channel.id: 
 					return False
 				if m.author.id != 270904126974590976:
+					if m.author.id == interaction.user.id:
+						if m.content.lower() in ["skip", "next", "pass"]:
+							return True
 					return False
 				
 				if len(m.embeds) == 0: 
@@ -579,6 +582,7 @@ class Payout(commands.GroupCog, name="payout", description="Payout commands"):
 				embed.description += f"**Price:** ⏣ {data['prize']:,}\n"
 			embed.description += f"**Channel:** <#{data['channel']}>\n"
 			embed.description += f"**Host:** <@{data['set_by']}>\n"
+			embed.description += f"* Note: To skip this payout, type `skip`, `next` or `pass`"
 			cmd = ""
 			if not data['item']:
 				cmd += f"/serverevents payout user:{data['winner']} quantity:{data['prize']}"
@@ -592,6 +596,12 @@ class Payout(commands.GroupCog, name="payout", description="Payout commands"):
 			await interaction.followup.send(embed=embed, ephemeral=True, view=link_view)
 			try:
 				msg: discord.Message = await self.bot.wait_for('message', check=check, timeout=60)
+				if msg.author.id == interaction.user.id:
+					if msg.content.lower() in ["skip", "next", "pass"]:
+						await interaction.followup.send("Skipping...", ephemeral=True)
+						await msg.delete()
+						continue
+
 				view = discord.ui.View()
 				view.add_item(discord.ui.Button(label=f"Paid at", style=discord.ButtonStyle.url, url=msg.jump_url, emoji="<:tgk_link:1105189183523401828>"))
 				try:
