@@ -446,6 +446,7 @@ class Auction(commands.GroupCog):
             await thread.send("No one bid on this auction, so it has been cancelled and put back in queue!")
             try:self.backend.auction_cache.pop(thread.id)
             except:pass
+            await thread.edit(locked=False, archived=False)
             return
         
         third_call = discord.Embed(description="# Going Thrice...", color=self.bot.default_color)
