@@ -243,7 +243,7 @@ class Auction(commands.GroupCog):
         embed.set_author(name="Auction Manager", icon_url="https://cdn.discordapp.com/emojis/1134834084728815677.webp?size=96&quality=lossless")
         embed.add_field(name="Seller", value=interaction.guild.get_member(auction_data['user_id']).mention)
         embed.add_field(name="Item", value=f"`{auction_data['quantity']}x` **{item['_id']}**")
-        embed.add_field(name="Market Price", value=f"⏣ {item['price']:,}")
+        embed.add_field(name="Net Worth", value=f"⏣ {total_price:,}")
         embed.add_field(name="Auctioner", value=interaction.user.mention)
         embed.add_field(name="Starting Bid", value=f"⏣ {starting_big:,}")
         embed.add_field(name="Bid Increment", value=f"⏣ {bet_incre:,}")
