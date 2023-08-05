@@ -69,7 +69,7 @@ class Auction_db:
         for guild in await self.config.get_all():
             self.config_cache[guild['_id']] = guild
         for auction in await self.payment.get_all():
-            if auction['paid'] == True: continue
+            if auction['paid_to_pool'] == True: continue
             self.payment_cache[auction['thread']] = auction
 
 class Auction(commands.GroupCog):
@@ -231,7 +231,7 @@ class Auction(commands.GroupCog):
             return await interaction.response.send_message("There are no auctions pending!", ephemeral=True)
         item = self.bot.dank_items_cache.get(auction_data['item'])
 
-        starting_big = int((item['price'] * auction_data['quantity'])/0.2)
+        starting_big = int((item['price'] * auction_data['quantity'])/2)
         total_price = item['price'] * auction_data['quantity']
 
         if total_price >= 100000000:
@@ -443,6 +443,7 @@ class Auction(commands.GroupCog):
             await self.backend.auction.delete(temp_data)
             await self.backend.auction.insert(temp_data)
             await message.reply("No one bid on your auction, so it has been cancelled and put back in queue!")
+            await thread.send("No one bid on this auction, so it has been cancelled and put back in queue!")
             try:self.backend.auction_cache.pop(thread.id)
             except:pass
             return
