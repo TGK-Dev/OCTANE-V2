@@ -231,7 +231,7 @@ class Auction(commands.GroupCog):
             return await interaction.response.send_message("There are no auctions pending!", ephemeral=True)
         item = self.bot.dank_items_cache.get(auction_data['item'])
 
-        starting_big = int((item['price'] * auction_data['quantity'])/2)
+        starting_big = int((item['price'] * auction_data['quantity'])/0.2)
         total_price = item['price'] * auction_data['quantity']
 
         if total_price >= 100000000:
@@ -438,6 +438,15 @@ class Auction(commands.GroupCog):
         config = await self.backend.get_config(data['message'].guild.id)
         message: discord.Message = data['message']
         thread: discord.Thread = data['thread']
+        if data['current_bidder'] == None and data['current_bid'] == data['starting_bid']:
+            temp_data = await self.backend.auction.find(data['db_id'])
+            await self.backend.auction.delete(temp_data)
+            await self.backend.auction.insert(temp_data)
+            await message.reply("No one bid on your auction, so it has been cancelled and put back in queue!")
+            try:self.backend.auction_cache.pop(thread.id)
+            except:pass
+            return
+        
         third_call = discord.Embed(description="# Going Thrice...", color=self.bot.default_color)
         embed = discord.Embed(description=f"# Sold to <@{data['current_bidder']}> for ⏣ {data['current_bid']:,}!", color=0x00ff00)
         await thread.send(embeds=[third_call, embed])
@@ -448,9 +457,7 @@ class Auction(commands.GroupCog):
         main_embed.add_field(name="Winning Bid", value=f"⏣ {data['current_bid']:,}")
         main_embed.add_field(name=" ", value=" ")
         await message.edit(embed=main_embed)
-        if data['current_bidder'] == None and data['current_bid'] == data['starting_bid']:
-            await message.reply("No one bid on your auction, so it has been cancelled.")
-            return
+        
         payout_data = {
             'host': data['host'],
             'bidder': data['current_bidder'],
