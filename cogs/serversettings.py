@@ -12,6 +12,7 @@ from utils.views.level_system import LevelingConfig
 from utils.views.perks_system import PerkConfig
 from utils.views.auction import AuctionConfig
 from utils.views.giveaway import GiveawayConfig
+from utils.views.blacklist import Blacklist_Config
 import humanfriendly
 import unicodedata
 import unidecode
@@ -57,6 +58,7 @@ class serversettings(commands.Cog):
     
     settings = [
         app_commands.Choice(name="Auctions", value="auctions"),
+        app_commands.Choice(name="Blacklist", value="blacklist"),
         app_commands.Choice(name="Giveaways", value="giveaways"),
         app_commands.Choice(name="Join Verification", value="join_gate"),
         app_commands.Choice(name="Leveling System", value="leveling"),
@@ -258,10 +260,18 @@ class serversettings(commands.Cog):
                     await interaction.response.send_message(embed=embed, view=view)
                     view.message = await interaction.original_response()
 
-            case _:
-                await interaction.response.send_message("Invalid option", ephemeral=True)
-            
-            
+            case "blacklist":
+                blacklist_data = await self.bot.blacklist.get_config(interaction.guild_id)
+                embed = discord.Embed(title=f"{interaction.guild.name} Blacklist Config", color=self.bot.default_color, description="")
+                embed.description += f"**Mod Roles:** {', '.join([f'<@&{role}>' for role in blacklist_data.mod_roles]) if len(blacklist_data.mod_roles) > 0 else '`None`'}\n"
+                embed.description += f"**Logging Channel:** {interaction.guild.get_channel(blacklist_data.log_channel).mention if blacklist_data.log_channel else '`None`'}\n"
+                embed.description += f"**Profiles:** {', '.join([f'`{position.capitalize()}`' for position in blacklist_data.profiles.keys()]) if len(blacklist_data.profiles) > 0 else '`None`'}\n"
+                if option == "Show":
+                    await interaction.response.send_message(embed=embed)
+                    return
+                view = Blacklist_Config(interaction.user, blacklist_data.to_dict())                
+                await interaction.response.send_message(embed=embed, view=view)
+                view.message = await interaction.original_response()
 
 
 class JoinGateBackEnd(commands.Cog):

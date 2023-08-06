@@ -132,27 +132,27 @@ class Dev(commands.Cog, name="dev", description="Dev commands"):
         
         await Contex_Paginator(ctx, page).start(embeded=True, quick_navigation=False)
 
-
-class Blacklist(commands.GroupCog, name="blacklist"):
+class Admin(commands.GroupCog):
     def __init__(self, bot):
         self.bot = bot
-        self.bot.blacklist = Document(self.bot.db, "blacklist")
-        self.bot.blacklist_cache = {}
+        self.bot.bot_blacklist = Document(self.bot.db, "blacklist")
+        self.bot.bot_blacklist_cache = {}
 
-    
+    blacklist = app_commands.Group(name="blacklist", description="Blacklist commands")
+     
     @commands.Cog.listener()
     async def on_ready(self):
-        data = await self.bot.blacklist.get_all()
+        data = await self.bot.bot_blacklist.get_all()
         for i in data:
-            self.bot.blacklist_cache[i['_id']] = i
+            self.bot.bot_blacklist_cache[i['_id']] = i
 
-    @app_commands.command(name="add", description="Adds a user to the blacklist")
+    @blacklist.command(name="add", description="Adds a user to the blacklist")
     @app_commands.describe(user="The user to blacklist", reason="The reason for blacklisting the user")
     @app_commands.checks.has_any_role(785842380565774368, 785845265118265376, 787259553225637889)
     async def add(self, interaction: discord.Interaction, user: discord.Member, reason: str):
         if user.id in [self.bot.user.id, 761834680395497484, 301657045248114690]:
             return await interaction.response.send_message(embed=discord.Embed(description="You can't blacklist me or my developers", color=interaction.client.default_color), ephemeral=True)
-        data = await self.bot.blacklist.find(user.id)
+        data = await self.bot.bot_blacklist.find(user.id)
         if data: return await interaction.response.send_message(embed=discord.Embed(description=f"{user.mention} is already blacklisted for {data['reason']}", color=interaction.client.default_color), ephemeral=True)
 
         data = {
@@ -161,8 +161,8 @@ class Blacklist(commands.GroupCog, name="blacklist"):
             'banned_by': interaction.user.id,
             'banne_at': datetime.datetime.utcnow()}
 
-        await self.bot.blacklist.insert(data)
-        self.bot.blacklist_cache[user.id] = data
+        await self.bot.bot_blacklist.insert(data)
+        self.bot.bot_blacklist_cache[user.id] = data
         await interaction.response.send_message(embed=discord.Embed(description=f"{user.mention} has been blacklisted for {reason}", color=interaction.client.default_color), ephemeral=False)
 
         embed = discord.Embed(title="Blacklisted | Added", color=discord.Color.red(), description="")
@@ -178,14 +178,14 @@ class Blacklist(commands.GroupCog, name="blacklist"):
             await channel.send(embed=embed)
 
 
-    @app_commands.command(name="remove", description="Removes a user from the blacklist")
+    @blacklist.command(name="remove", description="Removes a user from the blacklist")
     @app_commands.describe(user="The user to remove from the blacklist", reason="The reason for removing the user from the blacklist")
     @app_commands.checks.has_any_role(785842380565774368, 785845265118265376)
     async def remove(self, interaction: discord.Interaction, user: discord.Member, reason: str):
-        data = await self.bot.blacklist.find(user.id)
+        data = await self.bot.bot_blacklist.find(user.id)
         if not data: return await interaction.response.send_message(embed=discord.Embed(description=f"{user.mention} is not blacklisted", color=interaction.client.default_color), ephemeral=True)
-        await self.bot.blacklist.delete(user.id)
-        del self.bot.blacklist_cache[user.id]
+        await self.bot.bot_blacklist.delete(user.id)
+        del self.bot.bot_blacklist_cache[user.id]
         await interaction.response.send_message(embed=discord.Embed(description=f"{user.mention} has been removed from the blacklist", color=interaction.client.default_color), ephemeral=False)
     
         embed = discord.Embed(title="Blacklisted | Removed", color=discord.Color.green(), description="")
@@ -202,10 +202,10 @@ class Blacklist(commands.GroupCog, name="blacklist"):
             await channel.send(embed=embed)
 
 
-    @app_commands.command(name="list", description="Lists all the blacklisted users")
+    @blacklist.command(name="list", description="Lists all the blacklisted users")
     @app_commands.checks.has_any_role(785842380565774368, 785845265118265376, 787259553225637889)
     async def list(self, interaction: discord.Interaction):
-        data = await self.bot.blacklist.get_all()
+        data = await self.bot.bot_blacklist.get_all()
         if not data: return await interaction.response.send_message(embed=discord.Embed(description="There are no blacklisted users", color=interaction.client.default_color), ephemeral=True)
         page = []
         for i in data:
@@ -221,10 +221,6 @@ class Blacklist(commands.GroupCog, name="blacklist"):
         await Paginator(interaction, page).start(embeded=True, quick_navigation=False)
 
 
-class Admin(commands.Cog):
-    def __init__(self, bot):
-        self.bot = bot
-    
     @commands.group(name="admin", description="Admin commands", invoke_without_command=False)
     @commands.has_any_role(785845265118265376, 785842380565774368)
     async def admin(self, ctx):
@@ -240,6 +236,5 @@ class Admin(commands.Cog):
         await ctx.send(embed=discord.Embed(description=f"Snipes in {channel.mention} have been reset", color=self.bot.default_color))
 
 async def setup(bot):
-    await bot.add_cog(Blacklist(bot), guilds=[discord.Object(999551299286732871), discord.Object(785839283847954433)])
     await bot.add_cog(Dev(bot), guilds=[discord.Object(999551299286732871), discord.Object(785839283847954433)])
     await bot.add_cog(Admin(bot), guilds=[discord.Object(999551299286732871), discord.Object(785839283847954433)])
