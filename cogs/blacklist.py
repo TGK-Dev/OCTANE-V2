@@ -57,9 +57,9 @@ class backend:
     
     async def create_config(self, guild_id: int) -> Config:
         config = Config(guild_id, [], {}, None)
-        await self.config.insert(config.to_dict())
+        config = await self.config.insert(config.to_dict())
         self.config_cache[guild_id] = config
-        return config
+        return Config(**config)
     
     async def get_config(self, guild_id: int) -> Config:
         if guild_id in self.config_cache.keys():
@@ -67,7 +67,7 @@ class backend:
         else:
             data = await self.config.find(guild_id)
             if data is None:
-                return self.create_config(guild_id)
+                return await self.create_config(guild_id)
             else:
                 return Config(**data)
     
@@ -168,6 +168,11 @@ class Blacklist_cog(commands.GroupCog, name="blacklist"):
             return await interaction.response.send_message(f"Profile `{profile}` not found", ephemeral=True)
         profile_data = Profile(**config.profiles[profile])
 
+        author_role = [role.id for role in interaction.user.roles]
+
+        if not (set(author_role) & set(config.mod_roles)): 
+            return await interaction.response.send_message("You don't have permission to use this command", ephemeral=True)
+
         user_data = await self.backend.get_blacklist(user, profile_data)
         if user_data is not None: 
             return await interaction.response.send_message(f"{user.mention} is already blacklisted in profile `{profile}`", ephemeral=True)
@@ -200,6 +205,10 @@ class Blacklist_cog(commands.GroupCog, name="blacklist"):
         if profile not in config.profiles.keys():
             return await interaction.response.send_message(f"Profile `{profile}` not found", ephemeral=True)
         profile_data = Profile(**config.profiles[profile])
+
+        author_role = [role.id for role in interaction.user.roles]
+        if not (set(author_role) & set(config.mod_roles)): 
+            return await interaction.response.send_message("You don't have permission to use this command", ephemeral=True)
 
         user_data = await self.backend.get_blacklist(user, profile_data)
         if user_data is None:

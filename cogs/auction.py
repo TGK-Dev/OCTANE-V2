@@ -69,7 +69,12 @@ class Auction_db:
         for guild in await self.config.get_all():
             self.config_cache[guild['_id']] = guild
         for auction in await self.payment.get_all():
-            if auction['paid_to_pool'] == True: continue
+            try:
+                if auction['paid_to_pool'] == True: continue
+            except KeyError:
+                if auction['paid'] == True: continue
+            except:
+                pass
             self.payment_cache[auction['thread']] = auction
 
 class Auction(commands.GroupCog):
