@@ -40,7 +40,7 @@ class Bot_base(commands.Bot):
     
     async def interaction_check(self, interaction: discord.Interaction):
         if not interaction.command: return True
-        if interaction.user.id in self.blacklist_cache.keys():
+        if interaction.user.id in self.bot_blacklist_cache.keys():
             data = self.blacklist_cache[interaction.user.id]
             await interaction.response.defer(ephemeral=True)
             embed = discord.Embed(description=f"", color=self.default_color)
