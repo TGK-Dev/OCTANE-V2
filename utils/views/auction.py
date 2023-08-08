@@ -256,7 +256,7 @@ class AuctionReminder(View):
     def __init__(self):
         super().__init__(timeout=None)
     
-    @button(emoji="<a:tgk_timer:841624339169935390>", style=discord.ButtonStyle.gray)
+    @button(emoji="<a:tgk_timer:841624339169935390>", style=discord.ButtonStyle.gray, custom_id="Auction:reminder")
     async def reminder(self, interaction: Interaction, button: Button):
         config = await interaction.client.auction.get_config(interaction.guild.id)
         if config["hold"] == True:
