@@ -250,3 +250,21 @@ class AuctionConfig(View):
         embed = await self.update_embed(interaction, self.data)
         await interaction.edit_original_response(content="I have finished configuring the auction system for you, you still need to configure the manager roles")
         await interaction.message.edit(embed=embed, view=self)
+
+
+class AuctionReminder(View):
+    def __init__(self):
+        super().__init__(timeout=None)
+    
+    @button(emoji="<a:tgk_timer:841624339169935390>", style=discord.ButtonStyle.gray)
+    async def reminder(self, interaction: Interaction, button: Button):
+        config = await interaction.client.auction.get_config(interaction.guild.id)
+        if config["hold"] == True:
+            if interaction.user.id in config['reminder']['reminders']:
+                await interaction.response.send_message("You already have signed up for reminder", ephemeral=True)
+                return
+            config['reminder']['reminders'].append(interaction.user.id)
+            await interaction.client.auction.update_config(interaction.guild.id, config)
+            await interaction.response.send_message("You will be reminded when the auction starts", ephemeral=True)
+        else:
+            await interaction.response.send_message("Looks like requests are already open", ephemeral=True)

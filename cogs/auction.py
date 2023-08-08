@@ -8,11 +8,13 @@ from discord import app_commands
 from utils.transformer import DMCConverter
 from utils.converters import DMCConverter_Ctx
 from utils.views.buttons import Confirm
+from utils.views.auction import AuctionReminder
 from utils.paginator import Paginator
 from discord.ext import tasks
 from utils.db import Document
 from typing import List
 from copy import deepcopy
+
 
 
 class Auction_db:
@@ -31,7 +33,7 @@ class Auction_db:
         if not config:
             config = await self.config.find({"_id": guild_id})
             if not config:
-                config = {"_id": guild_id,"category": None,"request_channel": None,"queue_channel": None,"bid_channel": None,"payment_channel": None,"payout_channel": None,"log_channel": None,"manager_roles": [], "ping_role": None, "minimum_worth": None}
+                config = {"_id": guild_id,"category": None,"request_channel": None,"queue_channel": None,"bid_channel": None,"payment_channel": None,"payout_channel": None,"log_channel": None,"manager_roles": [], "ping_role": None, "minimum_worth": None, "hold": False,"reminder": {"message_id": None, "reminders": []}}
                 await self.config.insert(config)
             self.config_cache[guild_id] = config
         return config
@@ -145,6 +147,7 @@ class Auction(commands.GroupCog):
     @commands.Cog.listener()
     async def on_ready(self):
        await self.backend.setup()
+       self.bot.add_view(AuctionReminder())
     
     @app_commands.command(name="request", description="Request an auction")
     @app_commands.autocomplete(item=item_autocomplete)
@@ -330,6 +333,73 @@ class Auction(commands.GroupCog):
             pages.append(embed)
 
         await Paginator(interaction, pages).start(embeded=True, quick_navigation=False, hidden=True)
+    
+    @app_commands.command(name="close", description="Close the auction request channel")
+    async def close(self, interaction: discord.Interaction):
+        config = await self.backend.get_config(interaction.guild_id)
+        if not config: return await interaction.response.send_message("Auction is not setup yet!")
+        user_role = [role.id for role in interaction.user.roles]
+        if not (set(user_role) & set(config['manager_roles'])): return await interaction.response.send_message("You are not allowed to use this command!", ephemeral=True)
+
+        if config["hold"] == True:
+            return await interaction.response.send_message("Auction request channel is already closed!")
+        
+        if not config['request_channel']: return await interaction.response.send_message("Request channel is not setup yet!")
+
+        req_channel = interaction.guild.get_channel(config['request_channel'])
+        if not req_channel: return await interaction.response.send_message("Request channel is not setup yet!")
+
+        overwrites = discord.PermissionOverwrite()
+        overwrites.send_messages = False
+        overwrites.send_messages_in_threads = True
+        await req_channel.set_permissions(interaction.guild.default_role, overwrite=overwrites)
+
+        await interaction.response.send_message("Request channel has been closed!")
+
+        embed = discord.Embed(color=self.bot.default_color, 
+            description="Hey! Request channel is now closed, you can't request an auction now! Use button below to get notified when it opens again!")
+        embed.set_author(name="Auction Manager", icon_url="https://cdn.discordapp.com/emojis/1134834084728815677.webp?size=96&quality=lossless")
+        msg = await req_channel.send(embed=embed, view=AuctionReminder())
+        config['reminder']['message_id'] = msg.id
+        config['reminder']['reminders'] = []
+        config['hold'] = True
+        await self.backend.update_config(interaction.guild_id, config)
+    
+    @app_commands.command(name="open", description="Open the auction request channel")
+    async def open(self, interaction: discord.Interaction):
+        config = await self.backend.get_config(interaction.guild_id)
+        if not config: return await interaction.response.send_message("Auction is not setup yet!")
+        user_role = [role.id for role in interaction.user.roles]
+        if not (set(user_role) & set(config['manager_roles'])): return await interaction.response.send_message("You are not allowed to use this command!", ephemeral=True)
+
+        if not config['request_channel']: return await interaction.response.send_message("Request channel is not setup yet!")
+
+        if config["hold"] == False:
+            return await interaction.response.send_message("Auction request channel is already open!")
+
+        req_channel = interaction.guild.get_channel(config['request_channel'])
+        if not req_channel: return await interaction.response.send_message("Request channel is not setup yet!")
+
+        overwrites = discord.PermissionOverwrite()
+        overwrites.send_messages = True
+        overwrites.send_messages_in_threads = True
+        await req_channel.set_permissions(interaction.guild.default_role, overwrite=overwrites)
+
+        await interaction.response.send_message("Request channel has been opened!")
+        try:
+            msg = await req_channel.fetch_message(config['reminder']['message_id'])
+            await msg.delete()
+        except:
+            pass
+
+        for i in range(0, len(config['reminder']['reminders']), 15):
+            members = ['<@'+str(member)+">" for member in config['reminder']['reminders'][i:i+15]]
+            await req_channel.send(f",".join(members), delete_after=2)
+        await req_channel.send("Hey! Request channel is now open, you can request an auction now!", allowed_mentions=discord.AllowedMentions(users=True))
+        config['reminder']['message_id'] = None
+        config['reminder']['reminders'] = []
+        config['hold'] = False
+        await self.backend.update_config(interaction.guild_id, config)
 
     @commands.Cog.listener()
     async def on_message(self, message: discord.Message):
