@@ -92,7 +92,7 @@ class LevelingConfig(View):
             await self.message.edit(embed=await self.update_embed(interaction, self.data))
             await interaction.client.level.update_config(interaction.guild, self.data)
     
-    @button(label="Clear On Leave", style=discord.ButtonStyle.gray, emoji="<:tgk_removePerson:1073899271197298738>", row=0)
+    @button(label="Clear On Leave", style=discord.ButtonStyle.gray, emoji="<:tgk_person_remove:1132022925554372708>", row=0)
     async def clear_on_leave(self, interaction: Interaction, button: Button):
         if self.data['clear_on_leave']:
             self.data['clear_on_leave'] = False
