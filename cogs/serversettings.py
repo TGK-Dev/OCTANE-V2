@@ -209,7 +209,10 @@ class serversettings(commands.Cog):
                 if perk_data is None:
                    perk_data = await self.bot.Perk.create("config", interaction.user.id, interaction.guild.id)
                 embed = discord.Embed(title=f"{interaction.guild.name} Perk Config", color=self.bot.default_color, description="")
-                embed.description += f"Custom Category: {interaction.guild.get_channel(perk_data['custom_category']).mention if perk_data['custom_category'] else '`None`'}\n"
+                embed.description += f"Custom Channel Category:\n"
+                embed.description += "\t".join(
+                [ f"<:invis_space:1067363810077319270> {cat.mention}: (10/{len(cat.channels)})\n" for cat in [interaction.guild.get_channel(cat) for cat in perk_data['custom_category']['cat_list']] if cat != None]
+                ) if len(perk_data['custom_category']['cat_list']) > 0 else "`None`\n"
                 embed.description += f"Custom Roles Position: `{perk_data['custom_roles_position']}`\n"
                 embed.description += f"Admin Roles: {', '.join([f'<@&{role}>' for role in perk_data['admin_roles']]) if len(perk_data['admin_roles']) > 0 else '`None`'}\n"
 
@@ -221,6 +224,7 @@ class serversettings(commands.Cog):
                     view.message = await interaction.original_response()
             
             case "auctions":
+                
                 auction_data = await self.bot.auction.get_config(interaction.guild.id)
 
                 embed = discord.Embed(title=f"{interaction.guild.name} Auction Config", color=self.bot.default_color, description="")

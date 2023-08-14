@@ -4,8 +4,11 @@ import datetime
 from discord import Interaction, SelectOption, TextStyle, app_commands
 from discord.interactions import Interaction
 from discord.ui import View, Button, button, TextInput, Item, Select, select
+from humanfriendly import format_timespan
 from .selects import Role_select, Select_General, Channel_select, User_Select
 from .modal import General_Modal
+from .buttons import Confirm
+from utils.converters import TimeConverter
 import traceback
 
 
@@ -33,30 +36,77 @@ class PerkConfig(View):
     async def on_timeout(self):
         for child in self.children:child.disabled = True; await self.message.edit(view=self)
     
-    async def on_error(self, error, item, interaction):
+    async def on_error(self, interaction: Interaction, error: Exception, item: Item):
         raise error
     
     async def update_embed(self, interaction: Interaction, data):
         embed = discord.Embed(title=f"{interaction.guild.name} Perk Config", color=interaction.client.default_color, description="")
-        embed.description += f"Custom Category: {interaction.guild.get_channel(data['custom_category']).mention if data['custom_category'] else '`None`'}\n"
+        embed.description += f"Custom Channel Category:\n"
+        embed.description += "\t".join(
+            [ f"<:invis_space:1067363810077319270> {cat.mention}: (10/{len(cat.channels)})\n" for cat in [interaction.guild.get_channel(cat) for cat in data['custom_category']['cat_list']] if cat != None]
+        ) if len(data['custom_category']['cat_list']) > 0 else "`None`"
         embed.description += f"Custom Roles Position: `{data['custom_roles_position']}`\n"
         embed.description += f"Admin Roles: {', '.join([f'<@&{role}>' for role in data['admin_roles']]) if len(data['admin_roles']) > 0 else '`None`'}\n"
         return embed
+
+    async def switch(self, interaction: Interaction, data: dict):
+        embed = discord.Embed(title=f"{interaction.guild.name} Perk Config", color=interaction.client.default_color)
+        role_profiles = data['profiles']['roles']
+        channel_profiles = data['profiles']['channels']
+        reaction_profiles = data['profiles']['reacts']
+        hilights_profiles = data['profiles']['highlights']
+
+        role_vales = ""
+        for key, item in role_profiles.items():
+            role_vales += f"<@&{key}>\n"
+            role_vales += f"* **Duration:** Prmanent\n" if item['duration'] == "permanent" else f"* **Duration:** `{format_timespan(item['duration'])}`\n"
+            role_vales += f"* **Friend Limit:** `{item['friend_limit']}`\n"
+        embed.add_field(name="Role Profiles", value=role_vales if role_vales else "`No Profiles ;(`", inline=True)
+
+        channel_values = ""
+        for key, item in channel_profiles.items():
+            channel_values += f"<@&{key}>\n"
+            channel_values += f"* **Duration:** Permanent\n" if item['duration'] == "permanent" else f"* **Duration:** `{format_timespan(item['duration'])}`\n"
+            channel_values += f"* **Friend Limit:** `{item['friend_limit']}`\n"
+        embed.add_field(name="Channel Profiles", value=channel_values if channel_values else "`No Profiles ;(`", inline=True)
+
+        reaction_values = ""
+        for key, item in reaction_profiles.items():
+            reaction_values += f"<@&{key}>\n"
+            reaction_values += f"* **Duration:** Permanent\n" if item['duration'] == "permanent" else f"* **Duration:** `{format_timespan(item['duration'])}`\n"
+            reaction_values += f"* **Emoji Limit:** `{item['friend_limit']}`\n"
+        embed.add_field(name="Reaction Profiles", value=reaction_values if reaction_values else "`No Profiles ;(`", inline=True)
+
+        hilight_values = ""
+        for key, item in hilights_profiles.items():
+            hilight_values += f"<@&{key}>\n"
+            hilight_values += f"* **Duration:** Permanent\n" if item['duration'] == "permanent" else f"* **Duration:** `{format_timespan(item['duration'])}`\n"
+            hilight_values += f"* **Trigger Limit:** `{item['friend_limit']}`\n"
+        embed.add_field(name="Hilight Profiles", value=hilight_values if hilight_values else "`No Profiles ;(`", inline=True)
+
+        await self.message.edit(embed=embed, view=Profile(self.user, data, self.message))        
+        self.stop()
     
     @button(label="Custom Category", style=discord.ButtonStyle.gray, emoji="<:tgk_category:1076602579846447184>")
     async def custom_category(self, interaction: Interaction, button: Button):
-        view = View()
-        view.select = Channel_select(placeholder="Select a category for custom channels", max_values=1, channel_types=[discord.ChannelType.category], min_values=1)
-        view.value = False
-        view.add_item(view.select)
-
-        await interaction.response.send_message(view=view, ephemeral=True)
+        view = General_Modal(title="Custom Category", interaction=interaction)
+        view.name = TextInput(label="Enter the name of the category",min_length=1, max_length=100, required=True)
+        view.add_item(view.name)
+        await interaction.response.send_modal(view)
         await view.wait()
-        if view.value:
-            self.data['custom_category'] = view.select.values[0].id
-            await interaction.delete_original_response()
+        if view.name.value:
+            if self.data['custom_category']['name'] == None:
+                cat = await interaction.guild.create_category_channel(name=f"{view.name.value} - 1")
+                self.data['custom_category']['last_cat'] = cat.id
+                self.data['custom_category']['cat_list'].append(cat.id)
+            self.data['custom_category']['name'] = view.name.value            
             await interaction.client.Perk.update("config", self.data)
-            await self.message.edit(embed=await self.update_embed(interaction, self.data))
+            await view.interaction.response.edit_message(embed=await self.update_embed(interaction, self.data))
+            for cat in self.data['custom_category']['cat_list']:
+                cat = interaction.guild.get_channel(cat)
+                if cat:
+                    await cat.edit(name=f"{self.data['custom_category']['name']} - {self.data['custom_category']['cat_list'].index(cat.id) + 1}")
+
         
     @button(label="Custom Roles Position", style=discord.ButtonStyle.gray, emoji="<:tgk_role:1073908306713780284>")
     async def custom_roles_position(self, interaction: Interaction, button: Button):
@@ -101,7 +151,208 @@ class PerkConfig(View):
             await interaction.client.Perk.update("config", self.data)
             await view.select.interaction.response.send_message(embed=discord.Embed(description=f"Added Roles: {', '.join([role.mention for role in add_roles]) if add_roles else '`None`'}\nRemoved Roles: {', '.join([role.mention for role in remove_roles]) if remove_roles else '`None`'}", color=interaction.client.default_color), ephemeral=True, delete_after=10)
 
-            await self.message.edit(embed=await self.update_embed(interaction, self.data))                
+            await self.message.edit(embed=await self.update_embed(interaction, self.data))
+
+    @button(label="Profiles", style=discord.ButtonStyle.gray, emoji="<:tgk_staff_post:1074264610015826030>")
+    async def profiles(self, interaction: Interaction, button: Button):
+        await self.switch(interaction, self.data)
+        await interaction.response.send_message("Switched to profiles", ephemeral=True)
+
+
+
+class Profile(View):
+    def __init__(self, user: discord.Member, data: dict, message: discord.Message=None):
+        self.user = user
+        self.data = data
+        self.message = message
+        super().__init__(timeout=120)
+    
+    async def interaction_check(self, interaction: Interaction):
+        if interaction.user.id == self.user.id:
+            return True
+        else:
+            await interaction.response.send_message("You are not the owner of this perk", ephemeral=True)
+            return False
+    
+    async def on_timeout(self):
+        for child in self.children:child.disabled = True; 
+        try:await self.message.edit(view=self)
+        except:pass
+
+    async def on_error(self, interaction: Interaction, error: Exception, item: Item):
+        try:
+            await interaction.followup.send(embed=discord.Embed(description=f"```py\n{traceback.format_exception(type(error), error, error.__traceback__, 4)}\n```", color=discord.Color.red()), ephemeral=True)
+        except discord.HTTPException:
+            raise error
+    
+    async def update_embed(self, interaction: Interaction, data):
+        embed = discord.Embed(title=f"{interaction.guild.name} Perk Config", color=interaction.client.default_color)
+        role_profiles = data['profiles']['roles']
+        channel_profiles = data['profiles']['channels']
+        reaction_profiles = data['profiles']['reacts']
+        hilights_profiles = data['profiles']['highlights']
+
+        role_vales = ""
+        for key, item in role_profiles.items():
+            role_vales += f"<@&{key}>\n"
+            role_vales += f"* **Duration:** Prmanent\n" if item['duration'] == "permanent" else f"* **Duration:** `{format_timespan(item['duration'])}`\n"
+            role_vales += f"* **Friend Limit:** `{item['friend_limit']}`\n"
+        embed.add_field(name="Role Profiles", value=role_vales if role_vales else "`No Profiles ;(`", inline=True)
+
+        channel_values = ""
+        for key, item in channel_profiles.items():
+            channel_values += f"<@&{key}>\n"
+            channel_values += f"* **Duration:** Prmanent\n" if item['duration'] == "permanent" else f"* **Duration:** `{format_timespan(item['duration'])}`\n"
+            channel_values += f"* **Friend Limit:** `{item['friend_limit']}`\n"
+        embed.add_field(name="Channel Profiles", value=channel_values if channel_values else "`No Profiles ;(`", inline=True)
+
+        reaction_values = ""
+        for key, item in reaction_profiles.items():
+            reaction_values += f"<@&{key}>\n"
+            reaction_values += f"* **Duration:** Prmanent\n" if item['duration'] == "permanent" else f"* **Duration:** `{format_timespan(item['duration'])}`\n"
+            reaction_values += f"* **Friend Limit:** `{item['friend_limit']}`\n"
+        embed.add_field(name="Reaction Profiles", value=reaction_values if reaction_values else "`No Profiles ;(`", inline=True)
+
+        hilight_values = ""
+        for key, item in hilights_profiles.items():
+            hilight_values += f"<@&{key}>\n"
+            hilight_values += f"* **Duration:** Permanent\n" if item['duration'] == "permanent" else f"* **Duration:** `{format_timespan(item['duration'])}`\n"
+            hilight_values += f"* **Trigger Limit:** `{item['friend_limit']}`\n"
+        embed.add_field(name="Hilight Profiles", value=hilight_values if hilight_values else "`No Profiles ;(`", inline=True)
+
+        await self.message.edit(embed=embed, view=Profile(self.user, data, self.message))
+    
+    async def switch(self, interaction: Interaction, data: dict):
+        embed = discord.Embed(title=f"{interaction.guild.name} Perk Config", color=interaction.client.default_color, description="")
+        embed.description += f"Custom Channel Category:\n"
+        embed.description += "\t".join(
+            [ f"<:invis_space:1067363810077319270> {cat.mention}: (10/{len(cat.channels)})\n" for cat in [interaction.guild.get_channel(cat) for cat in data['custom_category']['cat_list']] if cat != None]
+        ) if len(data['custom_category']['cat_list']) > 0 else "`None`\n"
+        embed.description += f"Custom Roles Position: `{data['custom_roles_position']}`\n"
+        embed.description += f"Admin Roles: {', '.join([f'<@&{role}>' for role in data['admin_roles']]) if len(data['admin_roles']) > 0 else '`None`'}\n"
+        await self.message.edit(embed=embed, view=PerkConfig(self.user, data, self.message))
+        self.stop()
+
+
+    @button(label="Manage Profiles", style=discord.ButtonStyle.gray, emoji="<:tgk_role:1073908306713780284>")
+    async def role_profiles(self, interaction: Interaction, button: Button):
+        profile_select = View()
+        profile_select.value = None
+        profile_select.select = Select_General(placeholder="Select a profile type", options=[
+            SelectOption(label="Roles", description="Manage role profiles", emoji="<:tgk_role:1073908306713780284>", value="roles"),
+            SelectOption(label="Channels", description="Manage channel profiles", emoji="<:tgk_channel:1073908465405268029>", value="channels"),
+            SelectOption(label="Reactions", description="Manage reaction profiles", emoji="<:tgk_color:1107261678204244038>", value="reacts"),
+            SelectOption(label="highlights", description="Manage hilight profiles", emoji="<:tgk_message:1113527047373979668>", value="highlights"),
+        ], max_values=1, min_values=1)
+        profile_select.add_item(profile_select.select)
+        await interaction.response.send_message(view=profile_select, ephemeral=True)
+        await profile_select.wait()
+        if profile_select.value != True: await profile_select.select.interaction.delete_original_response()
+        profile = profile_select.select.values[0]
+
+        view = View()
+        view.value = None
+        view.select = Select_General(placeholder="Select a Operation", options=[
+            SelectOption(label="Add Profile", description="Add a new role profile", emoji="<:tgk_add:1073902485959352362>", value="add"),
+            SelectOption(label="Delete Profile", description="Delete a role profile", emoji="<:tgk_delete:1113517803203461222>", value="delete"),
+        ], max_values=1, min_values=1)
+        view.add_item(view.select)
+        await profile_select.select.interaction.response.edit_message(view=view)
+        await view.wait()
+        if view.value != True: await view.select.interaction.delete_original_response()
+
+        match view.select.values[0]:
+
+            case "add":
+                role_view = View()
+                role_view.select = Role_select(placeholder="Select a role for which you want to add a profile", max_values=1, min_values=1)
+                role_view.value = False
+                role_view.add_item(role_view.select)
+                await view.select.interaction.response.edit_message(view=role_view)
+                await role_view.wait()
+
+                if role_view.value != True: await view.select.interaction.delete_original_response()
+
+                profile_data = {
+                    "role_id": None,
+                    "duration": 0,
+                    "friend_limit": 0
+                }
+                role = role_view.select.values[0]
+                if str(role.id) in self.data['profiles'][profile].keys():
+                    return await role_view.select.interaction.response.edit_message(content="This role already has a profile", view=None)
+                profile_data['role_id'] = role.id
+                friend_view = View()
+                friend_view.value = False
+                friend_view.select = Select_General(placeholder="Select a friend limit", options=[
+                        SelectOption(label=str(i), value=i) 
+                        for i in range(1, 10)
+                    ]
+                )
+                friend_view.add_item(friend_view.select)
+                await role_view.select.interaction.response.edit_message(view=friend_view)
+
+                await friend_view.wait()
+                if friend_view.value != True: await view.select.interaction.delete_original_response()
+
+                profile_data['friend_limit'] = int(friend_view.select.values[0])
+
+                duration_view = General_Modal(title="Profile Duration", interaction=interaction)
+                duration_view.duraction = TextInput(label="Enter the Duration of the profile", placeholder="Enter permanent for no duration", min_length=1, max_length=100)
+                duration_view.add_item(duration_view.duraction)
+                await friend_view.select.interaction.response.send_modal(duration_view)
+
+                await duration_view.wait()
+                if duration_view.value != True: await view.select.interaction.delete_original_response()
+
+                duration = duration_view.duraction.value
+                if duration.lower() != "permanent":
+                    duration = await TimeConverter().convert(interaction, duration)
+                    if duration is None:
+                        return await duration_view.duraction.interaction.response.send_message("Invalid duration", ephemeral=True)
+                profile_data['duration'] = duration
+
+                embed = discord.Embed(title="Profile Preview", color=interaction.client.default_color, description="")
+                embed.description += f"**Role:** <@&{profile_data['role_id']}>\n"
+                embed.description += f"**Duration:** Permanent\n" if profile_data['duration'] == "permanent" else f"**Duration:** {format_timespan(profile_data['duration'])}\n"
+                embed.description += f"**Friend Limit:** `{profile_data['friend_limit']}`\n"
+                confirm = Confirm(interaction.user, 30)
+                confirm.children[0].label = "Save"; confirm.children[0].style = discord.ButtonStyle.gray; confirm.children[0].emoji = "<:tgk_active:1082676793342951475>"
+                confirm.children[1].label = "Cancel"; confirm.children[1].style = discord.ButtonStyle.gray; confirm.children[1].emoji = "<:tgk_deactivated:1082676877468119110>"
+                await duration_view.interaction.response.edit_message(embed=embed, view=confirm)
+                confirm.message = await duration_view.interaction.original_response()
+                await confirm.wait()
+
+                if confirm.value != True: await view.select.interaction.delete_original_response()
+                self.data['profiles'][profile][str(role.id)] = profile_data
+                await view.select.interaction.client.Perk.update("config", self.data)
+                await self.update_embed(confirm.interaction, self.data)
+    
+        
+            case "delete":
+                role_prof = View()
+                role_prof.value = True
+                options = []
+                for key, item in self.data['profiles'][profile].items():
+                    role = interaction.guild.get_role(int(key))
+                    options.append(SelectOption(label=role.name, value=key))
+
+                role_prof.select = Select_General(placeholder="Select a role profile to delete", options=options, max_values=len(options), min_values=1)
+                role_prof.add_item(role_prof.select)
+                await view.select.interaction.response.edit_message(view=role_prof)
+                await role_prof.wait()
+
+                if role_prof.value != True: await view.select.interaction.delete_original_response()
+                for value in role_prof.select.values:
+                    del self.data['profiles'][profile][value]
+                await view.select.interaction.client.Perk.update("config", self.data)
+                await self.update_embed(interaction, self.data)
+                await role_prof.select.interaction.response.edit_message(content="Profile deleted", view=None)
+
+    @button(label="Back", style=discord.ButtonStyle.gray, emoji="<:tgk_leftarrow:1088526575781285929> ")
+    async def back(self, interaction: Interaction, button: Button):
+        await self.switch(interaction, self.data)
+        await interaction.response.send_message("Switched to config", ephemeral=True)
 
 class friends_manage(View):
     def __init__(self, user: discord.Member, data: dict, type: str,message: discord.Message=None):
