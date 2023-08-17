@@ -6,7 +6,6 @@ from discord import app_commands
 import os
 import asyncio
 import datetime
-import logging
 import logging.handlers
 import aiohttp
 
@@ -15,21 +14,24 @@ from dotenv import load_dotenv
 from motor.motor_asyncio import AsyncIOMotorClient
 from utils.converters import dict_to_tree
 
-
 load_dotenv()
 discord.utils.setup_logging(
     level=logging.INFO,
     formatter=logging.Formatter('[{asctime}] [{levelname:<8}] {name}: {message}', '%Y-%m-%d %H:%M:%S', style='{'),
-    handler=logging.handlers.RotatingFileHandler(filename='discord.log',encoding='utf-8',maxBytes=32 * 1024 * 1024)
-    )
+    handler=logging.handlers.RotatingFileHandler(filename='discord.log', encoding='utf-8', maxBytes=32 * 1024 * 1024)
+)
 
 
-class Bot_base(commands.Bot):
-    def __init__(self, application_id, sync:bool=False):
-        super().__init__(intents=discord.Intents.all(), command_prefix=commands.when_mentioned_or("-"),description="A Bot for server management", case_insensitive=False, owner_ids=[488614633670967307, 301657045248114690], activity=discord.Activity(type=discord.ActivityType.playing, name="Startup"),status=discord.Status.idle, help_command=None, application_id=application_id)
+# noinspection PyUnresolvedReferences
+class Botbase(commands.Bot):
+    def __init__(self, application_id, sync: bool = False):
+        super().__init__(intents=discord.Intents.all(), command_prefix="-", description="A Bot for server management",
+                         case_insensitive=False, owner_ids=[488614633670967307, 301657045248114690],
+                         activity=discord.Activity(type=discord.ActivityType.playing, name="Startup"),
+                         status=discord.Status.idle, help_command=None, application_id=application_id)
         self.default_color = 0x2b2d31
-        self.error_color = 0xFF0000 
-        self.start_time = datetime.datetime.now()    
+        self.error_color = 0xFF0000
+        self.start_time = datetime.datetime.now()
         self.sync = sync
         self.token = os.environ.get("TOKEN")
         self.secret = os.environ.get("SECRET")
@@ -37,48 +39,57 @@ class Bot_base(commands.Bot):
         self.connection_url2 = os.environ.get("ACE_DB")
         self.restart = False
         self.tree.interaction_check = self.interaction_check
-    
+        self.mongo = AsyncIOMotorClient(self.connection_url)
+        self.db = self.mongo["Database"]
+        self.aceDb = AsyncIOMotorClient(self.connection_url2)
+        self.db2 = self.aceDb["TGK"]
+        self.emoji_server: discord.Guild | None = None
+
     async def interaction_check(self, interaction: discord.Interaction):
-        if not interaction.command: return True
+        if not interaction.command:
+            return True
         if interaction.user.id in self.bot_blacklist_cache.keys():
             data = self.blacklist_cache[interaction.user.id]
             await interaction.response.defer(ephemeral=True)
             embed = discord.Embed(description=f"", color=self.default_color)
-            embed.set_author(name="Blacklist Manager", icon_url="https://cdn.discordapp.com/emojis/867400863822512148.webp?size=96&quality=lossless")
-            embed.description += f"### Hello {interaction.user.mention}\nUnfortunately, due to {data['reason']}, you have been blacklisted from using {interaction.client.user.mention} and will no longer be able to access any commands. \n"
-            embed.description += f"If you have any questions or concerns about why you are blacklisted or would like to appeal, please raise a ticket in the support channel.\n"
+            embed.set_author(name="Blacklist Manager",
+                             icon_url="https://cdn.discordapp.com/emojis/867400863822512148.webp?size=96&quality"
+                                      "=lossless")
+            embed.description += (f"### Hello {interaction.user.mention}\nUnfortunately, due to {data['reason']}, you "
+                                  f"have been blacklisted from using {interaction.client.user.mention} and will no "
+                                  f"longer be able to access any commands. \n")
+            embed.description += (f"If you have any questions or concerns about why you are blacklisted or would like "
+                                  f"to appeal, please raise a ticket in the support channel.\n")
             embed.timestamp = datetime.datetime.utcnow()
             await interaction.followup.send(embed=embed)
             return False
         return True
-    
+
     async def setup_hook(self):
-        self.mongo = AsyncIOMotorClient(self.connection_url)
-        self.db = self.mongo["Database"]
-        
-        self.aceDb = AsyncIOMotorClient(self.connection_url2)
-        self.db2 = self.aceDb["TGK"]
         for file in os.listdir("./cogs"):
-            if file.endswith(".py") and not file.startswith(("_")):
+            if file.endswith(".py") and not file.startswith("_"):
                 await self.load_extension(f"cogs.{file[:-3]}")
-            
-        if self.sync == True:
+
+        if self.sync:
             await self.tree.sync()
             await self.tree.sync(guild=discord.Object(999551299286732871))
             await self.tree.sync(guild=discord.Object(785839283847954433))
         self.emoji_server = await self.fetch_guild(991711295139233834)
 
 
-bot = Bot_base(816699167824281621, False)
+bot = Botbase(816699167824281621, False)
 
 tree = bot.tree
+
+
 async def main():
     await bot.start(bot.token)
+
 
 @bot.event
 async def on_ready():
     print(f"Logged in successfully as {bot.user.name} | {bot.user.id}")
-    print(f"loadded cogs: {len(bot.extensions)}")
+    print(f"loaded cogs: {len(bot.extensions)}")
     print(f"Cached Emoji Server: {bot.emoji_server.name} | {bot.emoji_server.id}")
     print(f"Bot Views: {len(bot.persistent_views)}")
     await bot.wait_until_ready()
@@ -86,17 +97,25 @@ async def on_ready():
         code = f.read()
         file = BytesIO(code.encode("utf-8"))
         channel = bot.get_channel(1132371599778119751)
-        await channel.send(file=discord.File(file, filename=f"logs-{datetime.datetime.utcnow().strftime('%d-%m-%Y')}.log"))
+        await channel.send(
+            file=discord.File(file, filename=f"logs-{datetime.datetime.utcnow().strftime('%d-%m-%Y')}.log"))
         f.seek(0)
         f.truncate()
         f.close()
 
-    await bot.change_presence(activity=discord.Activity(type=discord.ActivityType.watching, name="Over Server Security"), status=discord.Status.dnd)
+    await bot.change_presence(
+        activity=discord.Activity(type=discord.ActivityType.watching, name="Over Server Security"),
+        status=discord.Status.dnd)
 
-@bot.tree.command(name="ping", description="Check bots leatency")
+
+@bot.tree.command(
+    name="ping",
+    description="Check bots latency")
 async def ping(interaction):
     await interaction.response.send_message("Pong!")
-    await interaction.edit_original_response(content=None, embed=discord.Embed(description=f"Ping {bot.latency*1000.0:.2f}ms"))
+    await interaction.edit_original_response(content=None,
+                                             embed=discord.Embed(description=f"Ping {bot.latency * 1000.0:.2f}ms"))
+
 
 @bot.event
 async def on_message(message):
@@ -106,15 +125,17 @@ async def on_message(message):
         return
     await bot.process_commands(message)
 
+
 @tree.error
 async def on_app_command_error(interaction: discord.Interaction, error: Exception):
     if isinstance(error, app_commands.errors.CommandOnCooldown):
-        return await interaction.response.send_message(f"Please wait {error.retry_after:.2f} seconds before trying again.", ephemeral=True, delete_after=10)
+        return await interaction.response.send_message(
+            f"Please wait {error.retry_after:.2f} seconds before trying again.", ephemeral=True, delete_after=10)
     else:
         embed = discord.Embed(description=f"```\n{error}\n```", color=bot.default_color)
         try:
             await interaction.response.send_message(embed=embed, ephemeral=False)
-        except:
+        except discord.InteractionResponded:
             await interaction.followup.send(embed=embed, ephemeral=False)
 
     tree_format = interaction.data.copy()
@@ -126,7 +147,8 @@ async def on_app_command_error(interaction: discord.Interaction, error: Exceptio
     embed.add_field(name="Channel", value=f"{interaction.channel.mention} | {interaction.channel.id}", inline=False)
     embed.add_field(name="Guild", value=f"{interaction.guild.name} | {interaction.guild.id}", inline=False)
     embed.add_field(name="Author", value=f"{interaction.user.mention} | {interaction.user.id}", inline=False)
-    embed.add_field(name="Command", value=f"{interaction.command.name if interaction.command else 'None'}", inline=False)
+    embed.add_field(name="Command", value=f"{interaction.command.name if interaction.command else 'None'}",
+                    inline=False)
     embed.add_field(name="Message", value=f"[Jump]({message.jump_url})", inline=False)
 
     error_traceback = "".join(traceback.format_exception(type(error), error, error.__traceback__, 4))
@@ -138,8 +160,11 @@ async def on_app_command_error(interaction: discord.Interaction, error: Exceptio
 
     async with aiohttp.ClientSession() as session:
         webhook = discord.Webhook.from_url(url, session=session)
-        await webhook.send(embed=embed, avatar_url=interaction.client.user.avatar.url if interaction.client.user.avatar else interaction.client.user.default_avatar, username=f"{interaction.client.user.name}'s Error Logger", file=file)
+        await webhook.send(embed=embed,
+                           avatar_url=interaction.client.user.avatar.url if interaction.client.user.avatar else interaction.client.user.default_avatar,
+                           username=f"{interaction.client.user.name}'s Error Logger", file=file)
+
 
 asyncio.run(main())
-if bot.restart == True:
+if bot.restart:
     os.system("python main.py")
