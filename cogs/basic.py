@@ -513,6 +513,8 @@ class Logging(commands.Cog):
     @commands.Cog.listener()
     async def on_raw_message_edit(self, payload: discord.RawMessageUpdateEvent):
         data = payload.data
+        if data['guild_id'] != 785839283847954433:
+            return
         try: 
             if int(data['author']['id']) != 972637072991068220: return
         except KeyError: return 
