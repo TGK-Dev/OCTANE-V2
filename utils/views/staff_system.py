@@ -47,7 +47,7 @@ class Staff_config_edit(View):
                     self.data['owners'].remove(user)
                     removed_owners += f"<@{user}> "
             self.data['last_edit'] = datetime.datetime.now()
-            await interaction.client.staff_db.config_collection.update(interaction.guild.id, self.data)
+            await interaction.client.staff_db.update_config(interaction.guild.id, self.data)
             await view.select.interaction.response.edit_message(embed=discord.Embed(description=f"**Added Owners:** {addeed_owners}\n**Removed Owners:** {removed_owners}", color=0x2b2d31), view=None)
             await self.message.edit(embed=await self.update_embed(self.data, interaction))
     
@@ -71,7 +71,7 @@ class Staff_config_edit(View):
                     self.data['staff_manager'].remove(user)
                     removed_users += f"<@{user}> "
             self.data['last_edit'] = datetime.datetime.now()
-            await interaction.client.staff_db.config_collection.update(interaction.guild.id, self.data)
+            await interaction.client.staff_db.update_config(interaction.guild.id, self.data)
             await interaction.delete_original_response()
             await self.message.edit(embed=await self.update_embed(self.data, interaction))
     
@@ -86,7 +86,7 @@ class Staff_config_edit(View):
         if view.value:
             self.data['base_role'] = view.select.values[0].id
             self.data['last_edit'] = datetime.datetime.now()
-            await interaction.client.staff_db.config_collection.update(interaction.guild.id, self.data)
+            await interaction.client.staff_db.update_config(interaction.guild.id, self.data)
             await interaction.delete_original_response()
             await self.message.edit(embed=await self.update_embed(self.data, interaction))
 
@@ -103,7 +103,7 @@ class Staff_config_edit(View):
         if view.value:
             self.data['leave_role'] = view.select.values[0].id
             self.data['last_edit'] = datetime.datetime.now()
-            await interaction.client.staff_db.config_collection.update(interaction.guild.id, self.data)
+            await interaction.client.staff_db.update_config(interaction.guild.id, self.data)
             await interaction.delete_original_response()
             await self.message.edit(embed=await self.update_embed(self.data, interaction))
 
@@ -120,7 +120,7 @@ class Staff_config_edit(View):
         if view.value:
             self.data['leave_channel'] = view.select.values[0].id
             self.data['last_edit'] = datetime.datetime.now()
-            await interaction.client.staff_db.config_collection.update(interaction.guild.id, self.data)
+            await interaction.client.staff_db.update_config(interaction.guild.id, self.data)
             await interaction.delete_original_response()
             await self.message.edit(embed=await self.update_embed(self.data, interaction))
             
@@ -138,7 +138,7 @@ class Staff_config_edit(View):
             webhook = await channel.create_webhook(name=f"{interaction.client.user.name} Logging")
             self.data['webhook_url'] = webhook.url
             self.data['last_edit'] = datetime.datetime.now()
-            await interaction.client.staff_db.config_collection.update(interaction.guild.id, self.data)
+            await interaction.client.staff_db.update_config(interaction.guild.id, self.data)
             await interaction.delete_original_response()
             await self.message.edit(embed=await self.update_embed(self.data, interaction))
     
@@ -178,7 +178,7 @@ class Staff_config_edit(View):
                                 position['owner_only'] = True
                             self.data['positions'][position['name']] = position
                             self.data['last_edit'] = datetime.datetime.now()
-                            await interaction.client.staff_db.config_collection.update(interaction.guild.id, self.data)
+                            await interaction.client.staff_db.update_config(interaction.guild.id, self.data)
                             await view.select.interaction.response.edit_message(embed=discord.Embed(description=f"**Added Position:** `{position['name'].capitalize()}`\n**Role:** <@&{position['role']}>\n**Owner Only:** {position['owner_only']}", color=0x2b2d31), view=None)
                             await self.message.edit(embed=await self.update_embed(self.data, interaction))
 
@@ -194,6 +194,6 @@ class Staff_config_edit(View):
                         position = delete_view.select.values[0]
                         self.data['positions'].pop(position)
                         self.data['last_edit'] = datetime.datetime.now()
-                        await interaction.client.staff_db.config_collection.update(interaction.guild.id, self.data)
+                        await interaction.client.staff_db.update_config(interaction.guild.id, self.data)
                         await delete_view.select.interaction.response.edit_message(embed=discord.Embed(description=f"**Removed Position:** `{position.capitalize()}`", color=0x2b2d31), view=None)
                         await self.message.edit(embed=await self.update_embed(self.data, interaction))

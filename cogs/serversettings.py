@@ -74,7 +74,7 @@ class serversettings(commands.Cog):
     @app_commands.default_permissions(administrator=True)
     async def serversettings(self, interaction: discord.Interaction, settings: app_commands.Choice[str], option: Literal['Show', 'Edit']):
         if interaction.guild.id != 785839283847954433:
-            if settings.value not in ["payout", "perks"]:
+            if settings.value not in ["payout", "perks", "staff"]:
                 return await interaction.response.send_message("This command is not available for this server", ephemeral=True)
 
         match settings.value:
@@ -100,7 +100,7 @@ class serversettings(commands.Cog):
                         await self.bot.ss.update_config(settings.value, interaction.guild_id, view.data)
 
             case "staff":
-                guild_config = await self.bot.staff_db.get_config(interaction.guild)
+                guild_config = await self.bot.staff_db.get_config(interaction.guild.id)
                 if interaction.user.id != interaction.guild.owner.id and interaction.user.id not in guild_config['owners']:
                     return await interaction.response.send_message("You are not allowed to use this command!", ephemeral=True)
                 
