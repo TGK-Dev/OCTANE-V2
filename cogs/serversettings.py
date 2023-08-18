@@ -73,6 +73,10 @@ class serversettings(commands.Cog):
     @app_commands.describe(option="Show or edit the settings", settings="The settings you want to change")
     @app_commands.default_permissions(administrator=True)
     async def serversettings(self, interaction: discord.Interaction, settings: app_commands.Choice[str], option: Literal['Show', 'Edit']):
+        if interaction.guild.id != 785839283847954433:
+            if settings.value != "payout":
+                return await interaction.response.send_mesage("This command is not available for this server", ephemeral=True)
+
         match settings.value:
             case "join_gate":
                 config = await self.bot.ss.get_config(settings.value, interaction.guild_id)
