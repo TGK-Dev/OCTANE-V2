@@ -55,6 +55,20 @@ class Linked_Roles(commands.GroupCog, name="linkedroles"):
 		else:
 			return response
 	
+	async def revoke(self, token: str):
+		url = f"{self.base_url}/oauth2/token/revoke"
+		headers = {"Content-Type": "application/x-www-form-urlencoded"}
+		data = {
+			"client_id": self.bot.user.id,
+			"client_secret": self.bot.secret,
+			"token": token,
+		}
+		response = await self.session.post(url, headers=headers, data=data)
+		if response.status == 200:
+			return "Success"
+		else:
+			return "Error"
+	
 	@tasks.loop(hours=6)
 	async def refresh_loop(self):
 		if self.refresh_task == True:
@@ -64,6 +78,8 @@ class Linked_Roles(commands.GroupCog, name="linkedroles"):
 		for user in data:
 			user_data = await self.refresh(user['refresh_token'], user['_id'])
 			if user_data.status != 200:
+				await self.revoke(user['refresh_token'])
+				await self.bot.auth.delete(user['_id'])
 				continue
 			user_data = await user_data.json()
 			user['access_token'] = user_data['access_token']
@@ -150,4 +166,4 @@ class Linked_Roles(commands.GroupCog, name="linkedroles"):
 		await interaction.response.send_message(embed=embed, ephemeral=True)
 
 async def setup(bot):
-	await bot.add_cog(Linked_Roles(bot))
+	await bot.add_cog(Linked_Roles(bot), guilds=[discord.Object(785839283847954433)])
