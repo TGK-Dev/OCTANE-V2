@@ -361,9 +361,14 @@ class Staff_Commands(commands.GroupCog, name="staff"):
         leave_channel = interaction.guild.get_channel(guild_config['leave_channel'])
         time = int((datetime.datetime.utcnow() + datetime.timedelta(seconds=time)).timestamp())
         embed = discord.Embed(title="Leave", color=self.bot.default_color,
-                              description=f"**Staff:** {user.mention}\n**Reason:** {reason}\n**Time:** <t:{time}:R> (<t:{time}:f>)\n**Started By:** {interaction.user.mention})")
+                              description=f"**Staff:** {user.mention}\n**Reason:** {reason}\n**Time:** <t:{time}:R> (<t:{time}:f>)\n**Started By:** {interaction.user.mention}")
+        embed.description += "\n**Positions:** "
+        embed.description += ", ".join([f"`{post.capitalize()}`" for post in user_data['positions']])
+
         if leave_channel:
-            await leave_channel.send(embed=embed)
+            msg = await leave_channel.send(embed=embed)
+            leave_data['message_id'] = msg.id
+            await self.backend.update_staff(user, interaction.guild, user_data)
 
         await interaction.edit_original_response(
             embed=discord.Embed(description=f"Successfully set leave for {user.mention}",
@@ -471,3 +476,4 @@ class Staff_Commands(commands.GroupCog, name="staff"):
 
 async def setup(bot):
     await bot.add_cog(Staff_Commands(bot))
+
