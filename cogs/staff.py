@@ -72,14 +72,17 @@ class Staff_DB:
         await self.config.update(data)
         return data
 
-    async def get_staff(self, user: discord.Member, guild: discord.Guild) -> Staff:
+    async def get_staff(self, user: discord.Member, guild: discord.Guild) -> Staff | None:
         data = await self.staff.find({"user_id": user.id, "guild": guild.id})
         if not data:
-            data = {'user_id': user.id, 'guild': guild.id, 'positions': {}, 'leave': {},
-                    'recovery_code': ""}
-            await self.staff.insert(data)
-        data: Staff = data
+            return None
         return data
+
+    async def create_staff(self, user: discord.Member, guild: discord.Guild) -> Staff:
+        data: Staff = {'id': None, 'user_id': user.id, 'guild': guild.id, 'positions': {}, 'leave': {}}
+        await self.staff.insert(data)
+        return data
+    
 
     async def update_staff(self, user: discord.Member, guild: discord.Guild, data: Staff):
         await self.staff.update(data)
@@ -159,7 +162,11 @@ class Staff_Commands(commands.GroupCog, name="staff"):
                 await interaction.followup.send(
                     f"Failed to send recovery code to {user.mention}, please make sure they have DMs enabled",
                     ephemeral=True)
+                
         user_data = await self.backend.get_staff(user, interaction.guild)
+        if not user_data:
+            user_data = await self.backend.create_staff(user, interaction.guild)
+
         if position in user_data['positions']:
             return await interaction.response.send_message("This user already has this position", ephemeral=True)
 
@@ -208,6 +215,11 @@ class Staff_Commands(commands.GroupCog, name="staff"):
                     color=self.bot.default_color))
 
         user_data = await self.backend.get_staff(user, interaction.guild)
+        if not user_data:
+            return await interaction.edit_original_response(
+                embed=discord.Embed(description=f"{user.mention} is not apart of any positions",
+                                    color=self.bot.default_color))
+        
         if post['name'] not in user_data['positions'].keys():
             return await interaction.edit_original_response(
                 embed=discord.Embed(description=f"{user.mention} does not have the position `{position.capitalize()}`",
@@ -220,6 +232,7 @@ class Staff_Commands(commands.GroupCog, name="staff"):
             return await interaction.edit_original_response(
                 embed=discord.Embed(description=f"`{post['name'].capitalize()}` role does not exist",
                                     color=self.bot.default_color))
+        
         await user.remove_roles(post_role, reason=f"Revoked from {post['name'].capitalize()} by {interaction.user}")
         del user_data['positions'][post['name']]
         await self.backend.update_staff(user, interaction.guild, user_data)
@@ -229,6 +242,7 @@ class Staff_Commands(commands.GroupCog, name="staff"):
             await interaction.edit_original_response(
                 embed=discord.Embed(description=f"{user.mention} is not not apart of any positions",
                                      color=self.bot.default_color))
+            
             await self.backend.staff.delete(user_data)
         else:
             await interaction.edit_original_response(
@@ -320,6 +334,8 @@ class Staff_Commands(commands.GroupCog, name="staff"):
             embed=discord.Embed(description="Please wait while we set leave...", color=self.bot.default_color))
 
         user_data = await self.backend.get_staff(user, interaction.guild)
+        if not user_data:
+            user_data = await self.backend.create_staff(user, interaction.guild)
         leave_data: Leave = {'reason': reason, 'time': time,
                              'end_time': datetime.datetime.utcnow() + datetime.timedelta(
                                  seconds=time), 'on_leave': True}
@@ -343,11 +359,15 @@ class Staff_Commands(commands.GroupCog, name="staff"):
                 embed=discord.Embed(description="Leave role or base role does not exist", color=self.bot.default_color))
 
         leave_channel = interaction.guild.get_channel(guild_config['leave_channel'])
-        time = (datetime.datetime.utcnow() + datetime.timedelta(seconds=time)).timestamp()
+        time = int((datetime.datetime.utcnow() + datetime.timedelta(seconds=time)).timestamp())
         embed = discord.Embed(title="Leave", color=self.bot.default_color,
-                              description=f"**Staff:** {user.mention}\n**Reason:** {reason}\n**Time:** {discord.utils.parse_time(timestamp=time)}")
+                              description=f"**Staff:** {user.mention}\n**Reason:** {reason}\n**Time:** <t:{time}:R> (<t:{time}:f>)\n**Started By:** {interaction.user.mention})")
         if leave_channel:
             await leave_channel.send(embed=embed)
+
+        await interaction.edit_original_response(
+            embed=discord.Embed(description=f"Successfully set leave for {user.mention}",
+                                color=self.bot.default_color))
 
     @leave.command(name="remove", description="Remove leave for your staff members")
     @app_commands.describe(user="The user you want to remove leave for")
@@ -362,7 +382,11 @@ class Staff_Commands(commands.GroupCog, name="staff"):
             embed=discord.Embed(description="Please wait while we remove leave...", color=self.bot.default_color))
 
         user_data = await self.backend.get_staff(user, interaction.guild)
-
+        if not user_data:
+            return await interaction.edit_original_response(
+                embed=discord.Embed(description=f"{user.mention} is not apart of any positions",
+                                    color=self.bot.default_color))
+        
         for post in user_data['positions']:
             post_role = interaction.guild.get_role(guild_config['positions'][post]['role'])
             if post_role is None:
@@ -390,6 +414,37 @@ class Staff_Commands(commands.GroupCog, name="staff"):
         await interaction.edit_original_response(
             embed=discord.Embed(description=f"Successfully removed leave for {user.mention}",
                                 color=self.bot.default_color))
+
+
+    @app_commands.command(name="info", description="View information about a staff member")
+    @app_commands.describe(user="The user you want to view information about")
+    async def info(self, interaction: discord.Interaction, user: discord.Member):
+        guild_config = await self.backend.get_config(interaction.guild_id)
+
+        if interaction.user.id != interaction.guild.owner.id and interaction.user.id not in guild_config['owners'] and interaction.user.id not in guild_config['staff_manager']:
+            return await interaction.response.send_message("You are not allowed to use this command",
+                                                           ephemeral=True)
+        
+        user_data = await self.backend.get_staff(user, interaction.guild)
+        if not user_data:
+            return await interaction.response.send_message(f"{user.mention} is not apart of any positions",
+                                                           ephemeral=True)
+        print(user_data)
+        embed = discord.Embed(title="", color=self.bot.default_color, description="")
+        embed.set_author(name=user.name, icon_url=user.avatar.url if user.avatar else user.default_avatar.url)
+        for post in user_data['positions']:
+            post_role = interaction.guild.get_role(guild_config['positions'][post]['role'])
+            if post_role is None:
+                continue
+            embed.add_field(name=" ", value=f"**Position:** {post.capitalize()}\n**Appointed By:** <@{user_data['positions'][post]['appointed_by']}>\n**Appointed At:** {user_data['positions'][post]['appointed_at'].strftime('%d/%m/%Y %H:%M:%S')}", inline=True)
+
+        if user_data['leave'] != {}:
+            if user_data['leave']['on_leave']:
+                embed.description += f"**Leave Reason:** {user_data['leave']['reason']}\n"
+                embed.description += f"**Leave Time:** {user_data['leave']['time']}\n"
+                embed.description += f"**Leave End Time:** {user_data['leave']['end_time'].strftime('%d/%m/%Y %H:%M:%S')}\n"
+
+        await interaction.response.send_message(embed=embed)
 
 
     @commands.command(name="recover", description="Verify your indentitiy by using your recovery code")
