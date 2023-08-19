@@ -25,7 +25,7 @@ class Leave(TypedDict):
 
 
 class Staff(TypedDict):
-    id: ObjectId | None
+    _id: ObjectId | None
     user_id: int
     guild: int
     positions: dict
@@ -79,7 +79,7 @@ class Staff_DB:
         return data
 
     async def create_staff(self, user: discord.Member, guild: discord.Guild) -> Staff:
-        data: Staff = {'id': None, 'user_id': user.id, 'guild': guild.id, 'positions': {}, 'leave': {}}
+        data: Staff = {'user_id': user.id, 'guild': guild.id, 'positions': {}, 'leave': {}}
         await self.staff.insert(data)
         return data
     
