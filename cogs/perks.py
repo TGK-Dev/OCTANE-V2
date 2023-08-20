@@ -900,7 +900,7 @@ class Perks(commands.Cog, name="perk", description="manage your custom perks"):
                         user_data['last_react'] = datetime.datetime.utcnow()
                         await self.Perk.update_cache(Perk_Type.reacts, message.guild, user_data)
 
-class Voice(commands.GroupCog):
+class Voice(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
         self.db = bot.mongo["Voice"]
