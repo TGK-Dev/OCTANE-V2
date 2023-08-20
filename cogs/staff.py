@@ -240,7 +240,7 @@ class Staff_Commands(commands.GroupCog, name="staff"):
         if len(user_data['positions']) == 0:
             await user.remove_roles(base_role, reason="Revoked from all positions")
             await interaction.edit_original_response(
-                embed=discord.Embed(description=f"{user.mention} is not not apart of any positions",
+                embed=discord.Embed(description=f"{user.mention} is no longer apart of any staff positions",
                                      color=self.bot.default_color))
             
             await self.backend.staff.delete(user_data)
