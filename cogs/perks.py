@@ -835,6 +835,7 @@ class Perks(commands.Cog, name="perk", description="manage your custom perks"):
                 user_data = guild_data[user_data]
                 if word in user_data['triggers']:
                     user = message.guild.get_member(user_data['user_id'])
+                    if message.author.id == user_data['user_id']: continue
                     if user is None: continue
                     perm = message.channel.permissions_for(user)
                     if not perm.view_channel or perm.view_channel == False: continue
