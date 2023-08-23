@@ -14,15 +14,8 @@ class Basic(commands.Cog):
         self.bot = bot
         self.bot.snipes = {}
         self.bot.esnipes = {}
-        self.bot.afk = Document(bot.db, "afk")
         self.bot.votes = Document(bot.db, "Votes")
-        self.bot.current_afk = {}
-    
-    @commands.Cog.listener()
-    async def on_ready(self):
-        current_afks = await self.bot.afk.get_all()
-        for afk in current_afks: 
-            self.bot.current_afk[afk["_id"]] = afk
+
     
     @app_commands.command(name="stats")
     async def stats(self, interaction: Interaction):
@@ -171,115 +164,7 @@ class Basic(commands.Cog):
             "before": before.content,
             "after": after.content,
             "color": before.author.color
-        })
-    
-    @commands.Cog.listener()
-    async def on_message(self, message):
-        if message.author.bot or message.guild is None or message.content is None: 
-            return
-        if message.author.id in self.bot.current_afk.keys():
-            self.bot.dispatch("afk_return", message)
-        if len(message.mentions) > 0:
-            for user in message.mentions:
-                if user.id in self.bot.current_afk.keys() and user in message.channel.members:
-                   return self.bot.dispatch("afk_ping", message, user)
-        if message.reference is not None:
-            try:
-                reference_message = await message.channel.fetch_message(message.reference.message_id)
-            except:
-                return
-            if reference_message.author.id in self.bot.current_afk.keys():
-                self.bot.dispatch("afk_ping", message, reference_message.author)
-    
-    @commands.Cog.listener()
-    async def on_afk_return(self, message):
-        user_data = await self.bot.afk.find(message.author.id)
-        
-        if user_data is None:
-            if '[AFK]' in message.author.display_name:
-                try:
-                    await message.author.edit(nick=message.author.display_name.replace('[AFK]', ''))
-                except discord.Forbidden:
-                    pass
-            if message.author.id in self.bot.current_afk.keys():
-                self.bot.current_afk.pop(message.author.id)
-            return
-        
-        if len(user_data['pings']) != 0:
-            embeds = []
-            pages = len(user_data['pings'])
-            for index,user_data in enumerate(user_data['pings']):
-                guild = self.bot.get_guild(user_data['guild_id'])
-                user = guild.get_member(user_data['id'])
-                pinged_at = user_data['pinged_at']
-                jump_url = user_data['jump_url']
-                content = user_data['message']
-                channel = guild.get_channel(user_data['channel_id'])
-                channel_name = channel.name if channel else "Unknown Channel"
-                embed = discord.Embed(color=0x2b2d31 , timestamp=user_data['timestamp'])
-                embed.set_author(name = f'{user.global_name}', icon_url = user.avatar.url if user.avatar else user.default_avatar)
-                embed.description = f"<a:tgk_redSparkle:1072168821797965926> [`You were pinged in #{channel_name}.`]({jump_url}) {pinged_at}\n"
-                embed.description += f"<a:tgk_redSparkle:1072168821797965926> **Message:** {content}"
-                embed.set_footer(text = f"Pings you received while you were AFK • Pinged at")
-                embeds.append(embed)
-            try:
-                await message.author.send(embeds=embeds)
-            except:
-                await message.reply("I couldn't send you the pings you received while you were AFK because you have DMs disabled.", delete_after=10, mention_author=False)
-        try:
-            await self.bot.afk.delete(message.author.id)
-            self.bot.current_afk.pop(message.author.id)
-        except KeyError:
-            pass
-        
-        try:
-            if "last_nick" in user_data.keys():
-                await message.author.edit(nick=user_data['last_nick'])
-            else:
-                await message.author.edit(nick=message.author.display_name.replace('[AFK]', ''))
-        except discord.Forbidden:
-            pass
-            
-        await message.reply(f"Welcome back {message.author.mention}!", delete_after=10)
-
-    @commands.Cog.listener()
-    async def on_afk_ping(self, message:discord.Message, user:discord.Member):
-        user_data = await self.bot.afk.find(user.id)
-        user_data['pings'].append({
-            "id":message.author.id,
-            "message": message.content if len(message.content) <= 100 else f"{message.content[:100]}...",
-            "jump_url": message.jump_url,
-            "pinged_at": f'<t:{int(datetime.datetime.timestamp(datetime.datetime.now()))}:R>',
-            "timestamp": datetime.datetime.now(),
-            "channel_id": message.channel.id,
-            "guild_id": message.guild.id
-        })
-        if len(user_data['pings']) > 10:
-            while len(user_data['pings']) > 10:
-                user_data['pings'].pop(0)
-        await self.bot.afk.update(user_data)
-        await message.reply(f"`{user_data['last_nick']}` is afk: {user_data['reason']}", delete_after=10, allowed_mentions=discord.AllowedMentions.none(), mention_author=False)
-
-    @app_commands.command(name="afk", description="Set your afk status")
-    @app_commands.describe(reason="The reason for your afk status")
-    async def afk(self, interaction: Interaction, reason: str):
-        if len(reason.split(" ")) > 30: 
-            return await interaction.response.send_message("Your afk status can only be 30 words long", ephemeral=True)
-        user_data = await self.bot.afk.find(interaction.user.id)
-        if user_data is not None: 
-            await self.bot.afk.delete(interaction.user.id)
-        last_nick = interaction.user.display_name if  not interaction.user.display_name.startswith('[AFK]') else interaction.user.display_name.replace('[AFK]', '')
-        user_data = {'_id': interaction.user.id,'guild_id': interaction.guild.id,'reason': reason,'last_nick': last_nick,'pings': []}
-        await self.bot.afk.insert(user_data)
-        await interaction.response.send_message(f"`{interaction.user.display_name}` I set your status to {reason if reason else 'afk'}", ephemeral=True)
-        nick = f"[AFK] {interaction.user.display_name}"
-        if len(nick) > 32:
-            nick = nick[:32]
-        try:
-            await interaction.user.edit(nick=f"{nick}")
-        except discord.Forbidden:
-            pass
-        self.bot.current_afk[interaction.user.id] = user_data
+        })   
     
     @app_commands.command(name="whois", description="Get information about a user")
     @app_commands.describe(member="The user to get information about")
@@ -335,6 +220,150 @@ class Appeal_server(commands.GroupCog, name="appeal"):
         await main_server.unban(member, reason=reason)
 
         await interaction.response.send_message(f"{member.mention} You have been unbanned from {main_server.name} for the reason: {reason}\nYou can now rejoin the server at https://discord.gg/tgk", ephemeral=False)
+
+
+
+class Afk(commands.GroupCog):
+    def __init__(self, bot):
+        self.bot = bot
+        self.bot.afk = Document(bot.db, "afk")
+        self.bot.current_afk = {}
+
+    @commands.Cog.listener()
+    async def on_ready(self):
+        current_afks = await self.bot.afk.get_all()
+        for afk in current_afks: 
+            self.bot.current_afk[afk["_id"]] = afk
+    
+    @commands.Cog.listener()
+    async def on_afk_ping(self, message:discord.Message, user:discord.Member):
+        user_data = await self.bot.afk.find(user.id)
+        user_data['pings'].append({
+            "id":message.author.id,
+            "message": message.content if len(message.content) <= 100 else f"{message.content[:100]}...",
+            "jump_url": message.jump_url,
+            "pinged_at": f'<t:{int(datetime.datetime.timestamp(datetime.datetime.now()))}:R>',
+            "timestamp": datetime.datetime.now(),
+            "channel_id": message.channel.id,
+            "guild_id": message.guild.id
+        })
+        if len(user_data['pings']) > 10:
+            while len(user_data['pings']) > 10:
+                user_data['pings'].pop(0)
+        await self.bot.afk.update(user_data)
+        await message.reply(f"`{user_data['last_nick']}` is afk: {user_data['reason']}", delete_after=10, allowed_mentions=discord.AllowedMentions.none(), mention_author=False)
+
+
+    @commands.Cog.listener()
+    async def on_afk_return(self, message):
+        user_data = await self.bot.afk.find(message.author.id)
+        
+        if user_data is None:
+            if '[AFK]' in message.author.display_name:
+                try:
+                    await message.author.edit(nick=message.author.display_name.replace('[AFK]', ''))
+                except discord.Forbidden:
+                    pass
+            if message.author.id in self.bot.current_afk.keys():
+                self.bot.current_afk.pop(message.author.id)
+            return
+        
+        if len(user_data['pings']) != 0:
+            embeds = []
+            pages = len(user_data['pings'])
+            for index,user_data in enumerate(user_data['pings']):
+                guild = self.bot.get_guild(user_data['guild_id'])
+                user = guild.get_member(user_data['id'])
+                pinged_at = user_data['pinged_at']
+                jump_url = user_data['jump_url']
+                content = user_data['message']
+                channel = guild.get_channel(user_data['channel_id'])
+                channel_name = channel.name if channel else "Unknown Channel"
+                embed = discord.Embed(color=0x2b2d31 , timestamp=user_data['timestamp'])
+                embed.set_author(name = f'{user.global_name}', icon_url = user.avatar.url if user.avatar else user.default_avatar)
+                embed.description = f"<a:tgk_redSparkle:1072168821797965926> [`You were pinged in #{channel_name}.`]({jump_url}) {pinged_at}\n"
+                embed.description += f"<a:tgk_redSparkle:1072168821797965926> **Message:** {content}"
+                embed.set_footer(text = f"Pings you received while you were AFK • Pinged at")
+                embeds.append(embed)
+            try:
+                await message.author.send(embeds=embeds)
+            except:
+                await message.reply("I couldn't send you the pings you received while you were AFK because you have DMs disabled.", delete_after=10, mention_author=False)
+        try:
+            await self.bot.afk.delete(message.author.id)
+            self.bot.current_afk.pop(message.author.id)
+        except KeyError:
+            pass
+        
+        try:
+            if "last_nick" in user_data.keys():
+                await message.author.edit(nick=user_data['last_nick'])
+            else:
+                await message.author.edit(nick=message.author.display_name.replace('[AFK]', ''))
+        except discord.Forbidden:
+            pass
+            
+        await message.reply(f"Welcome back {message.author.mention}!", delete_after=10)
+
+    @commands.Cog.listener()
+    async def on_message(self, message):
+        if message.author.bot or message.guild is None or message.content is None: 
+            return
+        if message.author.id in self.bot.current_afk.keys():
+            self.bot.dispatch("afk_return", message)
+        if len(message.mentions) > 0:
+            for user in message.mentions:
+                if user.id in self.bot.current_afk.keys() and user in message.channel.members:
+                   return self.bot.dispatch("afk_ping", message, user)
+        if message.reference is not None:
+            try:
+                reference_message = await message.channel.fetch_message(message.reference.message_id)
+            except:
+                return
+            if reference_message.author.id in self.bot.current_afk.keys():
+                self.bot.dispatch("afk_ping", message, reference_message.author)
+    
+    @app_commands.command(name="set", description="Set your afk status")
+    @app_commands.describe(reason="The reason for being afk")
+    async def _set(self, interaction: Interaction, reason: str=None):
+        if len(reason.split(" ")) > 30: 
+            return await interaction.response.send_message("Your afk status can only be 30 words long", ephemeral=True)
+        user_data = await self.bot.afk.find(interaction.user.id)
+        if user_data is not None: 
+            await self.bot.afk.delete(interaction.user.id)
+        last_nick = interaction.user.display_name if  not interaction.user.display_name.startswith('[AFK]') else interaction.user.display_name.replace('[AFK]', '')
+        user_data = {'_id': interaction.user.id,'guild_id': interaction.guild.id,'reason': reason,'last_nick': last_nick,'pings': []}
+        await self.bot.afk.insert(user_data)
+        await interaction.response.send_message(f"`{interaction.user.display_name}` I set your status to {reason if reason else 'afk'}", ephemeral=True)
+        nick = f"[AFK] {interaction.user.display_name}"
+        if len(nick) > 32:
+            nick = nick[:32]
+        try:
+            await interaction.user.edit(nick=f"{nick}")
+        except discord.Forbidden:
+            pass
+        self.bot.current_afk[interaction.user.id] = user_data
+    
+    @app_commands.command(name="remove", description="Remove a member from afk")
+    @app_commands.checks.has_permissions(ban_members=True)
+    @app_commands.describe(member="The member to remove from afk")
+    async def _remove(self, interaction: Interaction, member: discord.Member):
+        user_data = await self.bot.afk.find(member.id)
+        if user_data is None:
+            return await interaction.response.send_message(f"{member.mention} is not afk", ephemeral=True)
+        await self.bot.afk.delete(member.id)
+        await interaction.response.send_message(f"Successfully removed {member.mention} from afk", ephemeral=True)
+        try:
+            if "last_nick" in user_data.keys():
+                await member.edit(nick=user_data['last_nick'])
+            else:
+                await member.edit(nick=member.display_name.replace('[AFK]', ''))
+        except discord.Forbidden:
+            pass
+        try:
+            self.bot.current_afk.pop(member.id)
+        except KeyError:
+            pass       
 
 class Ban_battle(commands.GroupCog, name="banbattle"):
     def __init__(self, bot):
@@ -571,6 +600,7 @@ class karuta(commands.Cog):
                 
 async def setup(bot):
     await bot.add_cog(Basic(bot), guilds=[discord.Object(785839283847954433)])
+    await bot.add_cog(Afk(bot), guilds=[discord.Object(785839283847954433)])
     await bot.add_cog(Appeal_server(bot), guilds=[discord.Object(988761284956799038)])
     await bot.add_cog(karuta(bot))
     await bot.add_cog(Logging(bot))
