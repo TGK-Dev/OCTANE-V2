@@ -154,9 +154,14 @@ class Panel_Edit(View):
         self.value = None
         self.message = message
         super().__init__(timeout=120)
+        if self.data["enabled"]:
+            self.children[0].emoji = "<:toggle_on:1123932825956134912>"
+        else:
+            self.children[0].emoji = "<:toggle_off:1123932890993020928>"
     
     def update_embed(self, data:dict):
         embed = discord.Embed(title=f"Settings for Panel: {data['key']}", color=0x2b2d31, description="")
+        embed.description += f"**Enabled:**" + (f" Enabled" if data['enabled'] else " Disabled") + "\n"
         embed.description += f"**Support Roles:** {', '.join([f'<@&{role}>' for role in data['support_roles']]) if len(data['support_roles']) > 0 else '`None`'}\n"
         embed.description += f"**Ping Role:**" + (f" <@&{data['ping_role']}>" if data['ping_role'] is not None else "`None`") + "\n"
         embed.description += f"**Description:**" + (f"```\n{data['description']}\n```" if data['description'] is not None else "`None`") + "\n"
@@ -182,7 +187,23 @@ class Panel_Edit(View):
             await interaction.response.send_message("You are not allowed to use this view", ephemeral=True)
             return False
     
+    @button(label="Toggle", style=discord.ButtonStyle.gray, emoji="<:toggle_on:1123932825956134912>", row=0)
+    async def toggle(self, interaction: Interaction, button: Button):
+        for button in self.children: 
+                if button.label == "Save": button.disabled = False
+        if self.data["enabled"] == True:
+            self.data["enabled"] = False
+            embed = self.update_embed(self.data)
+            button.emoji = "<:toggle_off:1123932890993020928>"
+            await interaction.response.edit_message(embed=embed, view=self)
+        else:
+            self.data["enabled"] = True
+            button.emoji = "<:toggle_on:1123932825956134912>"
+            embed = self.update_embed(self.data)
+            await interaction.response.edit_message(embed=embed, view=self)
+        
 
+          
     
     @button(label="Support Roles", style=discord.ButtonStyle.gray, emoji="<:managers:1017379642862215189>", row=0)
     async def support_roles(self, interaction: Interaction, button: Button):
@@ -613,7 +634,7 @@ class Ticket_controll(View):
             if thread:
                 await thread.add_user(interaction.user)
                 return await interaction.response.send_message("You have been added to the thread", ephemeral=True, delete_after=5)
-        thread = await interaction.channel.create_thread(name=f"Teporaly Chat", type=discord.ChannelType.private_thread, auto_archive_duration=10080,invitable=False)
+        thread = await interaction.channel.create_thread(name=f"🐱‍👤 Secret Chat", auto_archive_duration=60, type=discord.ChannelType.private_thread)
         await interaction.response.send_message("You have been added to the thread", ephemeral=True, delete_after=5)
         msg = await thread.send("please be advised that this thread is now designated as private and restricted only to moderators and higher-ups. Thank you for your understanding and cooperation in respecting the privacy of this thread.")
         await msg.pin()

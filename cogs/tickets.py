@@ -48,6 +48,18 @@ class Ticket(commands.GroupCog, name="ticket"):
                     button = ticket_system.ParterShip_Button(label=panel['key'], style=style, emoji=emoji, custom_id=f"{ticket_config['_id']}-{panel['key']}")
                 else:
                     button = ticket_system.Panel_Button(label=panel['key'], style=style, emoji=emoji, custom_id=f"{ticket_config['_id']}-{panel['key']}")
+
+                try:
+                    if 'enabled' not in panel.keys(): 
+                        panel['enabled'] = True
+                        await self.bot.tickets.config.update(ticket_config)
+                    if panel['enabled']: 
+                        button.disabled = False
+                    else:
+                        button.disabled = True
+                except Exception as e:
+                    raise e
+                
                 panel_view.add_item(button)
                 self.bot.add_view(panel_view)
                 
@@ -64,9 +76,10 @@ class Ticket(commands.GroupCog, name="ticket"):
             await self.bot.tickets.config.insert(ticket_config)
         if name in ticket_config['panels'].keys(): return await interaction.response.send_message("This panel already exists", ephemeral=True, delete_after=5)        
 
-        panel_data = {'key': name, 'support_roles': [], "ping_role": None, 'created_by': interaction.user.id, 'description': None, 'emoji': None, 'color': None, 'modal': {'type': 'short', 'question': "Please describe your issue"}}
+        panel_data = {'key': name, 'support_roles': [], "ping_role": None, 'created_by': interaction.user.id, 'description': None, 'emoji': None, 'color': None, 'enabled': True,'modal': {'type': 'short', 'question': "Please describe your issue"}}
 
         embed = discord.Embed(title=f"Settings for Panel: {name}", color=0x2b2d31, description="")
+        embed.description += f"**Enabled:**" + (f" Enabled" if panel_data['enabled'] else " Disabled") + "\n"
         embed.description += f"**Support Roles:** {', '.join([f'<@&{role}>' for role in panel_data['support_roles']]) if len(panel_data['support_roles']) > 0 else '`None`'}\n"
         embed.description += f"**Ping Role:**" + (f" <@&{panel_data['ping_role']}>" if panel_data['ping_role'] is not None else "`None`") + "\n"
         embed.description += f"**Description:**" + (f"```\n{panel_data['description']}\n```" if panel_data['description'] is not None else "`None`") + "\n"
@@ -113,6 +126,7 @@ class Ticket(commands.GroupCog, name="ticket"):
         except KeyError:
             return await interaction.response.send_message("This panel does not exist", ephemeral=True, delete_after=5)
         embed = discord.Embed(title=f"Settings for Panel: {name}", color=0x2b2d31, description="")
+        embed.description += f"**Enabled:**" + (f" Enabled" if panel_data['enabled'] else " Disabled") + "\n"
         embed.description += f"**Support Roles:** {', '.join([f'<@&{role}>' for role in panel_data['support_roles']]) if len(panel_data['support_roles']) > 0 else '`None`'}\n"
         embed.description += f"**Ping Role:**" + (f" <@&{panel_data['ping_role']}>" if panel_data['ping_role'] is not None else "`None`") + "\n"
         embed.description += f"**Description:**" + (f"```\n{panel_data['description']}\n```" if panel_data['description'] is not None else "`None`") + "\n"
@@ -150,8 +164,15 @@ class Ticket(commands.GroupCog, name="ticket"):
             emoji = panel['emoji'] if panel['emoji'] is not None else None
 
             button = ticket_system.Panel_Button(label=panel['key'], style=style, emoji=emoji, custom_id=f"{ticket_config['_id']}-{panel['key']}")
+
+            if panel['enabled']:
+                button.disabled = False
+            else:
+                button.disabled = True
+
             panel_view.add_item(button)
 
+        panel_embed.set_footer(text="Disabled buttons means that panel is disabled by the server administartor")
         support_channel = self.bot.get_channel(ticket_config['channel'])
         if ticket_config['last_panel_message_id'] is None:
            message = await support_channel.send(embed=panel_embed, view=panel_view)
