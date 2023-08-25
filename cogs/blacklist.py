@@ -2,6 +2,7 @@ from dataclasses import dataclass, asdict, field
 from discord.ext import commands, tasks
 from discord import app_commands
 from utils.db import Document
+from utils.paginator import Paginator
 from typing import List, Dict
 from utils.transformer import TimeConverter
 from humanfriendly import format_timespan
@@ -221,6 +222,29 @@ class Blacklist_cog(commands.GroupCog, name="blacklist"):
 
         await interaction.response.send_message(f"{user.mention} has been removed from blacklist in profile `{profile}`", ephemeral=True)
         await self.backend.blacklist.delete({"user_id": user.id, "profile": profile_data._id, "guild_id": interaction.guild_id})
+
+    @user.command(name="view", description="View blacklist of user")
+    @app_commands.describe(user="User to view blacklist")
+    async def _view(self, interaction: discord.Interaction, user: discord.Member):
+        config = await self.backend.get_config(interaction.guild_id)
+        if config is None:
+            return await interaction.response.send_message("This server doesn't have blacklist", ephemeral=True)
+        pages = []
+        for blacklist in await self.backend.blacklist.find_many_by_custom({"user_id": user.id, "guild_id": interaction.guild_id}):
+            profile = Profile(**config.profiles[blacklist["profile"]])
+            embed = discord.Embed(title=f"Blacklist of {user}", color=self.bot.default_color, description="")
+            embed.description += f"**Profile:** {profile._id}\n"
+            embed.description += f"**Reason:** {blacklist['Blacklist_reason']}\n"
+            embed.description += f"**Duration:** {format_timespan(blacklist['Blacklist_duration'])}\n"
+            embed.description += f"**End:** <t:{int(blacklist['Blacklist_end'].timestamp())}:R>\n"
+            embed.description += f"**By:** <@{blacklist['Blacklist_by']}> ({blacklist['Blacklist_by']})\n"
+            pages.append(embed)
+        if len(pages) == 0:
+            return await interaction.response.send_message(f"{user.mention} is not blacklisted", ephemeral=True)
+        if len(pages) == 1:
+            await interaction.response.send_message(embed=pages[0], ephemeral=False)
+        else:
+            await Paginator(interaction, pages=pages).start(embeded=True,quick_navigation=False, hidden=False)
 
     @commands.Cog.listener()
     async def on_member_join(self, member: discord.Member):
