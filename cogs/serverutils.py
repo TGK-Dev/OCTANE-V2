@@ -770,6 +770,7 @@ class Suggestions(commands.Cog):
 
 	
 	@commands.command(name="suggest", description="Suggest something for the server")
+	@commands.has_any_role(785842380565774368, 785845265118265376, 818129661325869058)
 	async def _suggest(self, ctx: commands.Context, *, suggestion: str):
 		config = await self.suggestions.config.find(ctx.guild.id)
 		if config is None:
