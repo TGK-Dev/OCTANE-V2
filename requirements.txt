@@ -13,4 +13,4 @@ unidecode
 stringcase
 colour==0.1.5
 bcrypt==4.0.1
-pandas==.0.3
+pandas==2.0.3
