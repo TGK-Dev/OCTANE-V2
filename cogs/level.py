@@ -164,12 +164,12 @@ class Level_DB:
         draw = ImageDraw.Draw(base_image)
         draw.text((129, 175),
                   member.global_name if member.global_name != None else member.display_name,
-                  fill="#FFFFFF", font=ImageFont.truetype('./assets/fonts/arial.ttf', 30))        
+                  fill="#FFFFFF", font=ImageFont.truetype('./assets/fonts/DejaVuSans.ttf', 30))        
 
-        draw.text((28, 277), f"{str(rank)}", fill="#6659CE", font=ImageFont.truetype('./assets/fonts/Clockwise-Light.ttf', 40))        
-        draw.text((206, 277), f"{str(level)}", fill="#6659CE", font=ImageFont.truetype('./assets/fonts/Clockwise-Light.ttf', 40))
-        draw.text((28, 389), f"{str(exp)}", fill="#6659CE", font=ImageFont.truetype('./assets/fonts/Clockwise-Light.ttf', 40))
-        draw.text((206, 389), f"{str(weekly)}", fill="#6659CE", font=ImageFont.truetype('./assets/fonts/Clockwise-Light.ttf', 40))
+        draw.text((28, 277), f"{str(rank)}", fill="#6659CE", font=ImageFont.truetype('./assets/fonts/DejaVuSans.ttf', 40))        
+        draw.text((206, 277), f"{str(level)}", fill="#6659CE", font=ImageFont.truetype('./assets/fonts/DejaVuSans.ttf', 40))
+        draw.text((28, 389), f"{str(exp)}", fill="#6659CE", font=ImageFont.truetype('./assets/fonts/DejaVuSans.ttf', 40))
+        draw.text((206, 389), f"{str(weekly)}", fill="#6659CE", font=ImageFont.truetype('./assets/fonts/DejaVuSans.ttf', 40))
         return base_image
 
 class Level(commands.GroupCog):
