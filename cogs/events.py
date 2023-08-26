@@ -223,6 +223,17 @@ class Events(commands.Cog):
                         return
             except Exception as e:
                 pass
+    
+
+    @commands.Cog.listener()
+    async def on_member_ban(self, guild: discord.Guild, user: discord.User | discord.Member):
+        if guild.id != 785839283847954433: return
+        ban = await guild.fetch_ban(user)
+        if 'no appeal' in ban.reason.lower():
+            appeal_server = self.bot.get_guild(988761284956799038)
+            if appeal_server is None: return
+            await appeal_server.ban(user, reason="Banned in main server with no appeal tag")
+            return
 
 async def setup(bot):
     await bot.add_cog(Events(bot))
