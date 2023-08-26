@@ -398,7 +398,10 @@ class Level(commands.GroupCog):
         with BytesIO() as image_binary:
             card.save(image_binary, 'PNG')
             image_binary.seek(0)
-            await interaction.followup.send(file=discord.File(fp=image_binary, filename='rank.png'), ephemeral=False)
+            embed = discord.Embed()
+            embed.color = self.bot.default_color
+            embed.set_image(url="attachment://rank.png")
+            await interaction.followup.send(file=discord.File(fp=image_binary, filename='rank.png'), embed=embed)
 
     @rank.error
     async def rank_error(self, interaction: Interaction, error):
