@@ -166,10 +166,10 @@ class Level_DB:
                   member.display_name,
                   fill="#FFFFFF", font=ImageFont.truetype('./assets/fonts/DejaVuSans.ttf', 30))        
 
-        draw.text((28, 277), f"{str(rank)}", fill="#6659CE", font=ImageFont.truetype('./assets/fonts/DejaVuSans.ttf', 40))        
-        draw.text((206, 277), f"{str(level)}", fill="#6659CE", font=ImageFont.truetype('./assets/fonts/DejaVuSans.ttf', 40))
-        draw.text((28, 389), f"{str(exp)}", fill="#6659CE", font=ImageFont.truetype('./assets/fonts/DejaVuSans.ttf', 40))
-        draw.text((206, 389), f"{str(weekly)}", fill="#6659CE", font=ImageFont.truetype('./assets/fonts/DejaVuSans.ttf', 40))
+        draw.text((28, 277), f"{str(rank)}", fill="#6659CE", font=ImageFont.truetype('./assets/fonts/DejaVuSans.ttf', 35))        
+        draw.text((206, 277), f"{str(level)}", fill="#6659CE", font=ImageFont.truetype('./assets/fonts/DejaVuSans.ttf', 35))
+        draw.text((28, 389), f"{str(exp)}", fill="#6659CE", font=ImageFont.truetype('./assets/fonts/DejaVuSans.ttf', 35))
+        draw.text((206, 389), f"{str(weekly)}", fill="#6659CE", font=ImageFont.truetype('./assets/fonts/DejaVuSans.ttf', 35))
         return base_image
 
 class Level(commands.GroupCog):
