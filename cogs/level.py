@@ -1,10 +1,13 @@
 import asyncio
+import aiohttp
+from io import BytesIO
 from typing import List
 import discord
 import math
 import datetime
 import random
 import pytz
+import pandas as pd
 from discord import app_commands
 from discord import Interaction
 from discord.ext import commands, tasks
@@ -13,6 +16,7 @@ from utils.transformer import TimeConverter, MutipleRole, DMCConverter
 from utils.views.giveaway import Giveaway
 from utils.converters import DMCConverter_Ctx
 from utils.views.modal import General_Modal
+from PIL import Image, ImageDraw, ImageFont, ImageOps, ImageChops
 
 
 
@@ -97,6 +101,60 @@ class Level_DB:
     async def update_member_level(self, member: discord.Member, data: dict):
         await self.ranks.update(member.id, data)
         self.level_cache[member.id] = data
+
+    async def millify(self, n):
+        n = float(n)
+        millnames = ['',' K',' M',' Bil']
+        millidx = max(0,min(len(millnames)-1,
+                            int(math.floor(0 if n == 0 else math.log10(abs(n))/3))))
+
+    # return '{:.1f}{}'.format(n / 10**(3 * millidx), millnames[millidx])
+        return f'{round(n / 10**(3 * millidx),1):0}{millnames[millidx]}'
+
+
+    async def round_pfp(self, pfp: discord.Member | discord.Guild):
+        if isinstance(pfp, discord.Member):
+            if pfp.avatar is None:
+                pfp = pfp.default_avatar.with_format("png")
+            else:
+                pfp = pfp.avatar.with_format("png")
+        else:
+            pfp = pfp.icon.with_format("png")
+
+        pfp = BytesIO(await pfp.read())
+        pfp = Image.open(pfp)
+        pfp = pfp.resize((128, 128), Image.Resampling.LANCZOS).convert('RGBA')
+
+        bigzise = (pfp.size[0] * 3, pfp.size[1] * 3)
+        mask = Image.new('L', bigzise, 0)
+        draw = ImageDraw.Draw(mask)
+        draw.ellipse((0, 0) + bigzise, fill=255)
+        mask = mask.resize(pfp.size, Image.Resampling.LANCZOS)
+        mask = ImageChops.darker(mask, pfp.split()[-1])
+        pfp.putalpha(mask)
+
+        return pfp
+
+    async def create_rank_card(self, member: discord.Member, rank: str, level: str,exp: str, weekly: str):
+        base_image = Image.open('./assets/rank_card.png')
+        profile = member.avatar.with_format('png')
+        profile = await self.round_pfp(member)
+        profile = profile.resize((128, 128), Image.Resampling.LANCZOS).convert('RGBA')
+
+        base_image.paste(profile, (21, 20), profile)
+
+        draw = ImageDraw.Draw(base_image)
+        draw.text((190, 45), 
+                  member.global_name if member.global_name != None else member.display_name,
+                  fill="#FFFFFF", font=ImageFont.truetype('arial.ttf', 30))
+        
+        draw.text((190, 89), f"@{member.name}", fill="#838383", font=ImageFont.truetype('arial.ttf', 22))
+
+        draw.text((28, 277), f"{str(rank)}", fill="#6659CE", font=ImageFont.truetype('./assets/fonts/Clockwise-Light.ttf', 40))
+        draw.text((206, 277), f"{str(level)}", fill="#6659CE", font=ImageFont.truetype('./assets/fonts/Clockwise-Light.ttf', 40))
+        draw.text((28, 389), f"{str(exp)}", fill="#6659CE", font=ImageFont.truetype('./assets/fonts/Clockwise-Light.ttf', 40))
+        draw.text((206, 389), f"{str(weekly)}", fill="#6659CE", font=ImageFont.truetype('./assets/fonts/Clockwise-Light.ttf', 40))
+        return base_image
 
 class Level(commands.GroupCog):
     def __init__(self, bot):
@@ -296,24 +354,33 @@ class Level(commands.GroupCog):
     @app_commands.command(name="rank", description="View your rank card")
     @app_commands.checks.cooldown(1, 10, key=lambda i:(i.guild_id, i.user.id))
     async def rank(self, interaction: Interaction, member: discord.Member = None):
-        if member is None:
-            member = interaction.user
-        data = await self.levels.get_member_level(member)
-        try:
-            all_ranks = sorted(self.levels.level_cache.values(), key=lambda x: x['xp'], reverse=True)
-            rank = all_ranks.index(data) + 1
-            all_ranks = sorted(self.levels.level_cache.values(), key=lambda x: x['weekly'], reverse=True)
-            weekly_rank = all_ranks.index(data) + 1
-        except:
-            pass
+        await interaction.response.defer()
+        member = member if member else interaction.user
+        ranks = await self.levels.ranks.get_all()
+        df = pd.DataFrame(ranks)
+        df = df.sort_values(by=['xp'], ascending=False)
+        df = df.reset_index(drop=True)
+        rank = df[df['_id'] == member.id].index[0] + 1
 
-        embed = discord.Embed(color=interaction.client.default_color, description="")
-        embed.set_author(name=member.name, icon_url=member.avatar.url if member.avatar else member.default_avatar)
-        embed.set_thumbnail(url=member.avatar.url if member.avatar else member.default_avatar)
-        embed.description += f"**Level:** {data['level']}\n"
-        embed.description += f"**XP:** {data['xp']}\n"
-        embed.description += f"**Weekly XP:** {data['weekly']}\n"
-        await interaction.response.send_message(embed=embed)
+        if len(str(df['xp'][rank-1])) >= 4:
+            exp = await self.levels.millify(df['xp'][rank-1])
+        else:
+            exp = df['xp'][rank-1]
+        
+        if len(str(df['weekly'][rank-1])) >= 4:
+            weekly = await self.levels.millify(df['weekly'][rank-1])
+        else:
+            weekly = df['weekly'][rank-1]
+        level = df['level'][rank-1]
+        card = await self.levels.create_rank_card(member, rank, level, exp, weekly)
+        with BytesIO() as image_binary:
+            card.save(image_binary, 'PNG')
+            image_binary.seek(0)
+            await interaction.followup.send(file=discord.File(fp=image_binary, filename="rank.png"))
+
+    @rank.error
+    async def rank_error(self, interaction: Interaction, error):
+        raise error
 
     @app_commands.command(name="set", description="Set a user's level")
     @app_commands.checks.has_permissions(administrator=True)
