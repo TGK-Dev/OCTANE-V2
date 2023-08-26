@@ -8,9 +8,9 @@ motor==3.1.1
 python-dotenv
 psutil
 Pillow==9.4.0
-pandas
 chat_exporter==2.5.3
 unidecode
 stringcase
 colour==0.1.5
 bcrypt==4.0.1
+pandas==.0.3

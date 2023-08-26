@@ -22,7 +22,7 @@ discord.utils.setup_logging(
 )
 
 
-# noinspection PyUnresolvedReferences
+
 class Botbase(commands.Bot):
     def __init__(self, application_id, sync: bool = False):
         super().__init__(intents=discord.Intents.all(), command_prefix="-", description="A Bot for server management",
