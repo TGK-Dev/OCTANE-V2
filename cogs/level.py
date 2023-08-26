@@ -22,6 +22,7 @@ from PIL import Image, ImageDraw, ImageFont, ImageOps, ImageChops
 
 class Level_DB:
     def __init__(self, bot):
+        self.bot = bot
         self.db = bot.mongo["Levels"]
         self.ranks = Document(self.db, "Ranks")
         self.config = Document(self.db, "RankConfig")
@@ -123,8 +124,8 @@ class Level_DB:
 
         pfp = BytesIO(await pfp.read())
         pfp = Image.open(pfp)
-        pfp = pfp.resize((128, 128), Image.Resampling.LANCZOS).convert('RGBA')
-
+        pfp = pfp.resize((124, 124), Image.Resampling.LANCZOS).convert('RGBA')
+        
         bigzise = (pfp.size[0] * 3, pfp.size[1] * 3)
         mask = Image.new('L', bigzise, 0)
         draw = ImageDraw.Draw(mask)
@@ -139,17 +140,31 @@ class Level_DB:
         base_image = Image.open('./assets/rank_card.png')
         profile = member.avatar.with_format('png')
         profile = await self.round_pfp(member)
-        profile = profile.resize((128, 128), Image.Resampling.LANCZOS).convert('RGBA')
+        profile = profile.resize((124, 124), Image.Resampling.LANCZOS).convert('RGBA')
 
-        base_image.paste(profile, (21, 20), profile)
+        user: discord.User = await self.bot.fetch_user(member.id)
+        if user.banner is None:
+            banner = user.accent_color
+            banner = Image.new('RGBA', (372, 131), str(hex(banner.value)).replace("0x", "#"))
+            base_image.paste(banner, (0, 0), banner)
+        else:
+            banner = user.banner.with_format("png")
+            banner = BytesIO(await banner.read())
+            banner = Image.open(banner)
+            banner = banner.resize((372, 131), Image.Resampling.LANCZOS).convert('RGBA')
+            base_image.paste(banner, (0, 0), banner)            
+        
+        pfp_backdrop = Image.new('RGBA', (140, 140), (0, 0, 0, 0))
+        back_draw = ImageDraw.Draw(pfp_backdrop)
+        back_draw.ellipse((3, 3, 137, 137), fill=(33, 33, 33, 255))
+        base_image.paste(pfp_backdrop, (16, 33), pfp_backdrop)
+
+        base_image.paste(profile, (25, 41), profile)
 
         draw = ImageDraw.Draw(base_image)
-        draw.text((190, 45), 
+        draw.text((129, 175),
                   member.global_name if member.global_name != None else member.display_name,
-                  fill="#FFFFFF", font=ImageFont.truetype('./assets/fonts/arial.ttf', 30))
-        
-
-        draw.text((190, 89), f"@{member.name}", fill="#838383", font=ImageFont.truetype('./assets/fonts/arial.ttf', 22))
+                  fill="#FFFFFF", font=ImageFont.truetype('./assets/fonts/arial.ttf', 30))        
 
         draw.text((28, 277), f"{str(rank)}", fill="#6659CE", font=ImageFont.truetype('./assets/fonts/Clockwise-Light.ttf', 40))        
         draw.text((206, 277), f"{str(level)}", fill="#6659CE", font=ImageFont.truetype('./assets/fonts/Clockwise-Light.ttf', 40))
@@ -355,7 +370,7 @@ class Level(commands.GroupCog):
     @app_commands.command(name="rank", description="View your rank card")
     @app_commands.checks.cooldown(1, 10, key=lambda i:(i.guild_id, i.user.id))
     async def rank(self, interaction: Interaction, member: discord.Member = None):
-        #await interaction.response.defer()
+        await interaction.response.defer()
         member = member if member else interaction.user
         ranks = await self.levels.ranks.get_all()
         df = pd.DataFrame(ranks)
@@ -373,11 +388,17 @@ class Level(commands.GroupCog):
         else:
             weekly = df['weekly'][rank-1]
         level = df['level'][rank-1]
+        level_exp = await self.levels.count_xp(level)
+        next_level_exp = await self.levels.count_xp(level+1)
+        
+
+
         card = await self.levels.create_rank_card(member, rank, level, exp, weekly)
+
         with BytesIO() as image_binary:
             card.save(image_binary, 'PNG')
             image_binary.seek(0)
-            await interaction.response.send_message(file=discord.File(fp=image_binary, filename='rank.png'), ephemeral=False)
+            await interaction.followup.send(file=discord.File(fp=image_binary, filename='rank.png'), ephemeral=False)
 
     @rank.error
     async def rank_error(self, interaction: Interaction, error):
