@@ -442,14 +442,7 @@ class Logging(commands.Cog):
     
     @commands.Cog.listener()
     async def on_ready(self):
-        channel = self.bot.get_channel(1122510437011955862)
-        for webhook in await channel.webhooks():
-            if webhook.user.id == self.bot.user.id:
-                self.webhook = webhook
-                break
-        if self.webhook is None:
-            avatar = await self.bot.user.avatar.read()
-            self.webhook = await channel.create_webhook(name=f"{self.bot.user.name} Message Logger", avatar=avatar)            
+        self.webhook = await self.bot.fetch_webhook(1122516717562761226)           
 
     @commands.Cog.listener()
     async def on_message_delete(self, message: discord.Message):
@@ -488,8 +481,11 @@ class Logging(commands.Cog):
         if len(message.embeds) > 0:
             for embed in message.embeds:
                 embeds.append(embed)
-
-        await self.webhook.send(embeds=embeds)
+        try:     
+            await self.webhook.send(embeds=embeds)
+        except AttributeError:
+            self.webhook = await self.bot.fetch_webhook(1122516717562761226)
+            await self.webhook.send(embeds=embeds)
 
     @commands.Cog.listener()
     async def on_message_edit(self, before: discord.Message, after: discord.Message):
@@ -537,24 +533,32 @@ class Logging(commands.Cog):
                     embed.title = "| After Edit"
                 embeds.append(embed)
 
-        await self.webhook.send(embeds=embeds)  
+        try:
+            await self.webhook.send(embeds=embeds)  
+        except AttributeError:
+            self.webhook = await self.bot.fetch_webhook(1122516717562761226)
+            await self.webhook.send(embeds=embeds)
     
-    @commands.Cog.listener()
-    async def on_raw_message_edit(self, payload: discord.RawMessageUpdateEvent):
-        message = discord.Message(state=self.bot._connection, channel=self.bot.get_channel(payload.channel_id), data=payload.data)
-        if message.guild is None: return
-        if message.author.id != 1103919979809734787: return
-        if message.channel.id != 1103892836564357180: return
-        gc = self.bot.get_channel(785847439579676672)
+    # @commands.Cog.listener()
+    # async def on_raw_message_edit(self, payload: discord.RawMessageUpdateEvent):
+    #     data = payload.data
+    #     data['attachments'] = []
+    #     if data['author']['id'] != 972637072991068220: return
+    #     print(data)
 
-        if "**Ready to be watered!**" in message.embeds[0].description:            
-            await gc.send(f"Hey fellow tree lovers!, Server tree is ready to be watered! {message.jump_url}", delete_after=10)
-            return
+    #     message = discord.Message(state=self.bot._connection, channel=self.bot.get_channel(payload.channel_id), data=payload.data)
+    #     if message.guild is None: return
+    #     if message.channel.id != 1103892836564357180: return
+    #     gc = self.bot.get_channel(785847439579676672)
+
+    #     if "**Ready to be watered!**" in message.embeds[0].description:            
+    #         await gc.send(f"Hey fellow tree lovers!, Server tree is ready to be watered! {message.jump_url}", delete_after=10)
+    #         return
         
-        view = discord.ui.View.from_message(message)
-        if len(view.children) == 3:
-            await gc.send(f"Hey fellow tree lovers!, there is a bug on the tree catch it before it's gone! {message.jump_url}", delete_after=10)
-            return
+    #     view = discord.ui.View.from_message(message)
+    #     if len(view.children) == 3:
+    #         await gc.send(f"Hey fellow tree lovers!, there is a bug on the tree catch it before it's gone! {message.jump_url}", delete_after=10)
+    #         return
 
 
 class karuta(commands.Cog):
