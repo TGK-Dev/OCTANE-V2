@@ -163,7 +163,7 @@ class Level_DB:
 
         draw = ImageDraw.Draw(base_image)
         draw.text((129, 175),
-                  member.global_name if member.global_name != None else member.display_name,
+                  member.display_name,
                   fill="#FFFFFF", font=ImageFont.truetype('./assets/fonts/DejaVuSans.ttf', 30))        
 
         draw.text((28, 277), f"{str(rank)}", fill="#6659CE", font=ImageFont.truetype('./assets/fonts/DejaVuSans.ttf', 40))        

@@ -73,10 +73,11 @@ class serversettings(commands.Cog):
     @app_commands.describe(option="Show or edit the settings", settings="The settings you want to change")
     @app_commands.default_permissions(administrator=True)
     async def serversettings(self, interaction: discord.Interaction, settings: app_commands.Choice[str], option: Literal['Show', 'Edit']):
-        if interaction.guild.id != 785839283847954433:
-            if settings.value not in ["payout", "perks", "staff"]:
-                return await interaction.response.send_message("This command is not available for this server", ephemeral=True)
-
+        # if interaction.client.id == 816699167824281621:
+        #     if interaction.guild.id != 785839283847954433:
+        #         if settings.value not in ["payout", "perks", "staff"]:
+        #             return await interaction.response.send_message("This command is not available for this server", ephemeral=True)
+        
         match settings.value:
             case "join_gate":
                 config = await self.bot.ss.get_config(settings.value, interaction.guild_id)
@@ -341,7 +342,11 @@ class JoinGateBackEnd(commands.Cog):
 
         if data["joingate"]["decancer"]:
             if member.name.startswith("カ"): return
-            if self.is_cancerous(member.display_name if member.display_name else member.global_name):
+            is_cancerous = self.is_cancerous(member.global_name)
+            if not is_cancerous:
+                if not member.display_name: return
+                is_cancerous = self.is_cancerous(member.display_name)
+            if is_cancerous:
                 new_nick = await self.nick_maker(member.guild, member.display_name)
                 
                 embed = discord.Embed(color=discord.Color.green(), title="Decancer", description="")
