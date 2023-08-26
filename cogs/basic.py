@@ -541,20 +541,19 @@ class Logging(commands.Cog):
     
     @commands.Cog.listener()
     async def on_raw_message_edit(self, payload: discord.RawMessageUpdateEvent):
-        data = payload.data
-        if 'guild_id' not in data.keys(): return
-        if data['guild_id'] != 785839283847954433:
-            return
-        try: 
-            if int(data['author']['id']) != 972637072991068220: return
-        except KeyError: return 
-        channel = self.bot.get_channel(payload.channel_id)
-        if not channel: 
-            return print("Channel not found")
-        message = discord.Message(state=self.bot._connection, channel=channel, data=data)
-        if "**Ready to be watered!**" in message.embeds[0].description:
-            gc = self.bot.get_channel(785847439579676672)
+        message = discord.Message(state=self.bot._connection, channel=self.bot.get_channel(payload.channel_id), data=payload.data)
+        if message.guild is None: return
+        if message.author.id != 1103919979809734787: return
+        if message.channel.id != 1103892836564357180: return
+        gc = self.bot.get_channel(785847439579676672)
+
+        if "**Ready to be watered!**" in message.embeds[0].description:            
             await gc.send(f"Hey fellow tree lovers!, Server tree is ready to be watered! {message.jump_url}", delete_after=10)
+            return
+        
+        view = discord.ui.View.from_message(message)
+        if len(view.children) == 3:
+            await gc.send(f"Hey fellow tree lovers!, there is a bug on the tree catch it before it's gone! {message.jump_url}", delete_after=10)
             return
 
 
