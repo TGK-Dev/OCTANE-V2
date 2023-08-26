@@ -50,7 +50,7 @@ class Level_DB:
     async def count_xp(self, level: int):
         if level < 1:
             return 0
-        experience: int = math.ceil(((104 - 1) ** 2) * 20 + 35)
+        experience = 20 * (level - 1) ** 2 + 35
         return experience
     
     async def level_template(self, member: discord.Member):
@@ -146,11 +146,12 @@ class Level_DB:
         draw = ImageDraw.Draw(base_image)
         draw.text((190, 45), 
                   member.global_name if member.global_name != None else member.display_name,
-                  fill="#FFFFFF", font=ImageFont.truetype('arial.ttf', 30))
+                  fill="#FFFFFF", font=ImageFont.truetype('./assets/fonts/arial.ttf', 30))
         
-        draw.text((190, 89), f"@{member.name}", fill="#838383", font=ImageFont.truetype('arial.ttf', 22))
 
-        draw.text((28, 277), f"{str(rank)}", fill="#6659CE", font=ImageFont.truetype('./assets/fonts/Clockwise-Light.ttf', 40))
+        draw.text((190, 89), f"@{member.name}", fill="#838383", font=ImageFont.truetype('./assets/fonts/arial.ttf', 22))
+
+        draw.text((28, 277), f"{str(rank)}", fill="#6659CE", font=ImageFont.truetype('./assets/fonts/Clockwise-Light.ttf', 40))        
         draw.text((206, 277), f"{str(level)}", fill="#6659CE", font=ImageFont.truetype('./assets/fonts/Clockwise-Light.ttf', 40))
         draw.text((28, 389), f"{str(exp)}", fill="#6659CE", font=ImageFont.truetype('./assets/fonts/Clockwise-Light.ttf', 40))
         draw.text((206, 389), f"{str(weekly)}", fill="#6659CE", font=ImageFont.truetype('./assets/fonts/Clockwise-Light.ttf', 40))
@@ -354,7 +355,7 @@ class Level(commands.GroupCog):
     @app_commands.command(name="rank", description="View your rank card")
     @app_commands.checks.cooldown(1, 10, key=lambda i:(i.guild_id, i.user.id))
     async def rank(self, interaction: Interaction, member: discord.Member = None):
-        await interaction.response.defer()
+        #await interaction.response.defer()
         member = member if member else interaction.user
         ranks = await self.levels.ranks.get_all()
         df = pd.DataFrame(ranks)
@@ -376,7 +377,7 @@ class Level(commands.GroupCog):
         with BytesIO() as image_binary:
             card.save(image_binary, 'PNG')
             image_binary.seek(0)
-            await interaction.followup.send(file=discord.File(fp=image_binary, filename="rank.png"))
+            await interaction.response.send_message(file=discord.File(fp=image_binary, filename='rank.png'), ephemeral=False)
 
     @rank.error
     async def rank_error(self, interaction: Interaction, error):

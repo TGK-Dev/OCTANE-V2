@@ -23,7 +23,7 @@ class Games(commands.GroupCog, name="game"):
     async def get_image(self, data):
         #crate a image which can contain the quote and quote lenth max 250 and min 200 image is transparent
         img = Image.new("RGBA", (600, 300), (0, 0, 0, 0))
-        font = ImageFont.truetype("arial.ttf", 30)
+        font = ImageFont.truetype("./assets/fonts/arial.ttf", 30)
         draw = ImageDraw.Draw(img)
         #split the quote into lines archive the max width of the image
         lines = []
