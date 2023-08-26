@@ -108,7 +108,7 @@ class Staff_DB:
         await self.recovery.insert({"user_id": user.id, "password": hashed, "salt": salt})
         return password
 
-
+@app_commands.default_permissions(administrator=True)
 class Staff_Commands(commands.GroupCog, name="staff"):
     def __init__(self, bot):
         self.bot = bot
@@ -134,6 +134,7 @@ class Staff_Commands(commands.GroupCog, name="staff"):
     @app_commands.command(name="appoint", description="Appoint a user to a position")
     @app_commands.describe(user="The user you want to appoint", position="The position you want to appoint them to")
     @app_commands.autocomplete(position=post_auto)
+    @app_commands.default_permissions(administrator=True)
     async def appoint(self, interaction: discord.Interaction, user: discord.Member, position: str):
         guild_config = await self.backend.get_config(interaction.guild_id)
         if interaction.user.id not in guild_config['owners'] and interaction.user.id not in guild_config['staff_manager']:
@@ -193,6 +194,7 @@ class Staff_Commands(commands.GroupCog, name="staff"):
     @app_commands.command(name="demote", description="Demote a user from a position")
     @app_commands.describe(user="The user you want to demote", position="The position you want to demote them from")
     @app_commands.autocomplete(position=post_auto)
+    @app_commands.default_permissions(administrator=True)
     async def demote(self, interaction: discord.Interaction, user: discord.Member, position: str):
         guild_config = await self.backend.get_config(interaction.guild_id)
 
@@ -257,6 +259,7 @@ class Staff_Commands(commands.GroupCog, name="staff"):
             self.bot.dispatch("staff_update", guild_config['webhook_url'], embed)
 
     @app_commands.command(name="positions", description="View all positions")
+    @app_commands.default_permissions(administrator=True)
     async def positions(self, interaction: discord.Interaction):
         guild_config = await self.backend.get_config(interaction.guild_id)
         staffs = await self.backend.staff.find_many_by_custom({"guild": interaction.guild_id})
@@ -284,6 +287,7 @@ class Staff_Commands(commands.GroupCog, name="staff"):
     @app_commands.command(name="sync", description="Remove members from positions if they do not have the role")
     @app_commands.describe(position="The position you want to sync")
     @app_commands.autocomplete(position=post_auto)
+    @app_commands.default_permissions(administrator=True)
     async def sync(self, interaction: discord.Interaction, position: str):
         guild_config = await self.backend.get_config(interaction.guild_id)
         if interaction.user.id != interaction.guild.owner.id and interaction.user.id not in guild_config['owners'] and interaction.user.id not in guild_config['staff_manager']:
@@ -320,6 +324,7 @@ class Staff_Commands(commands.GroupCog, name="staff"):
         await interaction.edit_original_response(embed=embed)
 
     @leave.command(name="set", description="Set leave for your staff members")
+    @app_commands.default_permissions(administrator=True)
     @app_commands.describe(user="The user you want to set leave for", time="The time you want to set leave for",
                            reason="The reason you want to set leave for")
     async def set_leave(self, interaction: discord.Interaction, user: discord.Member,
@@ -376,6 +381,7 @@ class Staff_Commands(commands.GroupCog, name="staff"):
 
     @leave.command(name="remove", description="Remove leave for your staff members")
     @app_commands.describe(user="The user you want to remove leave for")
+    @app_commands.default_permissions(administrator=True)
     async def remove_leave(self, interaction: discord.Interaction, user: discord.Member):
         guild_config = await self.backend.get_config(interaction.guild_id)
 
@@ -412,6 +418,8 @@ class Staff_Commands(commands.GroupCog, name="staff"):
                 embed.description += "\n**Ended By:** " + interaction.user.mention
                 await message.edit(embed=embed)
         except discord.HTTPException:
+            pass
+        except KeyError:
             pass
 
         user_data['leave'] = {}
