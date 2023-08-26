@@ -273,14 +273,14 @@ class Afk(commands.GroupCog):
             pages = len(user_data['pings'])
             for index,user_data in enumerate(user_data['pings']):
                 guild = self.bot.get_guild(user_data['guild_id'])
-                user = guild.get_member(user_data['id'])
+                user: discord.Member = guild.get_member(user_data['id'])
                 pinged_at = user_data['pinged_at']
                 jump_url = user_data['jump_url']
                 content = user_data['message']
                 channel = guild.get_channel(user_data['channel_id'])
                 channel_name = channel.name if channel else "Unknown Channel"
                 embed = discord.Embed(color=0x2b2d31 , timestamp=user_data['timestamp'])
-                embed.set_author(name = f'{user.global_name}', icon_url = user.avatar.url if user.avatar else user.default_avatar)
+                embed.set_author(name = f'{user.global_name if user.global_name != None else user.display_name}', icon_url = user.avatar.url if user.avatar else user.default_avatar)
                 embed.description = f"<a:tgk_redSparkle:1072168821797965926> [`You were pinged in #{channel_name}.`]({jump_url}) {pinged_at}\n"
                 embed.description += f"<a:tgk_redSparkle:1072168821797965926> **Message:** {content}"
                 embed.set_footer(text = f"Pings you received while you were AFK • Pinged at")
