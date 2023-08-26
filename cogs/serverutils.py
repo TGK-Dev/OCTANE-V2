@@ -522,7 +522,7 @@ class Payout(commands.GroupCog, name="payout", description="Payout commands"):
 			return
 
 
-	@app_commands.command(name="express", description="Express Payout")
+	@app_commands.command(name="express", description="start doing payouts for the oldest 50 payouts in queue with a single command")
 	async def express_payout(self, interaction: discord.Interaction):
 		config = await self.bot.payout_config.find(interaction.guild.id)
 		if config is None: return
@@ -534,8 +534,8 @@ class Payout(commands.GroupCog, name="payout", description="Payout commands"):
 		if len(payouts) <= 0:
 			await interaction.response.send_message("There are no payouts pending", ephemeral=True)
 			return
-		
-		await interaction.response.send_message("### Highly Experimental Command ###\n\n**Starting Express Payout**", ephemeral=True)
+		payouts = payouts[:50]
+		await interaction.response.send_message("## Starting Payouts for oldest 50 payouts in queue", ephemeral=True)
 		queue_channel = interaction.guild.get_channel(config['queue_channel'])
 		config['express'] = True
 		await interaction.client.payout_config.update(config)
@@ -682,11 +682,11 @@ class donation(commands.Cog):
 	async def round_pfp(self, pfp: Union[discord.Member, discord.Guild]):
 		if isinstance(pfp, discord.Member):
 			if pfp.avatar is None:
-				pfp = pfp.default_avatar.with_format("png")
+				pfp = pfp.default_avatar.with_format('png')
 			else:
-				pfp = pfp.avatar.with_format("png")
+				pfp = pfp.avatar.with_format('png')
 		else:
-			pfp = pfp.icon.with_format("png")
+				pfp = pfp.icon.with_format('png')
 
 		pfp = BytesIO(await pfp.read())
 		pfp = Image.open(pfp)
