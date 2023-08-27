@@ -354,7 +354,7 @@ class Profile(View):
         await self.switch(interaction, self.data)
         await interaction.response.send_message("Switched to config", ephemeral=True)
 
-class friends_manage(View):
+class Friends_manage(View):
     def __init__(self, user: discord.Member, data: dict, type: str,message: discord.Message=None):
         self.user = user
         self.data = data
@@ -455,6 +455,41 @@ class friends_manage(View):
                 up_embed.set_field_at(0, name="Friends", value=friends if friends else "`No Friends ;(`", inline=False)
                 await self.message.edit(embed=up_embed)
                 return
+        
+    @button(label="Sync", style=discord.ButtonStyle.gray, emoji="<:tgk_sync:1145387798099140688>")
+    async def sync(self, interaction: Interaction, button: Button):
+        match self.type:
+            case "roles":
+                role = interaction.guild.get_role(self.data['role_id'])
+                self.data['friend_list'] = []
+                removed = ""
+                for member in role.members: 
+                    if member.id == self.data['user_id']: continue
+                    self.data['friend_list'].append(member.id)
+                    if len(self.data['friend_list']) >= self.data['friend_limit']:
+                        await member.remove_roles(role, reason=f"Removed from {self.user.name}'s friends")
+                        removed += f"<@{member.id}> `({member.id})`\n"
+                await interaction.client.Perk.update("roles", self.data)
+                if removed != "":
+                    await interaction.response.send_message(f"Since you have reached the friend limit, the following members were removed from your friends:\n{removed}", ephemeral=True)
+                else:
+                    await interaction.response.send_message("Friends synced", ephemeral=True)
+            case "channels":
+                channel = interaction.guild.get_channel(self.data['channel_id'])
+                self.data['friend_list'] = []
+                removed = ""
+                for targate, perm in channel.overwrites:
+                    if not isinstance(targate, discord.Member): continue
+                    if targate.id == self.data['user_id']: continue
+                    self.data['friend_list'].append(targate.id)
+                    if len(self.data['friend_list']) >= self.data['friend_limit']:
+                        await channel.set_permissions(targate, overwrite=None, reason=f"Removed from {self.user.name}'s friends")
+                        removed += f"<@{targate.id}> `({targate.id})`\n"
+                await interaction.client.Perk.update("channels", self.data)
+                if removed != "":
+                    await interaction.response.send_message(f"Since you have reached the friend limit, the following members were removed from your friends:\n{removed}", ephemeral=True)
+                else:
+                    await interaction.response.send_message("Friends synced", ephemeral=True)
     
     @button(label="Reset Friends", style=discord.ButtonStyle.red)
     async def reset(self, interaction: Interaction, button: Button):
