@@ -42,8 +42,8 @@ class _select(Select):
 
 
 class _view(View):
-	def __init__(self, author: User, pages: List[SelectOption], embeded: bool):
-		super().__init__(timeout=15)
+	def __init__(self, author: User, pages: List[SelectOption], embeded: bool, timeout: int = 60):
+		super().__init__(timeout=timeout)
 		self.author = author
 		self.pages = pages
 		self.embeded = embeded
@@ -112,7 +112,7 @@ class Paginator:
 		self.pages = pages
 
 
-	async def start(self, embeded: Optional[bool] = False, quick_navigation: bool = True, hidden: bool = True) -> None:
+	async def start(self, embeded: Optional[bool] = False, timeout: int=60,quick_navigation: bool = True, hidden: bool = True, deffered: bool=False) -> None:
 		"""Starts the paginator.
 
 		Parameters
@@ -126,7 +126,7 @@ class Paginator:
 		"""
 		if not (self.pages): raise ValueError("Missing pages")
 
-		view = _view(self.interaction.user, self.pages, embeded)
+		view = _view(self.interaction.user, self.pages, embeded, timeout)
 
 		if (len(self.custom_children) == 5):
 			for index,button in enumerate(view.children):
@@ -172,7 +172,11 @@ class Paginator:
 		kwargs['view'] = view
 		kwargs['ephemeral'] = hidden
 
-		await self.interaction.response.send_message(**kwargs)
+		if deffered:
+			del kwargs['ephemeral']
+			await self.interaction.followup.send(**kwargs)
+		else:
+			await self.interaction.response.send_message(**kwargs)
 
 		await view.wait()
 
