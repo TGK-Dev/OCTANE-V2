@@ -179,7 +179,7 @@ class Event_view(View):
             await interaction.followup.send(f"Error: {error}", ephemeral=True)
 
 
-    @button(label="Hosted", style=discord.ButtonStyle.gray, emoji="<:tgk_announce:1123919566427406437>")
+    @button(label="Hosted", style=discord.ButtonStyle.gray, emoji="<:tgk_announce:1123919566427406437>", custom_id="EVENT:HOSTED")
     async def _hosted(self, interaction: Interaction, button: discord.ui.Button):
         modal = General_Modal(title="Event Hosting", interaction=interaction)
         modal_link = TextInput(label="Event Link",placeholder="Event Thread Link", max_length=1000, style=TextStyle.long, required=True)
