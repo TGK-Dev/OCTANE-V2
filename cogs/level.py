@@ -1,7 +1,7 @@
 import asyncio
 import aiohttp
 from io import BytesIO
-from typing import List
+from typing import List, Literal
 import discord
 import math
 import datetime
@@ -16,6 +16,7 @@ from utils.transformer import TimeConverter, MutipleRole, DMCConverter
 from utils.views.giveaway import Giveaway
 from utils.converters import DMCConverter_Ctx
 from utils.views.modal import General_Modal
+from utils.paginator import Paginator
 from PIL import Image, ImageDraw, ImageFont, ImageOps, ImageChops
 
 
@@ -145,7 +146,10 @@ class Level_DB:
         user: discord.User = await self.bot.fetch_user(member.id)
         if user.banner is None:
             banner = user.accent_color
-            banner = Image.new('RGBA', (372, 131), str(hex(banner.value)).replace("0x", "#"))
+            _hex = str(hex(banner.value)).replace("0x", "#")
+            if len(_hex) < 7:
+                _hex = "#080808"
+            banner = Image.new('RGBA', (372, 131), )
             base_image.paste(banner, (0, 0), banner)
         else:
             banner = user.banner.with_format("png")
@@ -376,23 +380,10 @@ class Level(commands.GroupCog):
         df = pd.DataFrame(ranks)
         df = df.sort_values(by=['xp'], ascending=False)
         df = df.reset_index(drop=True)
-        rank = df[df['_id'] == member.id].index[0] + 1
-
-        if len(str(df['xp'][rank-1])) >= 4:
-            exp = await self.levels.millify(df['xp'][rank-1])
-        else:
-            exp = df['xp'][rank-1]
-        
-        if len(str(df['weekly'][rank-1])) >= 4:
-            weekly = await self.levels.millify(df['weekly'][rank-1])
-        else:
-            weekly = df['weekly'][rank-1]
-        level = df['level'][rank-1]
-        level_exp = await self.levels.count_xp(level)
-        next_level_exp = await self.levels.count_xp(level+1)
-        
-
-
+        rank: str = df[df['_id'] == member.id].index[0]
+        level: str = df[df['_id'] == member.id]['level'].values[0]
+        exp: str = await self.levels.millify(df[df['_id'] == member.id]['xp'].values[0])
+        weekly: str = await self.levels.millify(df[df['_id'] == member.id]['weekly'].values[0])
         card = await self.levels.create_rank_card(member, rank, level, exp, weekly)
 
         with BytesIO() as image_binary:
@@ -406,6 +397,39 @@ class Level(commands.GroupCog):
     @rank.error
     async def rank_error(self, interaction: Interaction, error):
         raise error
+
+    @app_commands.command(name="leaderboard", description="View the server's leaderboard")
+    @app_commands.checks.cooldown(1, 10, key=lambda i:(i.guild_id, i.user.id))
+    @app_commands.choices(type=[app_commands.Choice(name="Exp", value="xp"), app_commands.Choice(name="Weekly", value="weekly"), app_commands.Choice(name="Level", value="level")])
+    async def leaderboard(self, interaction: Interaction, type: str):
+        await interaction.response.defer()
+        ranks = await self.levels.ranks.get_all()
+        df = pd.DataFrame(ranks)
+        df = df.sort_values(by=[f'{type}'], ascending=False)
+        df = df.reset_index(drop=True)
+        
+        user_rank = df[df['_id'] == interaction.user.id].index[0] + 1
+
+        embeds = []
+        for i in range(0, len(df), 11):
+            embed = discord.Embed(title=f"{interaction.guild.name}'s Leaderboard", description="", color=self.bot.default_color)
+            embed.set_thumbnail(url=interaction.guild.icon.url if interaction.guild.icon else None)
+            for index, row in df[i:i+11].iterrows():
+                member = interaction.guild.get_member(row['_id'])
+                if member is None: continue
+                if row['xp'] < 35:
+                    exp = 0
+                else:
+                    exp = await self.levels.millify(row['xp'])
+                if member.id == interaction.user.id:
+                    embed.description += f"**{index}.** **{member.mention}** <:pin:1000719163851018340> \n"
+                else:
+                    embed.description += f"**{index}.** {member.mention}\n"
+                embed.description += f"<:invis_space:1067363810077319270> **Level:** {row['level']} | **Exp:** {exp} | **Weekly:** {row['weekly']}\n\n"
+                embed.set_footer(text=f"Your Rank: {user_rank}", icon_url=interaction.user.avatar.url if interaction.user.avatar else interaction.user.default_avatar)
+            embeds.append(embed)
+        await Paginator(interaction, embeds).start(embeded=True, timeout=60, hidden=False, quick_navigation=False, deffered=True)
+
 
     @app_commands.command(name="set", description="Set a user's level")
     @app_commands.checks.has_permissions(administrator=True)
