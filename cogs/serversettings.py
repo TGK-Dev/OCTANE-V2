@@ -13,6 +13,7 @@ from utils.views.perks_system import PerkConfig
 from utils.views.auction import AuctionConfig
 from utils.views.giveaway import GiveawayConfig
 from utils.views.blacklist import Blacklist_Config
+from utils.views import request_system
 import humanfriendly
 import unicodedata
 import unidecode
@@ -59,6 +60,7 @@ class serversettings(commands.Cog):
     settings = [
         app_commands.Choice(name="Auctions", value="auctions"),
         app_commands.Choice(name="Blacklist", value="blacklist"),
+        app_commands.Choice(name="Event Request System", value="events"),
         app_commands.Choice(name="Giveaways", value="giveaways"),
         app_commands.Choice(name="Join Verification", value="join_gate"),
         app_commands.Choice(name="Leveling System", value="leveling"),
@@ -73,10 +75,10 @@ class serversettings(commands.Cog):
     @app_commands.describe(option="Show or edit the settings", settings="The settings you want to change")
     @app_commands.default_permissions(administrator=True)
     async def serversettings(self, interaction: discord.Interaction, settings: app_commands.Choice[str], option: Literal['Show', 'Edit']):
-        # if interaction.client.id == 816699167824281621:
-        #     if interaction.guild.id != 785839283847954433:
-        #         if settings.value not in ["payout", "perks", "staff"]:
-        #             return await interaction.response.send_message("This command is not available for this server", ephemeral=True)
+        if interaction.client.user.id == 816699167824281621:
+            if interaction.guild.id != 785839283847954433:
+                if settings.value not in ["payout", "perks", "staff"]:
+                    return await interaction.response.send_message("This command is not available for this server", ephemeral=True)
         
         match settings.value:
             case "join_gate":
@@ -282,6 +284,24 @@ class serversettings(commands.Cog):
                 view = Blacklist_Config(interaction.user, blacklist_data.to_dict())                
                 await interaction.followup.send(embed=embed, view=view)
                 view.message = await interaction.original_response()
+            
+            case "events":
+                data = await self.bot.events.get_config(interaction.guild.id)
+                embed = discord.Embed(title="Event Request System", color=interaction.client.default_color, description="")
+                embed.description += f"**Manager Roles:** {', '.join([f'<@&{role}>' for role in data['manager_roles']]) if len(data['manager_roles']) > 0 else '`None`'}\n"
+                embed.description += f"**Request Channel:** {interaction.guild.get_channel(data['request_channel']).mention if data['request_channel'] else '`None`'}\n"
+                embed.description += f"**Request Queue:** {interaction.guild.get_channel(data['request_queue']).mention if data['request_queue'] else '`None`'}\n"
+                embed.description += f"**Events:** {', '.join([f'`{event}`' for event in data['events'].keys()]) if len(data['events'].keys()) > 0 else '`None`'}\n"
+
+                if option == "Show":
+                    await interaction.response.send_message(embed=embed)
+                if option == "Edit":
+                    view = request_system.Config(interaction.user, data)
+                    await interaction.response.send_message(embed=embed, view=view)
+                    view.message = await interaction.original_response()
+
+            case _:
+                await interaction.response.send_message("This command is not available for this server", ephemeral=True)
 
 
 class JoinGateBackEnd(commands.Cog):
