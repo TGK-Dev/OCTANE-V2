@@ -110,7 +110,6 @@ class Level_DB:
         millidx = max(0,min(len(millnames)-1,
                             int(math.floor(0 if n == 0 else math.log10(abs(n))/3))))
 
-    # return '{:.1f}{}'.format(n / 10**(3 * millidx), millnames[millidx])
         return f'{round(n / 10**(3 * millidx),1):0}{millnames[millidx]}'
 
 
@@ -145,7 +144,10 @@ class Level_DB:
 
         user: discord.User = await self.bot.fetch_user(member.id)
         if user.banner is None:
-            banner = Image.new('RGBA', (372, 131), user.accent_color.to_rgb())
+            try:
+                banner = Image.new('RGBA', (372, 131), user.accent_color.to_rgb())
+            except AttributeError:
+                banner = Image.new('RGBA', (372, 131), (0, 0, 0, 255))
             base_image.paste(banner, (0, 0), banner)
         else:
             banner = user.banner.with_format("png")
@@ -162,9 +164,9 @@ class Level_DB:
         base_image.paste(profile, (25, 41), profile)
 
         draw = ImageDraw.Draw(base_image)
-        draw.text((129, 175),
+        draw.text((115, 180),
                   member.display_name,
-                  fill="#FFFFFF", font=ImageFont.truetype('./assets/fonts/DejaVuSans.ttf', 30))        
+                  fill="#FFFFFF", font=ImageFont.truetype('./assets/fonts/Symbola.ttf', 30))        
 
         draw.text((28, 277), f"{str(rank)}", fill="#6659CE", font=ImageFont.truetype('./assets/fonts/DejaVuSans.ttf', 35))        
         draw.text((206, 277), f"{str(level)}", fill="#6659CE", font=ImageFont.truetype('./assets/fonts/DejaVuSans.ttf', 35))
@@ -395,7 +397,7 @@ class Level(commands.GroupCog):
         raise error
 
     @app_commands.command(name="leaderboard", description="View the server's leaderboard")
-    @app_commands.checks.cooldown(1, 10, key=lambda i:(i.guild_id, i.user.id))
+    @app_commands.checks.cooldown(1, 300, key=lambda i:(i.guild_id, i.user.id))
     @app_commands.choices(type=[app_commands.Choice(name="Exp", value="xp"), app_commands.Choice(name="Weekly", value="weekly"), app_commands.Choice(name="Level", value="level")])
     async def leaderboard(self, interaction: Interaction, type: str):
         await interaction.response.defer()
