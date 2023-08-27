@@ -145,11 +145,7 @@ class Level_DB:
 
         user: discord.User = await self.bot.fetch_user(member.id)
         if user.banner is None:
-            banner = user.accent_color
-            _hex = str(hex(banner.value)).replace("0x", "#")
-            if len(_hex) < 7:
-                _hex = "#080808"
-            banner = Image.new('RGBA', (372, 131), )
+            banner = Image.new('RGBA', (372, 131), user.accent_color.to_rgb())
             base_image.paste(banner, (0, 0), banner)
         else:
             banner = user.banner.with_format("png")
