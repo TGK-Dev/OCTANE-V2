@@ -404,7 +404,7 @@ class Level(commands.GroupCog):
         df = df.sort_values(by=[f'{type}'], ascending=False)
         df = df.reset_index(drop=True)
         
-        user_rank = df[df['_id'] == interaction.user.id].index[0] + 1
+        user_rank = df[df['_id'] == interaction.user.id].index[0]
 
         embeds = []
         for i in range(0, len(df), 11):
