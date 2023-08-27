@@ -143,9 +143,7 @@ class Level_DB:
         profile = await self.round_pfp(member)
         profile = profile.resize((124, 124), Image.Resampling.LANCZOS).convert('RGBA')
 
-        user: discord.User = self.bot.get_user(member.id)
-        if not user:
-            user: discord.User = await self.bot.fetch_user(member.id)
+        user: discord.User = await self.bot.fetch_user(member.id)
         if user.banner is None:
             banner = Image.new('RGBA', (372, 131), user.accent_color.to_rgb())
             base_image.paste(banner, (0, 0), banner)
