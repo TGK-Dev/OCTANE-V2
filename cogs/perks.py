@@ -537,10 +537,10 @@ class Perks(commands.Cog, name="perk", description="manage your custom perks"):
                 category = cat
                 break
         if not category:
-            cat_overwrite = {
-                interaction.guild.default_role: discord.PermissionOverwrite(view_channel=False),
-            }
-            category = await interaction.guild.create_category_channel(name=f"{config['custom_category']['name']} {len(config['custom_category']['cat_list']) + 1}", position=config['custom_category']['last_cat'].position + 1, overwrites=cat_overwrite)
+            last_cat = interaction.guild.get_channel(config['custom_category']['last_cat'])
+            category = await interaction.guild.create_category_channel(
+                name=f"{config['custom_category']['name']} {len(config['custom_category']['cat_list']) + 1}", 
+                position=last_cat.position + 1, overwrites=last_cat.overwrites, reason="Custom Category")
             config['custom_category']['cat_list'].append(category.id)
             config['custom_category']['last_cat'] = category
             await self.Perk.update(Perk_Type.config, config)
@@ -571,7 +571,7 @@ class Perks(commands.Cog, name="perk", description="manage your custom perks"):
             return await interaction.response.send_message("You have no custom channel use /perk privchannel claim to create one", ephemeral=True)
         channel = interaction.guild.get_channel(user_data['channel_id'])
         if not channel:
-            return await interaction.edit_original_message(content="Channel not found", embed=None)
+            return await interaction.edit_original_response(content="Channel not found", embed=None)
         await interaction.response.send_message(embed=discord.Embed(description="Updating your custom channel...", color=interaction.client.default_color))
         await channel.edit(name=name)
         await interaction.edit_original_response(embed=discord.Embed(description=f"Channel {channel.mention} updated successfully", color=interaction.client.default_color))
