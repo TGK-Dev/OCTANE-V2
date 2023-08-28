@@ -62,11 +62,14 @@ class Giveaway(View):
         if data['channel_messages'] != {}:
             user_level = await interaction.client.level.get_member_level(interaction.user)
             channel = str(data['channel_messages']['channel'])
-            if channel not in user_level['messages'].keys():
-                result['messages'] = f"You don't have the required messages to join this giveaway.\n> Required messages: Must sent {data['channel_messages']['count']} messages in <#{channel}>"
-            elif channel in user_level['messages'].keys():
-                if user_level['messages'][channel] < data['channel_messages']['count']:
+            try:
+                if channel not in user_level['messages'].keys():
                     result['messages'] = f"You don't have the required messages to join this giveaway.\n> Required messages: Must sent {data['channel_messages']['count']} messages in <#{channel}>"
+                elif channel in user_level['messages'].keys():
+                    if user_level['messages'][channel] < data['channel_messages']['count']:
+                        result['messages'] = f"You don't have the required messages to join this giveaway.\n> Required messages: Must sent {data['channel_messages']['count']} messages in <#{channel}>"
+            except Exception:
+                result['messages'] = f"You don't have the required messages to join this giveaway.\n> Required messages: Must sent {data['channel_messages']['count']} messages in <#{channel}>"
 
         bypassed = False    
         if len(result.keys()) > 0:
