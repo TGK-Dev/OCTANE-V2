@@ -679,8 +679,8 @@ class donation(commands.Cog):
 	# async def before_celeb_lb(self):
 	# 	await self.bot.wait_until_ready()
 	
-	async def round_pfp(self, pfp: Union[discord.Member, discord.Guild]):
-		if isinstance(pfp, discord.Member):
+	async def round_pfp(self, pfp: discord.User | discord.Guild | discord.User):
+		if isinstance(pfp, discord.Member) or isinstance(pfp, discord.User):
 			if pfp.avatar is None:
 				pfp = pfp.default_avatar.with_format('png')
 			else:
