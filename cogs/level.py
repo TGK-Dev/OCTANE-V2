@@ -61,7 +61,8 @@ class Level_DB:
             "xp": 1,
             "level": 0,
             "weekly": 0,
-            "last_updated": None
+            "last_updated": None,
+            "messages": {}
         }
         await self.ranks.insert(data)
         return data
@@ -361,13 +362,20 @@ class Level(commands.GroupCog):
             annouce = message.guild.get_channel(config['announcement_channel'])
             if annouce is None: return
             await annouce.send(embed=level_up_embed, content=message.author.mention)
-    
+
+        if 'messages' not in data.keys():
+            data['messages'] = {}
+        if str(message.channel.id) not in data['messages'].keys():
+            data['messages'][str(message.channel.id)] = 1
+        else:
+            data['messages'][str(message.channel.id)] += 1
+
         await self.levels.update_member_level(message.author, data)
-        if data['weekly'] >= 100:
-            role = message.guild.get_role(1128307039672737874)
+        if data['weekly'] >= config['weekly']['required_messages']:
+            role = message.guild.get_role(config['weekly']['role'])
             if role is None: return
             if role in message.author.roles: return
-            await message.author.add_roles(role, reason="100 messages in a week")
+            await message.author.add_roles(role, reason="Reached required messages for weekly role")
 
     @app_commands.command(name="rank", description="View your rank card")
     @app_commands.checks.cooldown(1, 10, key=lambda i:(i.guild_id, i.user.id))
@@ -472,6 +480,7 @@ class Level(commands.GroupCog):
         new_data = []
         for i in data:
             i['weekly'] = 0
+            i['messages'] = {}
             new_data.append(i)
             self.levels.level_cache[i['_id']] = i
         await self.levels.ranks.bulk_update(new_data)
@@ -607,15 +616,15 @@ class Giveaways(commands.GroupCog, name="giveaways"):
             except:
                 pass
             log_data = {
-            "guild": guild,
-            "channel": channel,
-            "message": message,
-            "prize": giveaway['prize'],
-            "winners": [],
-            "winner": [],
-            "host": host,
-            "item": giveaway['item'] if giveaway['dank'] else None,
-            "participants": len(giveaway['entries'].keys()),
+                "guild": guild,
+                "channel": channel,
+                "message": message,
+                "prize": giveaway['prize'],
+                "winners": [],
+                "winner": [],
+                "host": host,
+                "item": giveaway['item'] if giveaway['dank'] else None,
+                "participants": len(giveaway['entries'].keys()),
             }
             self.bot.dispatch("giveaway_end_log", log_data)
             return
@@ -738,8 +747,8 @@ class Giveaways(commands.GroupCog, name="giveaways"):
     @app_commands.describe(
         winners="Number of winners", prize="Prize of the giveaway", item="Item to giveaway", duration="Duration of the giveaway",
         req_roles="Roles required to enter the giveaway", bypass_role="Roles that can bypass the giveaway", req_level="Level required to enter the giveaway",
-        req_weekly="Weekly XP required to enter the giveaway", donor="Donor of the giveaway", message="Message to accompany the giveaway", dank="Dank Memer Giveaway?"
-    )
+        req_weekly="Weekly XP required to enter the giveaway", donor="Donor of the giveaway", message="Message to accompany the giveaway", dank="Dank Memer Giveaway?",
+        channel_message="Number of Messages required in specific channel to enter the giveaway")
     @app_commands.autocomplete(item=item_autocomplete)
     async def _start(self, interaction: discord.Interaction, winners: app_commands.Range[int, 1, 20], prize: str,
                      duration: app_commands.Transform[int, TimeConverter],
@@ -749,19 +758,20 @@ class Giveaways(commands.GroupCog, name="giveaways"):
                      bypass_role: app_commands.Transform[discord.Role, MutipleRole]=None, 
                      req_level: app_commands.Range[int, 1, 100]=None,
                      req_weekly: app_commands.Range[int, 1, 100]=None,
+                     channel_message: str=None,
                      donor: discord.Member=None,
                      message: app_commands.Range[str, 1, 250]=None,
     ):
-        await interaction.response.defer()
+        await interaction.response.defer(ephemeral=True)
         config = await self.backend.get_config(interaction.guild)
         if not config:
-            return await interaction.followup.send("Giveaways are not enabled in this server!", ephemeral=True)
+            return await interaction.followup.send("Giveaways are not enabled in this server!")
         user_role = [role.id for role in interaction.user.roles]
-        if not set(user_role) & set(config['manager_roles']): return await interaction.followup.send("You do not have permission to start giveaways!", ephemeral=True)
+        if not set(user_role) & set(config['manager_roles']): return await interaction.followup.send("You do not have permission to start giveaways!")
         if dank == True:
             prize = await DMCConverter_Ctx().convert(interaction, prize)
             if not isinstance(prize, int):
-                return await interaction.followup.send("Invalid prize!", delete_after=5)
+                return await interaction.followup.send("Prize you entered is not a valid number!")
         data = {
             "_id": None,
             "channel": interaction.channel.id,
@@ -781,6 +791,7 @@ class Giveaways(commands.GroupCog, name="giveaways"):
             "host": interaction.user.id,
             "donor": donor.id if donor else None,
             "message": message if message else None,
+            "channel_messages": {},
             "dank": dank
         }
         embed = discord.Embed(color=interaction.client.default_color, description="")
@@ -820,9 +831,21 @@ class Giveaways(commands.GroupCog, name="giveaways"):
             embed.add_field(name="Required Level", value=str(req_level), inline=True)
         if req_weekly:
             embed.add_field(name="Required Weekly XP", value=str(req_weekly), inline=False)
+        
+        if channel_message:
+            channel_message = channel_message.split(" ")
+            if len(channel_message) > 2: return await interaction.followup.send("Wrong format for channel message!\nFormat: [Channel] [number of messages]")
+            msg_count = int(channel_message[1])
+            msg_channel = interaction.guild.get_channel(int(channel_message[0][2:-1]))
+            if not msg_channel: return await interaction.followup.send("Provide a valid channel for channel message!")
+            embed.description += f"> **Must have sent {msg_count} messages in {msg_channel.mention}**\n"
+            data["channel_messages"]["channel"] = msg_channel.id
+            data["channel_messages"]["count"] = msg_count
+
         embed.timestamp = datetime.datetime.now() + datetime.timedelta(seconds=duration)
         embed.set_footer(text=f"{winners} winner{'s' if winners > 1 else ''} | Ends at")
-        await interaction.followup.send(embed=embed, view=Giveaway(), content="<a:tgk_tadaa:806631994770849843> **GIVEAWAY STARTED** <a:tgk_tadaa:806631994770849843>")
+        await interaction.followup.send(content="Giveaway Created!")
+        gaw_message = await interaction.channel.send(embed=embed, view=Giveaway(), content="<a:tgk_tadaa:806631994770849843> **GIVEAWAY STARTED** <a:tgk_tadaa:806631994770849843>")
         if message:
             host_webhook = None
             for webhook in await interaction.channel.webhooks():
@@ -836,10 +859,9 @@ class Giveaways(commands.GroupCog, name="giveaways"):
             author = donor if donor else interaction.user
             await host_webhook.send(content=message, username=author.global_name, avatar_url=author.avatar.url if author.avatar else author.default_avatar, allowed_mentions=discord.AllowedMentions.none())
 
-        msg = await interaction.original_response()
-        data['_id'] = msg.id
+        data['_id'] = gaw_message.id
         await self.backend.giveaways.insert(data)
-        self.backend.giveaways_cache[msg.id] = data
+        self.backend.giveaways_cache[gaw_message.id] = data
         self.bot.dispatch("giveaway_host", data)
     
     @app_commands.command(name="reroll", description="Reroll a giveaway")
