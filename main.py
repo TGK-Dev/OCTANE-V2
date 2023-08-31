@@ -69,6 +69,11 @@ class Botbase(commands.Bot):
         for file in os.listdir("./cogs"):
             if file.endswith(".py") and not file.startswith("_"):
                 await self.load_extension(f"cogs.{file[:-3]}")
+        
+        for folder in os.listdir("./modules"):
+            for file in os.listdir(f"./modules/{folder}"):
+                if file == "module.py":
+                    await self.load_extension(f"modules.{folder}.{file[:-3]}")
 
         if self.sync:
             await self.tree.sync()
