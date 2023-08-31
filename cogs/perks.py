@@ -545,14 +545,11 @@ class Perks(commands.Cog, name="perk", description="manage your custom perks"):
             config['custom_category']['last_cat'] = category
             await self.Perk.update(Perk_Type.config, config)
             
-        overwite = {
-            interaction.guild.default_role: discord.PermissionOverwrite(read_messages=False, view_channel=False),
-            interaction.user: discord.PermissionOverwrite(read_messages=True, view_channel=True),
-            interaction.guild.me: discord.PermissionOverwrite(read_messages=True, view_channel=True)
-
-        }
+        overwrites = category.overwrites
+        overwrites[interaction.user] = discord.PermissionOverwrite(read_messages=True, send_messages=True, manage_messages=True, embed_links=True, attach_files=True, read_message_history=True, external_emojis=True, add_reactions=True)
+        overwrites[interaction.guild.me] = discord.PermissionOverwrite(view_channel=True)
         channel = await interaction.guild.create_text_channel(name=name, category=category, topic=f"Private channel of {interaction.user.name}",
-                                                              overwrites=overwite)
+                                                              overwrites=overwrites)
 
         user_data = await self.Perk.create(Perk_Type.channels, interaction.user.id, interaction.guild.id, duration=total_duraction, friend_limit=total_friend_limit)
         user_data['channel_id'] = channel.id
