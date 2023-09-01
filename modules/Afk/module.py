@@ -96,6 +96,9 @@ class Afk(commands.GroupCog):
     async def on_message(self, message):
         if message.author.bot or message.guild is None or message.content is None: 
             return
+        if message.guild:
+            if message.guild.id != 785839283847954433:
+                return
         if message.author.id in self.bot.current_afk.keys():
             data = self.bot.current_afk[message.author.id]
             if message.channel.id in data['ignore_channels']:
