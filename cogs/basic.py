@@ -8,6 +8,7 @@ from typing import Literal
 from utils.db import Document
 from utils.paginator import Paginator
 from utils.views.member_view import Member_view
+from utils.converters import dict_to_tree
 
 class Basic(commands.Cog):
     def __init__(self, bot):
@@ -398,26 +399,19 @@ class Logging(commands.Cog):
             self.webhook = await self.bot.fetch_webhook(1122516717562761226)
             await self.webhook.send(embeds=embeds)
     
-    # @commands.Cog.listener()
-    # async def on_raw_message_edit(self, payload: discord.RawMessageUpdateEvent):
-    #     data = payload.data
-    #     data['attachments'] = []
-    #     if data['author']['id'] != 972637072991068220: return
-    #     print(data)
-
-    #     message = discord.Message(state=self.bot._connection, channel=self.bot.get_channel(payload.channel_id), data=payload.data)
-    #     if message.guild is None: return
-    #     if message.channel.id != 1103892836564357180: return
-    #     gc = self.bot.get_channel(785847439579676672)
-
-    #     if "**Ready to be watered!**" in message.embeds[0].description:            
-    #         await gc.send(f"Hey fellow tree lovers!, Server tree is ready to be watered! {message.jump_url}", delete_after=10)
-    #         return
-        
-    #     view = discord.ui.View.from_message(message)
-    #     if len(view.children) == 3:
-    #         await gc.send(f"Hey fellow tree lovers!, there is a bug on the tree catch it before it's gone! {message.jump_url}", delete_after=10)
-    #         return
+    @commands.Cog.listener()
+    async def on_raw_message_edit(self, payload: discord.RawMessageUpdateEvent):
+        if not payload.guild_id: 
+            return
+        if not payload.channel_id: 
+            return
+        if payload.channel_id != 1103892836564357180:
+            return
+        msg = discord.Message(state=self.bot._connection, channel=self.bot.get_channel(payload.channel_id), data=payload.data)
+        embed = msg.embeds[0]
+        if "**Ready to be watered!**" in embed.description:
+            gc = self.bot.get_channel(785847439579676672)
+            await gc.send(f"Hey fellow tree lovers! Our server tree is ready to be watered! Come and water it at {msg.jump_url}", delete_after=30)
 
 
 class karuta(commands.Cog):
