@@ -122,7 +122,7 @@ class Blacklist_cog(commands.GroupCog, name="blacklist"):
                 guild = self.bot.get_guild(blacklist["guild_id"])
                 user = guild.get_member(blacklist["user_id"])
                 if not user:
-                    blacklist["Blacklist_end"] = now + blacklist["Blacklist_duration"]
+                    blacklist["Blacklist_end"] = now + datetime.timedelta(seconds=blacklist["Blacklist_duration"])
                     await self.backend.blacklist.update(blacklist)
                     continue
                 self.bot.dispatch("blacklist_remove", blacklist)
