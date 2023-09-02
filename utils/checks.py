@@ -17,3 +17,8 @@ def can_ban(interaction: Interaction) -> bool:
 
 def is_dev(interaction: Interaction) -> bool:
     return interaction.user.id in interaction.client.owner_ids
+
+class Blocked(app_commands.AppCommandError):
+    def __call__(self, user, *args, **kwargs):
+        self.user = user
+        super().__init__(*args, **kwargs)

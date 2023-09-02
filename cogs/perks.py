@@ -9,13 +9,15 @@ from discord import Interaction, app_commands
 from discord.app_commands import Group
 from discord.ext import commands, tasks
 from utils.db import Document
-from typing import List, Literal, Union
+from typing import Any, List, Literal, Union
 from utils.transformer import TimeConverter
 from utils.views.buttons import Confirm
 from utils.views.selects import Select_General
 from utils.views.perks_system import Friends_manage, Perk_Ignore
 from utils.views.voice_ui import Voice_UI
 from colour import Color
+from utils.checks import Blocked
+
 
 class Perk_Type(enum.Enum):
     roles = "roles"
@@ -34,6 +36,7 @@ class Perks_DB:
         self.react = Document(self.db, "custom_react")
         self.highlight = Document(self.db, "custom_highlight")
         self.config = Document(self.db, "config")
+        self.bans = Document(self.db, "bans")
         self.cach = {'react': {}, 'highlight': {}}
     
     async def get_data(self, type: Perk_Type | str, guild_id: int, user_id: int):
@@ -180,7 +183,7 @@ class Perks_DB:
                 self.cach['highlight'][guild.id][data['user_id']] = data
             case _:
                 raise Exception("Invalid perk type")
-            
+
 class Perks(commands.Cog, name="perk", description="manage your custom perks"):
     def __init__(self, bot):
         self.bot = bot
@@ -195,6 +198,12 @@ class Perks(commands.Cog, name="perk", description="manage your custom perks"):
         self.refresh_cache.cancel()
         self.profile_roles.cancel()
     
+    async def interaction_check(self, interaction: discord.Interaction):
+        data = await self.Perk.bans.find({'user_id': interaction.user.id, 'guild_id': interaction.guild.id})
+        if data:
+            raise Blocked(interaction)
+        else:
+            return True
 
     @commands.Cog.listener()
     async def on_ready(self):
@@ -327,7 +336,7 @@ class Perks(commands.Cog, name="perk", description="manage your custom perks"):
                     app_commands.Choice(value="none", name="none")
                 ]
             return triggers_list[:24]
-
+        
     privrole = app_commands.Group(name="privrole", description="Manage your custom roles")
     privchannel = app_commands.Group(name="privchannel", description="Manage your custom channels")
     privreact = app_commands.Group(name="privreact", description="Manage your custom reacts")
@@ -818,6 +827,77 @@ class Perks(commands.Cog, name="perk", description="manage your custom perks"):
         if len(embeds) == 0: return await interaction.response.send_message("No results found", ephemeral=True)
         await interaction.response.send_message(embeds=embeds)
 
+    @admin.command(name="block", description="block a user from using custom perks")
+    @app_commands.default_permissions(administrator=True)
+    @app_commands.describe(member="The member you want to block", reason="The reason of the block")
+    async def _ban(self, interaction: Interaction, member: discord.Member, reason: str):
+        config = await self.Perk.get_data(Perk_Type.config, interaction.guild.id, interaction.user.id)
+        if config == None:
+            await interaction.response.send_message("You need to setup config first", ephemeral=True)
+            return
+        
+        user_roles = [role.id for role in interaction.user.roles]
+        if (set(user_roles) & set(config['admin_roles'])) == set():
+            await interaction.response.send_message("You need to have admin roles to use this command", ephemeral=True)
+            return
+
+        ban_data = {
+            "user_id": member.id,
+            "guild_id": interaction.guild.id,
+            "reason": reason,
+            "banned_by": interaction.user.id
+        }
+        await self.Perk.bans.insert(ban_data)
+        await interaction.response.send_message(f"{member.mention} has been blocked from using custom perks clearing all their perks this may take few seconds", ephemeral=True)
+        role_data = await self.Perk.get_data(Perk_Type.roles, interaction.guild.id, member.id)
+        channel_data = await self.Perk.get_data(Perk_Type.channels, interaction.guild.id, member.id)
+        react_data = await self.Perk.get_data(Perk_Type.reacts, interaction.guild.id, member.id)
+        highlight_data = await self.Perk.get_data(Perk_Type.highlights, interaction.guild.id, member.id)
+
+        if role_data: 
+            role = interaction.guild.get_role(role_data['role_id'])
+            if role: await role.delete(reason=f"Perk Owner blocked by {interaction.user.name}")
+            await self.Perk.delete(Perk_Type.roles, role_data)
+        if channel_data:
+            channel = interaction.guild.get_channel(channel_data['channel_id'])
+            if channel: await channel.delete(reason=f"Perk Owner blocked by {interaction.user.name}")
+            await self.Perk.delete(Perk_Type.channels, channel_data)
+        if react_data:
+            self.Perk.cach['react'][interaction.guild.id].pop(member.id)
+            await self.Perk.delete(Perk_Type.reacts, react_data)
+            try: del self.Perk.cach['react'][interaction.guild.id][member.id]
+            except: pass
+        if highlight_data:
+            self.Perk.cach['highlight'][interaction.guild.id].pop(member.id)
+            await self.Perk.delete(Perk_Type.highlights, highlight_data)
+            try:del self.Perk.cach['highlight'][interaction.guild.id][member.id]
+            except: pass
+        
+        await interaction.followup.send(f"All existing perks of {member.mention} has been cleared successfully", ephemeral=True)
+
+    
+    @admin.command(name="unblock", description="unblock a user from using custom perks")
+    @app_commands.default_permissions(administrator=True)
+    @app_commands.describe(member="The member you want to unblock")
+    async def _unban(self, interaction: Interaction, member: discord.Member):
+        config = await self.Perk.get_data(Perk_Type.config, interaction.guild.id, interaction.user.id)
+        if config == None:
+            await interaction.response.send_message("You need to setup config first", ephemeral=True)
+            return
+        user_roles = [role.id for role in interaction.user.roles]
+        if (set(user_roles) & set(config['admin_roles'])) == set():
+
+            await interaction.response.send_message("You need to have admin roles to use this command", ephemeral=True)
+            return
+        ban_data = await self.Perk.bans.find({"user_id": member.id, "guild_id": interaction.guild.id})
+        if not ban_data:
+            await interaction.response.send_message("This user is not blocked", ephemeral=True)
+            return
+        await self.Perk.bans.delete(ban_data)
+        await interaction.response.send_message(f"{member.mention} has been unblocked from using custom perks", ephemeral=True)
+
+
+
     @commands.Cog.listener()
     async def on_message(self, message: discord.Message):
         if message.author.bot: return
@@ -910,6 +990,7 @@ class Perks(commands.Cog, name="perk", description="manage your custom perks"):
                             continue
                         user_data['last_react'] = datetime.datetime.utcnow()
                         await self.Perk.update_cache(Perk_Type.reacts, message.guild, user_data)
+
 
 class Voice(commands.Cog):
     def __init__(self, bot):

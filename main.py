@@ -13,6 +13,7 @@ from io import BytesIO
 from dotenv import load_dotenv
 from motor.motor_asyncio import AsyncIOMotorClient
 from utils.converters import dict_to_tree
+from utils.checks import Blocked
 
 load_dotenv()
 discord.utils.setup_logging(
@@ -28,7 +29,7 @@ class Botbase(commands.Bot):
         super().__init__(intents=discord.Intents.all(), command_prefix="-", description="A Bot for server management",
                          case_insensitive=False, owner_ids=[488614633670967307, 301657045248114690],
                          activity=discord.Activity(type=discord.ActivityType.playing, name="Startup"),
-                         status=discord.Status.idle, help_command=None, application_id=application_id)
+                         status=discord.Status.idle, help_command=None, application_id=application_id, max_messages=2000)
         self.default_color = 0x2b2d31
         self.error_color = 0xFF0000
         self.start_time = datetime.datetime.now()
@@ -136,6 +137,9 @@ async def on_app_command_error(interaction: discord.Interaction, error: Exceptio
     if isinstance(error, app_commands.errors.CommandOnCooldown):
         return await interaction.response.send_message(
             f"Please wait {error.retry_after:.2f} seconds before trying again.", ephemeral=True, delete_after=10)
+    if isinstance(error, Blocked):
+        return await interaction.response.send_message(
+            f"Sorry, you have been blocked from using custom perks commands.", ephemeral=True, delete_after=10)
     else:
         embed = discord.Embed(description=f"```\n{error}\n```", color=bot.default_color)
         try:
