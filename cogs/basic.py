@@ -407,7 +407,11 @@ class Logging(commands.Cog):
             return
         if payload.channel_id != 1103892836564357180:
             return
-        msg = discord.Message(state=self.bot._connection, channel=self.bot.get_channel(payload.channel_id), data=payload.data)
+        data = payload.data
+        try:
+            msg = discord.Message(state=self.bot._connection, channel=self.bot.get_channel(payload.channel_id), data=data)
+        except KeyError:
+            return
         embed = msg.embeds[0]
         if "**Ready to be watered!**" in embed.description:
             gc = self.bot.get_channel(785847439579676672)
