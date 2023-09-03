@@ -21,6 +21,11 @@ class Profile:
     def to_dict(self):
         return asdict(self)
 
+    @property
+    def id(self):
+        return self._id
+
+
 @dataclass
 class Config:
     _id: int
@@ -55,13 +60,13 @@ class backend:
     async def setup(self):
         for guild in await self.config.get_all():
             self.config_cache[guild["_id"]] = Config(**guild)
-    
+
     async def create_config(self, guild_id: int) -> Config:
         config = Config(guild_id, [], {}, None)
         config = await self.config.insert(config.to_dict())
         self.config_cache[guild_id] = config
         return Config(**config)
-    
+
     async def get_config(self, guild_id: int) -> Config:
         if guild_id in self.config_cache.keys():
             return self.config_cache[guild_id]
@@ -71,15 +76,15 @@ class backend:
                 return await self.create_config(guild_id)
             else:
                 return Config(**data)
-    
+
     async def update_config(self, guild_id: int, data: Config | dict ):
         if isinstance(data, dict):
             data = Config(**data)
         await self.config.update(guild_id, data.to_dict())
         self.config_cache[guild_id] = data
-    
+
     async def get_blacklist(self, user: discord.Member, profile: Profile) -> Blacklist:
-        data = await self.blacklist.find({"user_id": user.id, "profile": profile._id, "guild_id": user.guild.id})
+        data = await self.blacklist.find({"user_id": user.id, "profile": profile.id, "guild_id": user.guild.id})
         if not data:
             return None
         del data["_id"]
@@ -87,7 +92,7 @@ class backend:
 
     async def insert_blacklist(self, data: Blacklist):
         await self.blacklist.insert(data.to_dict())
-    
+
 
 class Blacklist_cog(commands.GroupCog, name="blacklist"):
     def __init__(self, bot):
@@ -96,17 +101,17 @@ class Blacklist_cog(commands.GroupCog, name="blacklist"):
         self.bot.blacklist = self.backend
         self.unblacklist_task = self.unblacklist.start()
         self.unbl_task = False
-    
+
     user = app_commands.Group(name="user", description="Blacklist user")
 
     def cog_unload(self):
         self.unblacklist_task.cancel()
-    
+
     async def profile_aucto(self, interaction: discord.Interaction, current: str) -> List[app_commands.Choice[str]]:
         config = await self.backend.get_config(interaction.guild_id)
         profiles: List[str] = [profile for profile in config.profiles.keys()]
         choices = [
-            app_commands.Choice(name=profile, value=profile) 
+            app_commands.Choice(name=profile, value=profile)
             for profile in profiles if current.lower() in profile.lower()
         ]
         return choices[:24]
@@ -129,7 +134,7 @@ class Blacklist_cog(commands.GroupCog, name="blacklist"):
             else:
                 continue
         self.unbl_task = False
-    
+
     @unblacklist.before_loop
     async def before_unblacklist(self):
         await self.bot.wait_until_ready()
@@ -159,7 +164,7 @@ class Blacklist_cog(commands.GroupCog, name="blacklist"):
     @commands.Cog.listener()
     async def on_ready(self):
         await self.backend.setup()
-    
+
     @user.command(name="add", description="apply blacklist to user")
     @app_commands.describe(profile="Profile to apply blacklist", user="User to blacklist", reason="Reason for blacklist", duration="Duration of blacklist")
     @app_commands.autocomplete(profile=profile_aucto)
@@ -171,11 +176,11 @@ class Blacklist_cog(commands.GroupCog, name="blacklist"):
 
         author_role = [role.id for role in interaction.user.roles]
 
-        if not (set(author_role) & set(config.mod_roles)): 
+        if not (set(author_role) & set(config.mod_roles)):
             return await interaction.response.send_message("You don't have permission to use this command", ephemeral=True)
 
         user_data = await self.backend.get_blacklist(user, profile_data)
-        if user_data is not None: 
+        if user_data is not None:
             return await interaction.response.send_message(f"{user.mention} is already blacklisted in profile `{profile}`", ephemeral=True)
         user_data = Blacklist(user_id=user.id, guild_id=interaction.guild_id, profile=profile_data._id, Blacklist_at=datetime.datetime.utcnow(), Blacklist_by=interaction.user.id, Blacklist_reason=reason, Blacklist_duration=duration, Blacklist_end=datetime.datetime.utcnow() + datetime.timedelta(seconds=duration))
         await self.backend.insert_blacklist(user_data)
@@ -197,7 +202,7 @@ class Blacklist_cog(commands.GroupCog, name="blacklist"):
             embed.description += f"**End:** <t:{int((datetime.datetime.now() + datetime.timedelta(seconds=duration)).timestamp())}:R>\n"
             embed.description += f"**By:** {interaction.user.mention} ({interaction.user.id})\n"
             await channel.send(embed=embed)
-    
+
     @user.command(name="remove", description="remove blacklist from user")
     @app_commands.describe(profile="Profile to remove blacklist", user="User to remove blacklist", reason="Reason for removing blacklist")
     @app_commands.autocomplete(profile=profile_aucto)
@@ -208,13 +213,13 @@ class Blacklist_cog(commands.GroupCog, name="blacklist"):
         profile_data = Profile(**config.profiles[profile])
 
         author_role = [role.id for role in interaction.user.roles]
-        if not (set(author_role) & set(config.mod_roles)): 
+        if not (set(author_role) & set(config.mod_roles)):
             return await interaction.response.send_message("You don't have permission to use this command", ephemeral=True)
 
         user_data = await self.backend.get_blacklist(user, profile_data)
         if user_data is None:
             return await interaction.response.send_message(f"{user.mention} is not blacklisted in profile `{profile}`", ephemeral=True)
-        
+
         role_add = [interaction.guild.get_role(role_id) for role_id in profile_data.role_remove]
         role_remove = [interaction.guild.get_role(role_id) for role_id in profile_data.role_add]
         await user.add_roles(*role_add, reason=f"Blacklist removed by {interaction.user} ({interaction.user.id})")
