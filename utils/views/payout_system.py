@@ -267,7 +267,7 @@ class Payout_claim(discord.ui.View):
 
         view = Payout_Buttton()
         view.remove_item(view.children[0])
-        msg = await queue_channel.send(embed=queue_embed, view=view, content=f"> Payouts will be done within 24h.\n> Else contact server staff for support.\n{interaction.user.mention}")
+        msg = await queue_channel.send(embed=queue_embed, view=view)
         pending_data = data
         pending_data['_id'] = msg.id
         delete_queue_data = {'_id': interaction.message.id,'channel': interaction.message.channel.id,'now': datetime.datetime.utcnow(),'delete_after': 1800, 'reason': 'payout_claim'}

@@ -43,7 +43,7 @@ class Dank_Events(commands.GroupCog, name="dank"):
             return self.bot.dispatch("dank_price_update", message)
 
         if message.interaction is not None:
-            if message.interaction.name == "item" and message.channel.id in [785860772470849536, 792246185238069249, 1080918630956548176]:
+            if message.interaction.name == "item" and message.channel.id in [785860772470849536, 792246185238069249, 1080918630956548176, 1130057933468745849, 999555462674522202]:
                 return self.bot.dispatch("dank_price_update_from_cmd", message)
 
     
