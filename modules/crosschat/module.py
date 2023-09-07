@@ -30,7 +30,8 @@ class Crosschat(commands.GroupCog):
 
     @tasks.loop(hours=2)
     async def clear_cache(self):
-        for message_id, data in self.message_cache.items():
+        cache = self.message_cache.copy()
+        for message_id, data in cache:
             if (datetime.datetime.utcnow() - data['added_at']).total_seconds() > 86400:
                 del self.message_cache[message_id]
 
@@ -176,6 +177,9 @@ class Crosschat(commands.GroupCog):
             webhook = self.config['tgk_hook']
         if len(kwargs['embeds']) > 10:
             kwargs['embeds'] = kwargs['embeds'][:10]
+        if kwargs['content'] is None and len(kwargs['embeds']) == 0 and len(message.attachments) == 0:
+            await message.add_reaction("<:tgk_deactivated:1082676877468119110>")
+            return
         clone_message = await webhook.send(**kwargs)
 
         self.message_cache[message.id] = {
