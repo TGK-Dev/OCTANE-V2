@@ -33,7 +33,11 @@ class Afk(commands.GroupCog):
             while len(user_data['pings']) > 10:
                 user_data['pings'].pop(0)
         await self.bot.afk.update(user_data)
-        await message.reply(f"`{user_data['last_nick']}` is afk: {user_data['reason']}", delete_after=10, allowed_mentions=discord.AllowedMentions.none(), mention_author=False)
+        try:
+            await message.reply(f"`{user_data['last_nick']}` is afk: {user_data['reason']}", delete_after=10, allowed_mentions=discord.AllowedMentions.none(), mention_author=False)
+        except discord.HTTPException:
+            await message.channel.send(f"{message.author.mention} `{user_data['last_nick']}` is afk: {user_data['reason']}", delete_after=10, allowed_mentions=discord.AllowedMentions.none())
+                                       
 
 
     @commands.Cog.listener()
@@ -55,6 +59,8 @@ class Afk(commands.GroupCog):
             for index,user_data in enumerate(user_data['pings']):
                 guild = self.bot.get_guild(user_data['guild_id'])
                 user: discord.Member = guild.get_member(user_data['id'])
+                if not user:
+                    user = await self.bot.fetch_user(user_data['id'])
                 pinged_at = user_data['pinged_at']
                 jump_url = user_data['jump_url']
                 content = user_data['message']
