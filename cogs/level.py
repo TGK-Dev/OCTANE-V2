@@ -102,8 +102,11 @@ class Level_DB:
         return data
 
     async def update_member_level(self, member: discord.Member, data: dict):
-        await self.ranks.update(member.id, data)
         self.level_cache[member.id] = data
+        try:
+            await self.ranks.update(data)
+        except Exception as e:
+            pass        
 
     async def millify(self, n):
         n = float(n)
