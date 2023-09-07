@@ -77,3 +77,24 @@ def dict_to_tree(data, indent=0):
             else:
                 tree += f"├─{key}: {value}"
     return tree
+
+def get_bar(per: int):
+    emojis = {
+        "start_fill": "<:bar_start_fill:1149296377222930463>",
+        "start_empty": "<:bar_start_empty:1149296657893171294>",
+        "mid_fill": "<:bar_mid_fill:1149298022287679538>",
+        "mid_empty": "<:bar_mid_empty:1149298212021211136>",
+        "end_fill": "<:bar_end_fill:1149297916037582858>",
+        "end_empty": "<:bar_end_empty:1149297776535027733>",
+    }
+
+    num_fill = int(per / 10)
+    num_empty = 10 - num_fill
+    if per == 0:
+        bar = emojis["start_empty"] + (emojis["mid_empty"] * 8) + emojis["end_empty"]
+    elif per == 100:
+        bar = emojis["start_fill"] + (emojis["mid_fill"] * 8) + emojis["end_fill"] 
+    else:
+        bar = (emojis["start_fill"]) + (emojis['mid_fill']*(num_fill-1)) + (emojis['mid_empty']*(num_empty-1)) + (emojis['end_empty'])
+
+    return bar
