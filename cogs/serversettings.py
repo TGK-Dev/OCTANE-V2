@@ -315,6 +315,7 @@ class JoinGateBackEnd(commands.Cog):
     
     @staticmethod
     def is_cancerous(text: str) -> bool:
+        if text is None: return False
         for segment in text.split():
             for char in segment:
                 if not (char.isascii() and char.isalnum()):
@@ -341,12 +342,9 @@ class JoinGateBackEnd(commands.Cog):
         new_cool_nick = stringcase.titlecase(new_cool_nick)
         default_name = "Request a new name"
         if len(new_cool_nick.replace(" ", "")) <= 1 or len(new_cool_nick) > 32:
-            if default_name == "Request a new name":
-                new_cool_nick = await self.get_random_nick(2)
-            elif default_name:
-                new_cool_nick = default_name
-            else:
-                new_cool_nick = "Request a new name"
+            new_cool_nick = default_name
+        else:
+            pass
         return new_cool_nick
 
     @commands.Cog.listener()
