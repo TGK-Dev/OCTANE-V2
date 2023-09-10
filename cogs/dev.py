@@ -6,6 +6,7 @@ import textwrap
 import re
 import aiohttp
 import os
+import json
 
 from typing import Literal
 from traceback import format_exception
@@ -72,44 +73,36 @@ class Dev(commands.Cog, name="dev", description="Dev commands"):
     
     @dev.command(name="servers", description="kill/restart the bot")
     @app_commands.check(is_dev)
-    async def _host(self, interaction: discord.Interaction, signal: Literal["kill", "restart"]):
+    async def _host(self, interaction: discord.Interaction, signal: Literal["kill", "restart", "start"]):
         view = Confirm(interaction.user, 30)
         await interaction.response.send_message(embed=discord.Embed(description="Are you sure you want to restart the bot?", color=interaction.client.default_color), view=view)
         view.message = await interaction.original_response()
         await view.wait()
 
-        await interaction.edit_original_response(embed=discord.Embed(description="Signal sent", color=interaction.client.default_color), view=None)
+        await interaction.edit_original_response(embed=discord.Embed(description="Singal is sent to the server successfully", color=interaction.client.default_color), view=view)
 
         if view.value:
-            async with aiohttp.ClientSession() as session:
-                headders = {
-                    "Accept": "application/json",
-                    "Authorization": os.environ.get("SPARKED_HOST_TOKEN"),
-                    "Content-Type": "application/json",
-                },
-                data = {
-                    "signal": signal
-                }
-                async with session.post("https://control.sparkedhost.us/api/client/servers/dd089fbe/power", headers=headders, json=data) as response:
-                    await session.close()
+            try:
+                async with aiohttp.ClientSession() as session:
+                    headders = {
+                        "Accept": "application/json",
+                        "Authorization": f"Bearer {os.environ.get('SPARKED_HOST_TOKEN')}",
+                        "Content-Type": "application/json"
+                    }
+                    data = {
+                        "signal": signal
+                    }
+                    async with session.post("https://control.sparkedhost.us/api/client/servers/dd089fbe/power", 
+                                            headers=headders, data=json.dumps(data)) as response:
+                        await session.close()
+            except aiohttp.ContentTypeError:
+                pass
 
     @dev.command(name="get-logs", description="Gets the logs form console")
     @app_commands.check(is_dev)
     async def get_logs(self, interaction: discord.Interaction):
         await interaction.response.send_message(file=discord.File("./discord.log", filename="discord.log"), ephemeral=True, delete_after=120)
-    
-    @dev.command(name="shutdown", description="Shuts down the bot")
-    @app_commands.check(is_dev)
-    async def shutdown(self, interaction: discord.Interaction):
-        view = Confirm(interaction.user, 30)
-        await interaction.response.send_message(embed=discord.Embed(description="Are you sure you want to shutdown the bot?", color=interaction.client.default_color), view=view)
-        view.message = await interaction.original_response()
-        await view.wait()
-        if view.value:
-            await interaction.edit_original_response(embed=discord.Embed(description="Bye Bye", color=interaction.client.default_color), view=None)
-            await interaction.client.close()
-        else:
-            await interaction.edit_original_response(embed=discord.Embed(description="Shutdown cancelled", color=interaction.client.default_color))
+
     
     @commands.command(name="eval", description="Evaluates a python code")
     async def _eval(self, ctx, *, code):
