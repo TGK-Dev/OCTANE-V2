@@ -5,7 +5,9 @@ import contextlib
 import textwrap
 import re
 import aiohttp
+import os
 
+from typing import Literal
 from traceback import format_exception
 from discord import app_commands
 from discord.ext import commands, tasks
@@ -58,24 +60,38 @@ class Dev(commands.Cog, name="dev", description="Dev commands"):
             await interaction.client.tree.sync()
             await interaction.edit_original_response(embed=discord.Embed(description="Successfully synced global commands", color=interaction.client.default_color))
         else:
-            guild = await interaction.client.fetch_guild(int(guild_id))
-            if guild is None:
-                return await interaction.response.send_message(embed=discord.Embed(description="Invalid guild id", color=interaction.client.default_color))
+            if guild_id == "*":
+                guild = interaction.guild
+            else:
+                guild = await interaction.client.fetch_guild(int(guild_id))
+                if guild is None:
+                    return await interaction.response.send_message(embed=discord.Embed(description="Invalid guild id", color=interaction.client.default_color))
             await interaction.response.send_message(embed=discord.Embed(description=f"Syncing guild commands for `{guild.name}`...", color=interaction.client.default_color))
             await interaction.client.tree.sync(guild=guild)
             await interaction.edit_original_response(embed=discord.Embed(description=f"Successfully synced guild commands for `{guild.name}`", color=interaction.client.default_color))
     
-    @dev.command(name="restart", description="Restarts the bot")
+    @dev.command(name="servers", description="kill/restart the bot")
     @app_commands.check(is_dev)
-    async def restart(self, interaction: discord.Interaction):
+    async def _host(self, interaction: discord.Interaction, signal: Literal["kill", "restart"]):
         view = Confirm(interaction.user, 30)
         await interaction.response.send_message(embed=discord.Embed(description="Are you sure you want to restart the bot?", color=interaction.client.default_color), view=view)
         view.message = await interaction.original_response()
         await view.wait()
+
+        await interaction.edit_original_response(embed=discord.Embed(description="Signal sent", color=interaction.client.default_color), view=None)
+
         if view.value:
-            await view.interaction.response.edit_message(embed=discord.Embed(description="I should be back up in a few seconds", color=interaction.client.default_color), view=None)
-            self.bot.restart = True
-            await self.bot.close()
+            with aiohttp.ClientSession() as session:
+                headders = {
+                    "Accept": "application/json",
+                    "Authorization": os.environ.get("SPARKED_HOST_TOKEN"),
+                    "Content-Type": "application/json",
+                },
+                data = {
+                    "signal": signal
+                }
+                async with session.post("https://control.sparkedhost.us/api/client/servers/dd089fbe/power", headers=headders, json=data) as response:
+                    await session.close()
 
     @dev.command(name="get-logs", description="Gets the logs form console")
     @app_commands.check(is_dev)
