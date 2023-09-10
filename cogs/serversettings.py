@@ -138,6 +138,7 @@ class serversettings(commands.Cog):
                         'event_manager_roles': [],
                         'log_channel': None,
                         'default_claim_time': 3600,
+                        'express': False,
                     }
                     await self.bot.payout_config.insert(data)
                 
