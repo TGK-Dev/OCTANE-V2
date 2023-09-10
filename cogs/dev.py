@@ -81,7 +81,7 @@ class Dev(commands.Cog, name="dev", description="Dev commands"):
         await interaction.edit_original_response(embed=discord.Embed(description="Signal sent", color=interaction.client.default_color), view=None)
 
         if view.value:
-            with aiohttp.ClientSession() as session:
+            async with aiohttp.ClientSession() as session:
                 headders = {
                     "Accept": "application/json",
                     "Authorization": os.environ.get("SPARKED_HOST_TOKEN"),
