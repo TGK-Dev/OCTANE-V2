@@ -534,6 +534,9 @@ class Payout(commands.GroupCog, name="payout", description="Payout commands"):
 		if len(payouts) <= 0:
 			await interaction.response.send_message("There are no payouts pending", ephemeral=True)
 			return
+		if config['express'] == True:
+			await interaction.response.send_message("There is already a express payout in progress", ephemeral=True)
+			return
 		payouts = payouts[:50]
 		await interaction.response.send_message("## Starting Payouts for oldest 50 payouts in queue", ephemeral=True)
 		queue_channel = interaction.guild.get_channel(config['queue_channel'])
