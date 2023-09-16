@@ -73,7 +73,10 @@ class Dev(commands.Cog, name="dev", description="Dev commands"):
     
     @dev.command(name="servers", description="kill/restart the bot")
     @app_commands.check(is_dev)
-    async def _host(self, interaction: discord.Interaction, signal: Literal["kill", "restart", "start"]):
+    @app_commands.choices(servers=[
+        app_commands.Choice(name="NAT", value="e3ea1246"), app_commands.Choice(name="OCT∆NΞ", value="dd089fbe"), app_commands.Choice(name="A.C.E", value="f9a3bf56")
+    ])
+    async def _host(self, interaction: discord.Interaction, servers: str,signal: Literal["kill", "restart", "start"]):
         view = Confirm(interaction.user, 30)
         await interaction.response.send_message(embed=discord.Embed(description="Are you sure you want to restart the bot?", color=interaction.client.default_color), view=view)
         view.message = await interaction.original_response()
@@ -82,6 +85,7 @@ class Dev(commands.Cog, name="dev", description="Dev commands"):
         await interaction.edit_original_response(embed=discord.Embed(description="Singal is sent to the server successfully", color=interaction.client.default_color), view=view)
 
         if view.value:
+            await interaction.response.send_message(f"sent signal `{signal}` to server `{servers}`", ephemeral=True)
             try:
                 async with aiohttp.ClientSession() as session:
                     headders = {
@@ -92,7 +96,7 @@ class Dev(commands.Cog, name="dev", description="Dev commands"):
                     data = {
                         "signal": signal
                     }
-                    async with session.post("https://control.sparkedhost.us/api/client/servers/dd089fbe/power", 
+                    async with session.post(f"https://control.sparkedhost.us/api/client/servers/{servers}/power",
                                             headers=headders, data=json.dumps(data)) as response:
                         await session.close()
             except aiohttp.ContentTypeError:
