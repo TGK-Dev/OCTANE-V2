@@ -82,8 +82,6 @@ class Dev(commands.Cog, name="dev", description="Dev commands"):
         view.message = await interaction.original_response()
         await view.wait()
 
-        await interaction.edit_original_response(embed=discord.Embed(description="Singal is sent to the server successfully", color=interaction.client.default_color), view=view)
-
         if view.value:
             await interaction.response.send_message(f"sent signal `{signal}` to server `{servers}`", ephemeral=True)
             try:
@@ -101,6 +99,8 @@ class Dev(commands.Cog, name="dev", description="Dev commands"):
                         await session.close()
             except aiohttp.ContentTypeError:
                 pass
+        else:
+            await interaction.delete_original_response()
 
     @dev.command(name="get-logs", description="Gets the logs form console")
     @app_commands.check(is_dev)
