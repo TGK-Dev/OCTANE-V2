@@ -83,7 +83,7 @@ class Dev(commands.Cog, name="dev", description="Dev commands"):
         await view.wait()
 
         if view.value:
-            await interaction.response.send_message(f"sent signal `{signal}` to server `{servers}`", ephemeral=True)
+            await view.interaction.response.edit_message(embed=discord.Embed(description=f"Successfully sent {signal} signal to {servers}", color=interaction.client.default_color))
             try:
                 async with aiohttp.ClientSession() as session:
                     headders = {
