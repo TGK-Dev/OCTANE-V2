@@ -544,7 +544,7 @@ class Ticket_controll(View):
         ticket_data["status"] = "open"
         await interaction.client.tickets.tickets.update(ticket_data)
 
-        embed.description = "<:dynosuccess:1000349098240647188> | Ticket opened!"
+        embed.description = "<:dynosuccess:1000349098240647188> | Ticket opened by {interaction.user.mention}"
         await interaction.edit_original_response(embed=embed)
         ticket_config = await interaction.client.tickets.config.find(interaction.guild.id)
         if ticket_config['logging'] is not None:
@@ -571,7 +571,7 @@ class Ticket_controll(View):
         if ticket_owner is not None: await interaction.channel.set_permissions(ticket_owner, overwrite=overwrite)
         else: return await interaction.edit_original_response(embed=discord.Embed(description="Ticket owner not found/left the server", color=0x2b2d31))
 
-        embed.description = "<:dynosuccess:1000349098240647188> | Ticket closed!"
+        embed.description = f"<:dynosuccess:1000349098240647188> | Ticket closed by {interaction.user.mention}"
         await interaction.edit_original_response(embed=embed)
         ticket_config = await interaction.client.tickets.config.find(interaction.guild.id)
         if ticket_config['logging'] is not None:
@@ -583,7 +583,7 @@ class Ticket_controll(View):
         ticket_data = await interaction.client.tickets.tickets.find(interaction.channel.id)
         if ticket_data is None: return await interaction.response.send_message("No ticket found", ephemeral=True, delete_after=5)
         timestemp = datetime.datetime.now() + datetime.timedelta(seconds=20)
-        embed = discord.Embed(description=f"Deleting ticket in <t:{round(timestemp.timestamp())}:R>, use the button below to cancel", color=0x2b2d31)
+        embed = discord.Embed(description=f"Deleting ticket in <t:{round(timestemp.timestamp())}:R>, {interaction.user.mention} use button below to cancel", color=0x2b2d31)
         
         view = Confirm(interaction.user, 20)
         
