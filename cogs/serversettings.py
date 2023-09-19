@@ -77,7 +77,7 @@ class serversettings(commands.Cog):
     async def serversettings(self, interaction: discord.Interaction, settings: app_commands.Choice[str], option: Literal['Show', 'Edit']):
         if interaction.client.user.id == 816699167824281621:
             if interaction.guild.id != 785839283847954433:
-                if settings.value not in ["payout", "perks", "staff"]:
+                if settings.value not in ["payout", "perks", "staff", "tickets"]:
                     return await interaction.response.send_message("This command is not available for this server", ephemeral=True)
         
         match settings.value:
