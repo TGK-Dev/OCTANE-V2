@@ -373,7 +373,7 @@ class ParterShip_Button(Button):
             embed = discord.Embed(description="Invite link you provided is invalid or expired", color=interaction.client.default_color)
             return await modal.interaction.edit_original_response(embed=embed, content=None)
 
-        Content = f"**Server Name:** {invite.guild.name}\n**Server Aproximate Members:** {invite.approximate_member_count}\n**Server ID:** `{invite.guild.id}`\n**Server Invite:** {invite}"
+        Content = f"**Server Name:** {invite.guild.name}\n**Server Aproximate Members:** {invite.approximate_member_count}\n**Server ID:** `{invite.guild.id}`\n**Server Invite:** {invite}\n**Partnership Type**: {modal.partnership_type.value}"
 
         over_write = {
                 interaction.guild.default_role: discord.PermissionOverwrite(view_channel=False),
