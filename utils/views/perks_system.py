@@ -82,7 +82,7 @@ class PerkConfig(View):
             hilight_values += f"<@&{key}>\n"
             hilight_values += f"* **Duration:** Permanent\n" if item['duration'] == "permanent" else f"* **Duration:** `{format_timespan(item['duration'])}`\n"
             hilight_values += f"* **Trigger Limit:** `{item['friend_limit']}`\n"
-        embed.add_field(name="Hilight Profiles", value=hilight_values if hilight_values else "`No Profiles ;(`", inline=True)
+        embed.add_field(name="Highlight Profiles", value=hilight_values if hilight_values else "`No Profiles ;(`", inline=True)
 
         await self.message.edit(embed=embed, view=Profile(self.user, data, self.message))        
         self.stop()
@@ -218,7 +218,7 @@ class Profile(View):
             hilight_values += f"<@&{key}>\n"
             hilight_values += f"* **Duration:** Permanent\n" if item['duration'] == "permanent" else f"* **Duration:** `{format_timespan(item['duration'])}`\n"
             hilight_values += f"* **Trigger Limit:** `{item['friend_limit']}`\n"
-        embed.add_field(name="Hilight Profiles", value=hilight_values if hilight_values else "`No Profiles ;(`", inline=True)
+        embed.add_field(name="highlight  Profiles", value=hilight_values if hilight_values else "`No Profiles ;(`", inline=True)
 
         await self.message.edit(embed=embed, view=Profile(self.user, data, self.message))
     
@@ -242,7 +242,7 @@ class Profile(View):
             SelectOption(label="Roles", description="Manage role profiles", emoji="<:tgk_role:1073908306713780284>", value="roles"),
             SelectOption(label="Channels", description="Manage channel profiles", emoji="<:tgk_channel:1073908465405268029>", value="channels"),
             SelectOption(label="Reactions", description="Manage reaction profiles", emoji="<:tgk_color:1107261678204244038>", value="reacts"),
-            SelectOption(label="highlights", description="Manage hilight profiles", emoji="<:tgk_message:1113527047373979668>", value="highlights"),
+            SelectOption(label="highlight", description="Manage highlight  profiles", emoji="<:tgk_message:1113527047373979668>", value="highlights"),
         ], max_values=1, min_values=1)
         profile_select.add_item(profile_select.select)
         await interaction.response.send_message(view=profile_select, ephemeral=True)
