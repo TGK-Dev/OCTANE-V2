@@ -9,7 +9,7 @@ from utils.views.payout_system import Payout_Config_Edit
 from utils.views.ticket_system import Config_Edit as Ticket_Config_Edit
 from utils.views.staff_system import Staff_config_edit
 from utils.views.level_system import LevelingConfig
-from utils.views.perks_system import PerkConfig
+from modules.perks.views import PerkConfig
 from utils.views.auction import AuctionConfig
 from utils.views.giveaway import GiveawayConfig
 from utils.views.blacklist import Blacklist_Config

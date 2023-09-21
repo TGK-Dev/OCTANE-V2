@@ -1,13 +1,13 @@
 import enum
 import discord
 import datetime
-from discord import Interaction, SelectOption, TextStyle, app_commands
+from discord import Interaction, SelectOption, app_commands
 from discord.interactions import Interaction
 from discord.ui import View, Button, button, TextInput, Item, Select, select
 from humanfriendly import format_timespan
-from .selects import Role_select, Select_General, Channel_select, User_Select
-from .modal import General_Modal
-from .buttons import Confirm
+from utils.views.selects import Role_select, Select_General
+from utils.views.modal import General_Modal
+from utils.views.buttons import Confirm
 from utils.converters import TimeConverter
 import traceback
 
@@ -126,7 +126,7 @@ class PerkConfig(View):
             
             self.data['custom_roles_position'] = position.id
             await interaction.client.Perk.update("config", self.data)
-            await interaction.delete_original_response()
+            await view.select.interaction.response.edit_message(content="New role position updated", view=None)
             await self.message.edit(embed=await self.update_embed(interaction, self.data))
     
     @button(label="Admin Roles", style=discord.ButtonStyle.gray, emoji="<:tgk_admin:1073908306713780284>")
@@ -149,7 +149,7 @@ class PerkConfig(View):
                     self.data['admin_roles'].append(value.id)
                     add_roles.append(value)
             await interaction.client.Perk.update("config", self.data)
-            await view.select.interaction.response.send_message(embed=discord.Embed(description=f"Added Roles: {', '.join([role.mention for role in add_roles]) if add_roles else '`None`'}\nRemoved Roles: {', '.join([role.mention for role in remove_roles]) if remove_roles else '`None`'}", color=interaction.client.default_color), ephemeral=True, delete_after=10)
+            await view.select.interaction.response.edit_message(embed=discord.Embed(description=f"Added Roles: {', '.join([role.mention for role in add_roles]) if add_roles else '`None`'}\nRemoved Roles: {', '.join([role.mention for role in remove_roles]) if remove_roles else '`None`'}", color=interaction.client.default_color), ephemeral=True, delete_after=10)
 
             await self.message.edit(embed=await self.update_embed(interaction, self.data))
 
@@ -297,20 +297,7 @@ class Profile(View):
 
                 profile_data['friend_limit'] = int(friend_view.select.values[0])
 
-                duration_view = General_Modal(title="Profile Duration", interaction=interaction)
-                duration_view.duraction = TextInput(label="Enter the Duration of the profile", placeholder="Enter permanent for no duration", min_length=1, max_length=100)
-                duration_view.add_item(duration_view.duraction)
-                await friend_view.select.interaction.response.send_modal(duration_view)
-
-                await duration_view.wait()
-                if duration_view.value != True: await view.select.interaction.delete_original_response()
-
-                duration = duration_view.duraction.value
-                if duration.lower() != "permanent":
-                    duration = await TimeConverter().convert(interaction, duration)
-                    if duration is None:
-                        return await duration_view.duraction.interaction.response.send_message("Invalid duration", ephemeral=True)
-                profile_data['duration'] = duration
+                profile_data['duration'] = 'permanent'
 
                 embed = discord.Embed(title="Profile Preview", color=interaction.client.default_color, description="")
                 embed.description += f"**Role:** <@&{profile_data['role_id']}>\n"
@@ -319,15 +306,16 @@ class Profile(View):
                 confirm = Confirm(interaction.user, 30)
                 confirm.children[0].label = "Save"; confirm.children[0].style = discord.ButtonStyle.gray; confirm.children[0].emoji = "<:tgk_active:1082676793342951475>"
                 confirm.children[1].label = "Cancel"; confirm.children[1].style = discord.ButtonStyle.gray; confirm.children[1].emoji = "<:tgk_deactivated:1082676877468119110>"
-                await duration_view.interaction.response.edit_message(embed=embed, view=confirm)
-                confirm.message = await duration_view.interaction.original_response()
+                await friend_view.select.interaction.response.send_message(embed=embed, view=confirm)
+                confirm.message = await friend_view.select.interaction.original_response()
                 await confirm.wait()
 
                 if confirm.value != True: await view.select.interaction.delete_original_response()
                 self.data['profiles'][profile][str(role.id)] = profile_data
                 await view.select.interaction.client.Perk.update("config", self.data)
                 await self.update_embed(confirm.interaction, self.data)
-    
+                for btn in confirm.children: btn.disabled = True
+                await confirm.interaction.response.edit_message(view=confirm)   
         
             case "delete":
                 role_prof = View()

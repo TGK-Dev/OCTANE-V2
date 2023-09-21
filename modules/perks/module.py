@@ -4,194 +4,24 @@ import discord
 import datetime
 import humanfriendly
 import aiohttp
-import re
 from discord import Interaction, app_commands
-from discord.app_commands import Group
 from discord.ext import commands, tasks
 from utils.db import Document
-from typing import Any, List, Literal, Union
-from utils.transformer import TimeConverter
-from utils.views.buttons import Confirm
-from utils.views.selects import Select_General
-from utils.views.perks_system import Friends_manage, Perk_Ignore
+from typing import List, Literal
+from .views import Friends_manage, Perk_Ignore
 from utils.views.voice_ui import Voice_UI
 from colour import Color
 from utils.checks import Blocked
-
-
-class Perk_Type(enum.Enum):
-    roles = "roles"
-    channels = "channels"
-    reacts = "reacts"
-    highlights = "highlights"
-    config = "config"
-
-
-class Perks_DB:
-    def __init__(self, bot, Document):
-        self.bot = bot
-        self.db = self.bot.mongo["Perk_Database"]
-        self.roles = Document(self.db, "custom_roles")
-        self.channel = Document(self.db, "custom_channel")
-        self.react = Document(self.db, "custom_react")
-        self.highlight = Document(self.db, "custom_highlight")
-        self.config = Document(self.db, "config")
-        self.bans = Document(self.db, "bans")
-        self.cach = {'react': {}, 'highlight': {}}
-    
-    async def get_data(self, type: Perk_Type | str, guild_id: int, user_id: int):
-        match type:
-            case Perk_Type.roles | "roles":
-                return await self.roles.find({'guild_id': guild_id, 'user_id': user_id})
-            case Perk_Type.channels | "channels":
-                return await self.channel.find({'guild_id': guild_id, 'user_id': user_id})
-            case Perk_Type.reacts | "reacts":
-                return await self.react.find({'guild_id': guild_id, 'user_id': user_id})
-            case Perk_Type.highlights | "highlights":
-                return await self.highlight.find({'guild_id': guild_id, 'user_id': user_id})
-            case Perk_Type.config | "config":
-                return await self.config.find({'_id': guild_id})
-            case _:
-                raise Exception("Invalid perk type")
-    
-    async def update(self, type: Perk_Type | str , data: dict):
-        match type:
-            case Perk_Type.roles | "roles":
-                await self.roles.update(data['_id'], data)
-
-            case Perk_Type.channels | "channels":
-                await self.channel.update(data['_id'], data)
-
-            case Perk_Type.reacts | "reacts":
-                await self.react.update(data['_id'], data)
-
-            case Perk_Type.highlights | "highlights":
-                await self.highlight.update(data['_id'], data)
-
-            case Perk_Type.config | "config":
-                await self.config.update(data['_id'], data)
-
-            case _:
-                raise Exception("Invalid perk type")
-
-    async def delete(self, type: Perk_Type | str, data: dict):
-        match type:
-            case Perk_Type.roles | "roles":
-                await self.roles.delete(data['_id'])
-
-            case Perk_Type.channels | "channels":
-                await self.channel.delete(data['_id'])
-
-            case Perk_Type.reacts | "reacts":
-                await self.react.delete(data['_id'])
-
-            case Perk_Type.highlights | "highlights":
-                await self.highlight.delete(data['_id'])
-
-            case _:
-                raise Exception("Invalid perk type")
-
-    async def create(self, type: Perk_Type | str, user_id: int, guild_id: int, duration: Union[int, str]=None, friend_limit: int=None):
-        match type:
-            case Perk_Type.roles | "roles":
-                perk_data = {'user_id': user_id,'guild_id': guild_id,'role_id': None,'duration': duration,'created_at': None,'friend_limit': friend_limit,'friend_list': []}
-                await self.roles.insert(perk_data)
-                return perk_data
-            
-            case Perk_Type.channels | "channels":
-                perk_data = {'user_id': user_id,'guild_id': guild_id,'channel_id':None,'duration': duration,'created_at': None,'friend_limit': friend_limit,'friend_list': [], 'activity': {'messages': 0, 'rank': None, 'previous_rank': 0, 'cooldown': None}}
-                await self.channel.insert(perk_data)
-                return perk_data
-            
-            case Perk_Type.reacts | "reacts":
-                perk_data = {'guild_id': guild_id, 'user_id': user_id, 'emojis': [], 'last_react': None, 'max_emoji': friend_limit if friend_limit else 1}
-                await self.react.insert(perk_data)
-                return perk_data
-
-            case Perk_Type.highlights | "highlights":
-                perk_data = {'guild_id': guild_id, 'user_id': user_id, 'triggers': [], 'ignore_channel':[], 'ignore_users': [], 'last_trigger': None, 'tigger_limit': friend_limit if friend_limit else 1}
-                await self.highlight.insert(perk_data)
-                return perk_data
-            
-            case Perk_Type.config | "config":
-                perk_config = {'_id': guild_id,'custom_category': {'name': None, 'last_cat': None, 'cat_list': []},'custom_roles_position': 0, 'admin_roles': [], "profiles": {"roles": {}, "channels": {}, "reacts": {}, "highlights": {}}}
-                await self.config.insert(perk_config)
-                return perk_config
-            
-            case _:
-                raise Exception("Invalid perk type")
-    
-    async def insert(self, type: Perk_Type | str, data: dict):
-        match type:
-            case Perk_Type.roles | "roles":
-                await self.roles.insert(data)
-            
-            case Perk_Type.channels | "channels":
-                await self.channel.insert(data)
-            
-            case Perk_Type.reacts | "reacts":
-                await self.react.insert(data)
-
-            case Perk_Type.highlights | "highlights":
-                await self.highlight.insert(data)
-
-            case _:
-                raise Exception("Invalid perk type")
-    
-    async def create_cach(self):
-        configs = await self.config.get_all()
-        await self.setup_reacts(configs)
-        await self.setup_highlights(configs)
-        return True
-    
-    async def setup_channels(self, configs: list[dict]):
-        channels = await self.channel.get_all()
-        self.cach['channels'] = {}
-        for data in configs:
-            if data['_id'] not in self.cach['channels'].keys():
-                self.cach['channels'][data['_id']] = {}
-        
-        for channel in channels:
-            if channel['channel_id'] == None: continue
-            self.cach['channels'][channel['guild_id']][channel['channel_id']] = channel
-    
-    async def setup_reacts(self, configs: list[dict]):
-        reacts = await self.react.get_all()
-        self.cach['react'] = {}
-        for data in configs:
-            if data['_id'] not in self.cach['react'].keys():
-                self.cach['react'][data['_id']] = {}
-        
-        for react in reacts:
-            self.cach['react'][react['guild_id']][react['user_id']] = react
-    
-    async def setup_highlights(self, configs: list[dict]):
-        highlights = await self.highlight.get_all()
-        self.cach['highlight'] = {}
-        for data in configs:
-            if data['_id'] not in self.cach['highlight'].keys():
-                self.cach['highlight'][data['_id']] = {}
-        
-        for highlight in highlights:
-            self.cach['highlight'][highlight['guild_id']][highlight['user_id']] = highlight
-
-    async def update_cache(self, perk: Perk_Type, guild: discord.Guild, data: dict):
-        match perk:
-            case Perk_Type.reacts:
-                self.cach['react'][guild.id][data['user_id']] = data
-            case Perk_Type.highlights:
-                self.cach['highlight'][guild.id][data['user_id']] = data
-            case _:
-                raise Exception("Invalid perk type")
+from .db import Perk_Type, Perks_DB
 
 class Perks(commands.Cog, name="perk", description="manage your custom perks"):
     def __init__(self, bot):
         self.bot = bot
-        self.Perk: Perks_DB = Perks_DB(bot, Document)
+        self.backend: Perks_DB = Perks_DB(bot, Document)
         self.refresh_cache.start()
         #self.profile_roles.start()
         #self.profile_channels.start()
-        self.bot.Perk = self.Perk
+        self.bot.Perk = self.backend
     
     def cog_unload(self):
         self.profile_channels.cancel()
@@ -199,7 +29,7 @@ class Perks(commands.Cog, name="perk", description="manage your custom perks"):
         self.profile_roles.cancel()
     
     async def interaction_check(self, interaction: discord.Interaction):
-        data = await self.Perk.bans.find({'user_id': interaction.user.id, 'guild_id': interaction.guild.id})
+        data = await self.backend.bans.find({'user_id': interaction.user.id, 'guild_id': interaction.guildid})
         if data:
             raise Blocked(interaction)
         else:
@@ -207,11 +37,11 @@ class Perks(commands.Cog, name="perk", description="manage your custom perks"):
 
     @commands.Cog.listener()
     async def on_ready(self):
-        await self.Perk.create_cach()
+        await self.backend.create_cach()
 
     @tasks.loop(hours=3)
     async def refresh_cache(self):
-        await self.Perk.create_cach()
+        await self.backend.create_cach()
 
     @refresh_cache.before_loop
     async def before_refresh_cache(self):
@@ -219,7 +49,7 @@ class Perks(commands.Cog, name="perk", description="manage your custom perks"):
 
     @tasks.loop(minutes=2)
     async def profile_roles(self):
-        role_data = await self.Perk.roles.get_all()
+        role_data = await self.backend.roles.get_all()
         for data in role_data:
             self.bot.dispatch("check_profile_roles", data)
         
@@ -229,13 +59,13 @@ class Perks(commands.Cog, name="perk", description="manage your custom perks"):
 
     @commands.Cog.listener()
     async def on_check_profile_roles(self, data: dict):
-        guild = self.bot.get_guild(data['guild_id'])
+        guild: discord.Guild = self.bot.get_guild(data['guild_id'])
         if not guild: return
-        user = guild.get_member(data['user_id'])
+        user: discord.Member = guild.get_member(data['user_id'])
         if not user: return
-        role = guild.get_role(data['role_id'])
+        role: discord.Role = guild.get_role(data['role_id'])
         if not role: return
-        config = await self.Perk.get_data(Perk_Type.config, guild.id, user.id)
+        config = await self.backend.get_data(self.backend.types.config, guild.id, user.id)
         if not config: return
 
         total_duraction = 0
@@ -252,21 +82,24 @@ class Perks(commands.Cog, name="perk", description="manage your custom perks"):
             return
         if total_friend_limit != data['friend_limit']:
             data['friend_limit'] = total_friend_limit
-            await self.Perk.update(Perk_Type.roles, data)
+            await self.backend.update(self.backend.types.roles, data)
         elif total_duraction == 0:
-            role = guild.get_role(data['role_id'])
-            if role: 
-                await role.delete()
-            await self.Perk.delete(Perk_Type.roles, data)
-            try:
-                await user.send(embed=discord.Embed(description=f"Your custom role `{role.name}` has been deleted because you have no active custom roles", color=self.bot.default_color))
-            except:
-                pass
-            return
+            channel = guild.get_channel(1145404806316425287)
+            if channel:
+                await channel.send(f"**User**: {user.mention} is going to lose his custom role `{role.name}`")
+            # role = guild.get_role(data['role_id'])
+            # if role: 
+            #     await role.delete()
+            # #await self.backend.delete(self.backend.types.roles, data)
+            # try:
+            #     await user.send(embed=discord.Embed(description=f"Your custom role `{role.name}` has been deleted because you have no active custom roles", color=self.bot.default_color))
+            # except:
+            #     pass
+            # return
     
     @tasks.loop(minutes=2)
     async def profile_channels(self):
-        channel_data = await self.Perk.channel.get_all()
+        channel_data = await self.backend.channel.get_all()
         for data in channel_data:
             self.bot.dispatch("check_profile_channels", data)
         
@@ -280,17 +113,17 @@ class Perks(commands.Cog, name="perk", description="manage your custom perks"):
         if not guild: return
         user = guild.get_member(data['user_id'])
         if not user:
-            await self.Perk.delete(Perk_Type.channels, data)
+            await self.backend.delete(self.backend.types.channels, data)
             channel = guild.get_channel(data['channel_id'])
             if channel: await channel.delete()
             return
         channel = guild.get_channel(data['channel_id'])
         if not channel:
             data['channel_id'] = None
-            await self.Perk.update(Perk_Type.channels, data)
+            await self.backend.update(self.backend.types.channels, data)
             return
         
-        config = await self.Perk.get_data(Perk_Type.config, guild.id, user.id)
+        config = await self.backend.get_data(self.backend.types.config, guild.id, user.id)
         if not config: return
 
         total_duraction = 0
@@ -307,16 +140,19 @@ class Perks(commands.Cog, name="perk", description="manage your custom perks"):
         if total_duraction == "permanent":
             return
         elif total_duraction == 0:
-            await self.Perk.delete(Perk_Type.channels, data)
-            await channel.delete()
-            try:
-                await user.send(embed=discord.Embed(description=f"Your custom channel `{channel.name}` has been deleted because you have no active custom channels", color=self.bot.default_color))
-            except:
-                pass
-            return
+            channel = guild.get_channel(1145404806316425287)
+            if channel:
+                await channel.send(f"**User**: {user.mention} is going to lose his custom channel `{channel.name}`")
+            # await self.backend.delete(self.backend.types.channels, data)
+            # await channel.delete()
+            # try:
+            #     await user.send(embed=discord.Embed(description=f"Your custom channel `{channel.name}` has been deleted because you have no active custom channels", color=self.bot.default_color))
+            # except:
+            #     pass
+            # return
         
     async def highlight_remove_auto(self, interaction: Interaction, current: str) -> List[app_commands.Choice[str]]:
-        user_data = await self.Perk.get_data(Perk_Type.highlights, interaction.guild.id, interaction.user.id)
+        user_data = await self.backend.get_data(self.backend.types.highlights, interaction.guild.id, interaction.user.id)
         if user_data == None:
             return [
                 app_commands.Choice(value="none", name="none")
@@ -347,12 +183,12 @@ class Perks(commands.Cog, name="perk", description="manage your custom perks"):
     @privrole.command(name="show", description="View your custom roles profile")
     async def _prole(self, interaction: Interaction):
         await interaction.response.send_message("Feching your profile...")
-        config = await self.Perk.get_data(Perk_Type.config, interaction.guild.id, interaction.user.id)
+        config = await self.backend.get_data(self.backend.types.config, interaction.guild.id, interaction.user.id)
         if not config:
             return await interaction.edit_original_message(content="Server has no custom perks")
         embed = discord.Embed(color=interaction.client.default_color,description="")
         embed.set_author(name=f"{interaction.user}'s Private Roles", icon_url=interaction.user.display_avatar.url if interaction.user.display_avatar else interaction.user.default_avatar)
-        user_data = await self.Perk.get_data(Perk_Type.roles, interaction.guild.id, interaction.user.id)
+        user_data = await self.backend.get_data(self.backend.types.roles, interaction.guild.id, interaction.user.id)
         if not user_data:
             return await interaction.edit_original_response(content="You have no custom role use /perk privrole claim to create one")
         role = interaction.guild.get_role(user_data['role_id'])
@@ -370,8 +206,8 @@ class Perks(commands.Cog, name="perk", description="manage your custom perks"):
     @privrole.command(name="claim", description="Create a custom role")
     @app_commands.describe(name="name of your custom role", color="color of your custom role like #2b2d31", icon="role icon of your custom role")
     async def _prole_claim(self, interaction: Interaction, name: str, color: str, icon: discord.Attachment=None):
-        user_data = await self.Perk.get_data(Perk_Type.roles, interaction.guild.id, interaction.user.id)
-        config = await self.Perk.get_data(Perk_Type.config, interaction.guild.id, interaction.user.id)
+        user_data = await self.backend.get_data(self.backend.types.roles, interaction.guild.id, interaction.user.id)
+        config = await self.backend.get_data(self.backend.types.config, interaction.guild.id, interaction.user.id)
         if not config:
             return await interaction.response.send_message("Server has no custom perks", ephemeral=True)
         if user_data:
@@ -423,10 +259,10 @@ class Perks(commands.Cog, name="perk", description="manage your custom perks"):
 
         role = await interaction.guild.create_role(name=name, color=color, display_icon=icon)
         await role.edit(position=position)
-        user_data = await self.Perk.create(Perk_Type.roles, interaction.user.id, interaction.guild.id, duration=total_duraction, friend_limit=total_friend_limit)
+        user_data = await self.backend.create(self.backend.types.roles, interaction.user.id, interaction.guild.id, duration=total_duraction, friend_limit=total_friend_limit)
         user_data['role_id'] = role.id
         user_data['created_at'] = datetime.datetime.utcnow()
-        await self.Perk.update(Perk_Type.roles, user_data)
+        await self.backend.update(self.backend.types.roles, user_data)
         await interaction.edit_original_response(embed=discord.Embed(description=f"Role {role.mention} created successfully", color=interaction.client.default_color))
         await interaction.user.add_roles(role)
     
@@ -436,8 +272,8 @@ class Perks(commands.Cog, name="perk", description="manage your custom perks"):
     async def _prole_edit(self, interaction: Interaction, name: str=None, color: str=None, icon: discord.Attachment=None):
         if name == None and color == None and icon == None:
             return await interaction.response.send_message("You need to provide at least one argument", ephemeral=True)
-        user_data = await self.Perk.get_data(Perk_Type.roles, interaction.guild.id, interaction.user.id)
-        config = await self.Perk.get_data(Perk_Type.config, interaction.guild.id, interaction.user.id)
+        user_data = await self.backend.get_data(self.backend.types.roles, interaction.guild.id, interaction.user.id)
+        config = await self.backend.get_data(self.backend.types.config, interaction.guild.id, interaction.user.id)
         if not config:
             return await interaction.response.send_message("Server has no custom perks", ephemeral=True)
         if not user_data:
@@ -462,10 +298,11 @@ class Perks(commands.Cog, name="perk", description="manage your custom perks"):
                     icon = await resp.read()
         else:
             icon = None
-        if "#" not in color:
-            return await interaction.response.send_message(embed=discord.Embed(description="Invalid color make sure to add `#` before the hex code", color=interaction.client.default_color))
-        color = tuple(round(c*255) for c in Color(color).rgb)
-        color = discord.Color.from_rgb(*color)
+        if color:
+            if "#" not in color:
+                return await interaction.response.send_message(embed=discord.Embed(description="Invalid color make sure to add `#` before the hex code", color=interaction.client.default_color))
+            color = tuple(round(c*255) for c in Color(color).rgb)
+            color = discord.Color.from_rgb(*color)
 
         role = interaction.guild.get_role(user_data['role_id'])
         if not role:
@@ -481,7 +318,7 @@ class Perks(commands.Cog, name="perk", description="manage your custom perks"):
     
     @privrole.command(name="friend", description="Manage your custom role friends")
     async def _prole_friend(self, interaction: Interaction):
-        user_data = await self.Perk.get_data(Perk_Type.roles, interaction.guild.id, interaction.user.id)
+        user_data = await self.backend.get_data(self.backend.types.roles, interaction.guild.id, interaction.user.id)
         if not user_data:
             return await interaction.response.send_message("You have no custom role use /perk privrole claim to create one", ephemeral=True)
         role = interaction.guild.get_role(user_data['role_id'])
@@ -498,7 +335,7 @@ class Perks(commands.Cog, name="perk", description="manage your custom perks"):
     async def _pchannel(self, interaction: Interaction):
         embed = discord.Embed(color=interaction.client.default_color,description="")
         embed.set_author(name=f"{interaction.user.name}'s Private channel", icon_url=interaction.user.display_avatar.url if interaction.user.display_avatar else interaction.user.default_avatar)
-        user_data = await self.Perk.get_data(Perk_Type.channels, interaction.guild.id, interaction.user.id)
+        user_data = await self.backend.get_data(self.backend.types.channels, interaction.guild.id, interaction.user.id)
         if not user_data:
             return await interaction.response.send_message("You have no custom channel use /perk privchannel claim to create one", ephemeral=True)
         channel = interaction.guild.get_channel(user_data['channel_id'])
@@ -516,8 +353,8 @@ class Perks(commands.Cog, name="perk", description="manage your custom perks"):
     @privchannel.command(name="claim", description="Create a custom channel")
     @app_commands.describe(name="name of your custom channel")
     async def _pchannel_claim(self, interaction: Interaction, name: str):
-        user_data = await self.Perk.channel.find({'user_id': interaction.user.id, 'guild_id': interaction.guild.id})
-        config = await self.Perk.get_data(Perk_Type.config, interaction.guild.id, interaction.user.id)
+        user_data = await self.backend.channel.find({'user_id': interaction.user.id, 'guild_id': interaction.guild.id})
+        config = await self.backend.get_data(self.backend.types.config, interaction.guild.id, interaction.user.id)
         if user_data:
             return await interaction.response.send_message("You already have a custom channel use /perk privchannel edit to edit it", ephemeral=True)
         if not config:
@@ -552,7 +389,7 @@ class Perks(commands.Cog, name="perk", description="manage your custom perks"):
                 position=last_cat.position + 1, overwrites=last_cat.overwrites, reason="Custom Category")
             config['custom_category']['cat_list'].append(category.id)
             config['custom_category']['last_cat'] = category
-            await self.Perk.update(Perk_Type.config, config)
+            await self.backend.update(self.backend.types.config, config)
             
         overwrites = category.overwrites
         overwrites[interaction.user] = discord.PermissionOverwrite(read_messages=True, send_messages=True, manage_messages=True, embed_links=True, attach_files=True, read_message_history=True, external_emojis=True, add_reactions=True)
@@ -560,10 +397,10 @@ class Perks(commands.Cog, name="perk", description="manage your custom perks"):
         channel = await interaction.guild.create_text_channel(name=name, category=category, topic=f"Private channel of {interaction.user.name}",
                                                               overwrites=overwrites)
 
-        user_data = await self.Perk.create(Perk_Type.channels, interaction.user.id, interaction.guild.id, duration=total_duraction, friend_limit=total_friend_limit)
+        user_data = await self.backend.create(self.backend.types.channels, interaction.user.id, interaction.guild.id, duration=total_duraction, friend_limit=total_friend_limit)
         user_data['channel_id'] = channel.id
         user_data['created_at'] = datetime.datetime.utcnow()
-        await self.Perk.update(Perk_Type.channels, user_data)
+        await self.backend.update(self.backend.types.channels, user_data)
         await interaction.edit_original_response(embed=discord.Embed(description=f"Channel {channel.mention} created successfully", color=interaction.client.default_color))
         await channel.send(f"Welcome to your private channel {interaction.user.mention}")
     
@@ -571,8 +408,8 @@ class Perks(commands.Cog, name="perk", description="manage your custom perks"):
     @app_commands.checks.cooldown(1, 1200, key= lambda i: (i.guild.id, i.user.id))
     @app_commands.describe(name="name of your custom channel")
     async def _pchannel_edit(self, interaction: Interaction, name: str):
-        user_data = await self.Perk.get_data(Perk_Type.channels, interaction.guild.id, interaction.user.id)
-        config = await self.Perk.get_data(Perk_Type.config, interaction.guild.id, interaction.user.id)
+        user_data = await self.backend.get_data(self.backend.types.channels, interaction.guild.id, interaction.user.id)
+        config = await self.backend.get_data(self.backend.types.config, interaction.guild.id, interaction.user.id)
         if not config:
             return await interaction.response.send_message("Server has no custom perks", ephemeral=True)
         if not user_data:
@@ -586,7 +423,7 @@ class Perks(commands.Cog, name="perk", description="manage your custom perks"):
     
     @privreact.command(name="show", description="View your custom react profile")
     async def _preact(self, interaction: Interaction):
-        user_data = await self.Perk.get_data(Perk_Type.reacts, interaction.guild.id, interaction.user.id)
+        user_data = await self.backend.get_data(self.backend.types.reacts, interaction.guild.id, interaction.user.id)
         if not user_data:
             return await interaction.response.send_message("You have no custom react use /perk privreact claim to create one", ephemeral=True)
         
@@ -599,7 +436,7 @@ class Perks(commands.Cog, name="perk", description="manage your custom perks"):
     @privchannel.command(name="friend", description="Manage your custom channel friend list")
     @app_commands.checks.cooldown(1, 5.0, key=lambda i: (i.guild.id, i.user.id))
     async def _pchannel_friend(self, interaction: Interaction):
-        user_data = await self.Perk.channel.find({'user_id': interaction.user.id, 'guild_id': interaction.guild.id})
+        user_data = await self.backend.channel.find({'user_id': interaction.user.id, 'guild_id': interaction.guild.id})
         if not user_data:
             return await interaction.response.send_message("You have no custom channel use /perk privchannel claim to create one", ephemeral=True)
         embed = discord.Embed(title=f"{interaction.user}'s Custom Channel Friends", color=interaction.client.default_color, description="")
@@ -613,12 +450,12 @@ class Perks(commands.Cog, name="perk", description="manage your custom perks"):
     @privreact.command(name="claim", description="Create a custom react")
     @app_commands.describe(emoji="emoji of your custom react")
     async def _preact_claim(self, interaction: Interaction, emoji: str):
-        user_data = await self.Perk.get_data(Perk_Type.reacts, interaction.guild.id, interaction.user.id)
+        user_data = await self.backend.get_data(self.backend.types.reacts, interaction.guild.id, interaction.user.id)
         if user_data:
             return await interaction.response.send_message("You already have a custom react use /perk privreact edit to edit it", ephemeral=True)
         
         await interaction.response.send_message(embed=discord.Embed(description="Creating your custom react...", color=interaction.client.default_color))
-        config =  await self.Perk.get_data(Perk_Type.config, interaction.guild.id, interaction.user.id)
+        config =  await self.backend.get_data(self.backend.types.config, interaction.guild.id, interaction.user.id)
         total_emojis = 0
         total_duraction = 0
 
@@ -638,7 +475,7 @@ class Perks(commands.Cog, name="perk", description="manage your custom perks"):
         else:
             await interaction.edit_original_response(embed=discord.Embed(description=f"Verifying emoji...", color=interaction.client.default_color))
 
-        user_data = await self.Perk.create(Perk_Type.reacts, interaction.user.id, interaction.guild.id, duration=total_duraction, friend_limit=total_emojis)
+        user_data = await self.backend.create(self.backend.types.reacts, interaction.user.id, interaction.guild.id, duration=total_duraction, friend_limit=total_emojis)
         msg = await interaction.original_response()
         try:
             await msg.add_reaction(emoji)
@@ -646,15 +483,15 @@ class Perks(commands.Cog, name="perk", description="manage your custom perks"):
             return await interaction.edit_original_response(embed=discord.Embed(description="Invalid emoji", color=interaction.client.default_color))
         user_data['emojis'].append(emoji)
         user_data['max_emoji'] = total_emojis
-        await self.Perk.update(Perk_Type.reacts, user_data)
-        await self.Perk.update_cache(Perk_Type.reacts, interaction.guild, user_data)
+        await self.backend.update(self.backend.types.reacts, user_data)
+        await self.backend.update_cache(self.backend.types.reacts, interaction.guild, user_data)
         await interaction.edit_original_response(embed=discord.Embed(description=f"React {emoji} created successfully", color=interaction.client.default_color))
         await msg.remove_reaction(emoji, interaction.client.user)
     
     @privreact.command(name="edit", description="Edit your custom react")
     @app_commands.checks.cooldown(1, 30, key= lambda i: (i.guild.id, i.user.id))
     async def _preact_edit(self, interaction: Interaction, action: Literal["add", "remove"], emoji: str):
-        user_data = await self.Perk.get_data(Perk_Type.reacts, interaction.guild.id, interaction.user.id)
+        user_data = await self.backend.get_data(self.backend.types.reacts, interaction.guild.id, interaction.user.id)
         if not user_data:
             return await interaction.response.send_message("You have no custom react use /perk privreact claim to create one", ephemeral=True)
         if action == "add":
@@ -667,8 +504,8 @@ class Perks(commands.Cog, name="perk", description="manage your custom perks"):
             except:return await interaction.edit_original_response(embed=discord.Embed(description="Invalid emoji", color=interaction.client.default_color))
 
             user_data['emojis'].append(emoji)
-            await self.Perk.update(Perk_Type.reacts, user_data)
-            await self.Perk.update_cache(Perk_Type.reacts, interaction.guild, user_data)
+            await self.backend.update(self.backend.types.reacts, user_data)
+            await self.backend.update_cache(self.backend.types.reacts, interaction.guild, user_data)
             await interaction.edit_original_response(embed=discord.Embed(description=f"Emoji {emoji} added successfully", color=interaction.client.default_color))
         
         elif action == "remove":
@@ -676,17 +513,17 @@ class Perks(commands.Cog, name="perk", description="manage your custom perks"):
                 return await interaction.response.send_message("Emoji not found", ephemeral=True)
             await interaction.response.send_message(embed=discord.Embed(description="Removing emoji...", color=interaction.client.default_color))
             user_data['emojis'].remove(emoji)
-            await self.Perk.update(Perk_Type.reacts, user_data)
-            await self.Perk.update_cache(Perk_Type.reacts, interaction.guild, user_data)
+            await self.backend.update(self.backend.types.reacts, user_data)
+            await self.backend.update_cache(self.backend.types.reacts, interaction.guild, user_data)
             await interaction.edit_original_response(embed=discord.Embed(description=f"Emoji {emoji} removed successfully", color=interaction.client.default_color))
 
     @highlight.command(name="tadd", description="add a trigger to your highlight perk")
     @app_commands.describe(trigger="the trigger you want to add")
     @app_commands.checks.cooldown(1, 5.0, key=lambda i: (i.guild_id, i.user.id))
     async def highlight_trigger(self, interaction: Interaction, trigger: str):
-        user_data = await self.Perk.get_data(Perk_Type.highlights, interaction.guild.id, interaction.user.id)
+        user_data = await self.backend.get_data(self.backend.types.highlights, interaction.guild.id, interaction.user.id)
         if not user_data: 
-            config = await self.Perk.get_data(Perk_Type.config, interaction.guild.id, interaction.user.id)
+            config = await self.backend.get_data(self.backend.types.config, interaction.guild.id, interaction.user.id)
             if not config: return await interaction.response.send_message("Server has no custom perks", ephemeral=True)
             total_duraction = 0
             total_trigger = 0
@@ -700,14 +537,14 @@ class Perks(commands.Cog, name="perk", description="manage your custom perks"):
             
             if total_duraction == 0:
                 return await interaction.response.send_message("You have no active custom highlights", ephemeral=True)
-            user_data = await self.Perk.create(Perk_Type.highlights, interaction.user.id, interaction.guild.id, duration=total_duraction, friend_limit=total_trigger)
+            user_data = await self.backend.create(self.backend.types.highlights, interaction.user.id, interaction.guild.id, duration=total_duraction, friend_limit=total_trigger)
 
         if len(user_data['triggers']) >= user_data['tigger_limit']: return await interaction.response.send_message("You have reached the maximum amount of triggers", ephemeral=True)      
         if trigger.lower() in user_data['triggers']: return await interaction.response.send_message("You already have that trigger", ephemeral=True)
 
         user_data['triggers'].append(trigger.lower())
-        await self.Perk.update(Perk_Type.highlights, user_data)
-        await self.Perk.update_cache(Perk_Type.highlights, interaction.guild, user_data)
+        await self.backend.update(self.backend.types.highlights, user_data)
+        await self.backend.update_cache(self.backend.types.highlights, interaction.guild, user_data)
 
         await interaction.response.send_message(f"Your trigger `{trigger}` has been added", ephemeral=True)
     
@@ -716,20 +553,20 @@ class Perks(commands.Cog, name="perk", description="manage your custom perks"):
     @app_commands.checks.cooldown(1, 60, key=lambda i: (i.guild.id, i.user.id))
     @app_commands.autocomplete(trigger=highlight_remove_auto)
     async def highlight_trigger_remove(self, interaction: Interaction, trigger: str):
-        user_data = await self.Perk.get_data(Perk_Type.highlights, interaction.guild.id, interaction.user.id)
+        user_data = await self.backend.get_data(self.backend.types.highlights, interaction.guild.id, interaction.user.id)
         if not user_data: return await interaction.response.send_message("You don't have any highlight perks", ephemeral=True)
         if trigger.lower() not in user_data['triggers']: return await interaction.response.send_message("You don't have that trigger", ephemeral=True)
 
         user_data['triggers'].remove(trigger.lower())
-        await self.Perk.update(Perk_Type.highlights, user_data)
-        await self.Perk.update_cache(Perk_Type.highlights, interaction.guild, user_data)
+        await self.backend.update(self.backend.types.highlights, user_data)
+        await self.backend.update_cache(self.backend.types.highlights, interaction.guild, user_data)
 
         await interaction.response.send_message(f"Your trigger `{trigger}` has been removed", ephemeral=True)
     
     @highlight.command(name="ignore", description="ignore a user from your highlight perk")
     @app_commands.checks.cooldown(1, 5.0, key=lambda i: (i.guild.id, i.user.id))
     async def highlight_ignore_role(self, interaction: Interaction):
-        user_data = await self.Perk.get_data(Perk_Type.highlights, interaction.guild.id, interaction.user.id)
+        user_data = await self.backend.get_data(self.backend.types.highlights, interaction.guild.id, interaction.user.id)
         if not user_data: return await interaction.response.send_message("You don't have any highlight perks", ephemeral=True)
 
         embed = discord.Embed(title="Ignore Role/Channel", description="", color=interaction.client.default_color)
@@ -744,7 +581,7 @@ class Perks(commands.Cog, name="perk", description="manage your custom perks"):
     @app_commands.describe(member="The member you want to manage", perk="The perk you want to manage")
     async def _premove(self, interaction: Interaction, member: discord.Member, perk: Perk_Type):
 
-        config = await self.Perk.get_data(Perk_Type.config, interaction.guild.id, interaction.user.id)
+        config = await self.backend.get_data(self.backend.types.config, interaction.guild.id, interaction.user.id)
         if config == None:
             await interaction.response.send_message("You need to setup config first", ephemeral=True)
             return
@@ -757,40 +594,40 @@ class Perks(commands.Cog, name="perk", description="manage your custom perks"):
             await interaction.response.send_message("You need to have admin roles to use this command", ephemeral=True)
             return
         
-        if perk == Perk_Type.config:
+        if perk == self.backend.types.config:
             await interaction.response.send_message("You can't remove config", ephemeral=True)
             return
-        perk_data = await self.Perk.get_data(perk, interaction.guild.id, member.id)
+        perk_data = await self.backend.get_data(perk, interaction.guild.id, member.id)
         if not perk_data:
             await interaction.response.send_message("This user doesn't have this perk", ephemeral=True)
             return
-        await self.Perk.delete(perk, perk_data)
+        await self.backend.delete(perk, perk_data)
         await interaction.response.send_message(f"Successfully removed {perk.name} from {member.mention}", ephemeral=False)
 
-        if perk == Perk_Type.channels:
+        if perk == self.backend.types.channels:
             channel = interaction.guild.get_channel(perk_data['channel_id'])
             if channel: await channel.delete(reason=f"Perk Removed By {interaction.user.name}")
         
-        if perk == Perk_Type.roles:
+        if perk == self.backend.types.roles:
             role = interaction.guild.get_role(perk_data['role_id'])
             if role: await role.delete(reason=f"Perk Removed By {interaction.user.name}")
         
-        if perk == Perk_Type.reacts:
-            try: del self.Perk.cach['react'][interaction.guild.id][member.id]
+        if perk == self.backend.types.reacts:
+            try: del self.backend.cach['react'][interaction.guild.id][member.id]
             except: pass
-            try: self.Perk.cach['react'][interaction.guild.id].pop(member.id)
+            try: self.backend.cach['react'][interaction.guild.id].pop(member.id)
             except:pass
         
-        if perk == Perk_Type.highlights:
-            try: del self.Perk.cach['highlight'][interaction.guild.id][member.id]
+        if perk == self.backend.types.highlights:
+            try: del self.backend.cach['highlight'][interaction.guild.id][member.id]
             except: pass
-            try: self.Perk.cach['highlight'][interaction.guild.id].pop(member.id)
+            try: self.backend.cach['highlight'][interaction.guild.id].pop(member.id)
             except:pass
 
     @admin.command(name="psearch", description="find the owner of a custom perk")
     @app_commands.describe(role="The role you want to search for", channel="The channel you want to search for")
     async def _psearch(self, interaction: Interaction,role: discord.Role=None, channel: discord.TextChannel=None):
-        config = await self.Perk.get_data(Perk_Type.config, interaction.guild.id, interaction.user.id)
+        config = await self.backend.get_data(self.backend.types.config, interaction.guild.id, interaction.user.id)
         if config == None:
             await interaction.response.send_message("You need to setup config first", ephemeral=True)
             return
@@ -802,7 +639,7 @@ class Perks(commands.Cog, name="perk", description="manage your custom perks"):
         if role is None and channel is None: return await interaction.response.send_message("You need to specify a role or a channel", ephemeral=True)
         embeds = []
         if role:
-            role_data = await self.Perk.roles.find({"role_id": role.id, "guild_id": interaction.guild.id})
+            role_data = await self.backend.roles.find({"role_id": role.id, "guild_id": interaction.guild.id})
             user_data = interaction.guild.get_member(role_data['user_id'])
             duration = humanfriendly.format_timespan(role_data['duration']) if role_data['duration'] != "permanent" else "Permanent"
             role_embed = discord.Embed(title="Custom Role Info", color=interaction.client.default_color, description="")
@@ -813,7 +650,7 @@ class Perks(commands.Cog, name="perk", description="manage your custom perks"):
             role_embed.description += f"**Friends:**" + ", ".join([f"<@{friend}>" for friend in role_data['friend_list']]) if len(role_data['friend_list']) > 0 else "None"
             embeds.append(role_embed)
         if channel:
-            channel_data = await self.Perk.channel.find({"channel_id": channel.id, "guild_id": interaction.guild.id})
+            channel_data = await self.backend.channel.find({"channel_id": channel.id, "guild_id": interaction.guild.id})
             user_data = interaction.guild.get_member(channel_data['user_id'])
             duration = humanfriendly.format_timespan(channel_data['duration']) if channel_data['duration'] != "permanent" else "Permanent"
             channel_embed = discord.Embed(title="Custom Channel Info", color=interaction.client.default_color, description="")
@@ -831,7 +668,7 @@ class Perks(commands.Cog, name="perk", description="manage your custom perks"):
     @app_commands.default_permissions(administrator=True)
     @app_commands.describe(member="The member you want to block", reason="The reason of the block")
     async def _ban(self, interaction: Interaction, member: discord.Member, reason: str):
-        config = await self.Perk.get_data(Perk_Type.config, interaction.guild.id, interaction.user.id)
+        config = await self.backend.get_data(self.backend.types.config, interaction.guild.id, interaction.user.id)
         if config == None:
             await interaction.response.send_message("You need to setup config first", ephemeral=True)
             return
@@ -847,30 +684,30 @@ class Perks(commands.Cog, name="perk", description="manage your custom perks"):
             "reason": reason,
             "banned_by": interaction.user.id
         }
-        await self.Perk.bans.insert(ban_data)
+        await self.backend.bans.insert(ban_data)
         await interaction.response.send_message(f"{member.mention} has been blocked from using custom perks clearing all their perks this may take few seconds", ephemeral=True)
-        role_data = await self.Perk.get_data(Perk_Type.roles, interaction.guild.id, member.id)
-        channel_data = await self.Perk.get_data(Perk_Type.channels, interaction.guild.id, member.id)
-        react_data = await self.Perk.get_data(Perk_Type.reacts, interaction.guild.id, member.id)
-        highlight_data = await self.Perk.get_data(Perk_Type.highlights, interaction.guild.id, member.id)
+        role_data = await self.backend.get_data(self.backend.types.roles, interaction.guild.id, member.id)
+        channel_data = await self.backend.get_data(self.backend.types.channels, interaction.guild.id, member.id)
+        react_data = await self.backend.get_data(self.backend.types.reacts, interaction.guild.id, member.id)
+        highlight_data = await self.backend.get_data(self.backend.types.highlights, interaction.guild.id, member.id)
 
         if role_data: 
             role = interaction.guild.get_role(role_data['role_id'])
             if role: await role.delete(reason=f"Perk Owner blocked by {interaction.user.name}")
-            await self.Perk.delete(Perk_Type.roles, role_data)
+            await self.backend.delete(self.backend.types.roles, role_data)
         if channel_data:
             channel = interaction.guild.get_channel(channel_data['channel_id'])
             if channel: await channel.delete(reason=f"Perk Owner blocked by {interaction.user.name}")
-            await self.Perk.delete(Perk_Type.channels, channel_data)
+            await self.backend.delete(self.backend.types.channels, channel_data)
         if react_data:
-            self.Perk.cach['react'][interaction.guild.id].pop(member.id)
-            await self.Perk.delete(Perk_Type.reacts, react_data)
-            try: del self.Perk.cach['react'][interaction.guild.id][member.id]
+            self.backend.cach['react'][interaction.guild.id].pop(member.id)
+            await self.backend.delete(self.backend.types.reacts, react_data)
+            try: del self.backend.cach['react'][interaction.guild.id][member.id]
             except: pass
         if highlight_data:
-            self.Perk.cach['highlight'][interaction.guild.id].pop(member.id)
-            await self.Perk.delete(Perk_Type.highlights, highlight_data)
-            try:del self.Perk.cach['highlight'][interaction.guild.id][member.id]
+            self.backend.cach['highlight'][interaction.guild.id].pop(member.id)
+            await self.backend.delete(self.backend.types.highlights, highlight_data)
+            try:del self.backend.cach['highlight'][interaction.guild.id][member.id]
             except: pass
         
         await interaction.followup.send(f"All existing perks of {member.mention} has been cleared successfully", ephemeral=True)
@@ -880,7 +717,7 @@ class Perks(commands.Cog, name="perk", description="manage your custom perks"):
     @app_commands.default_permissions(administrator=True)
     @app_commands.describe(member="The member you want to unblock")
     async def _unban(self, interaction: Interaction, member: discord.Member):
-        config = await self.Perk.get_data(Perk_Type.config, interaction.guild.id, interaction.user.id)
+        config = await self.backend.get_data(self.backend.types.config, interaction.guild.id, interaction.user.id)
         if config == None:
             await interaction.response.send_message("You need to setup config first", ephemeral=True)
             return
@@ -889,13 +726,12 @@ class Perks(commands.Cog, name="perk", description="manage your custom perks"):
 
             await interaction.response.send_message("You need to have admin roles to use this command", ephemeral=True)
             return
-        ban_data = await self.Perk.bans.find({"user_id": member.id, "guild_id": interaction.guild.id})
+        ban_data = await self.backend.bans.find({"user_id": member.id, "guild_id": interaction.guild.id})
         if not ban_data:
             await interaction.response.send_message("This user is not blocked", ephemeral=True)
             return
-        await self.Perk.bans.delete(ban_data)
+        await self.backend.bans.delete(ban_data)
         await interaction.response.send_message(f"{member.mention} has been unblocked from using custom perks", ephemeral=True)
-
 
 
     @commands.Cog.listener()
@@ -906,17 +742,17 @@ class Perks(commands.Cog, name="perk", description="manage your custom perks"):
             self.bot.dispatch('auto_react', message)
         if message.content is not None or message.content != "":
             self.bot.dispatch('auto_highlight', message)
-        # if message.guild.id in self.Perk.cach['channels'].keys():
-        #     if message.channel.id in self.Perk.cach['channels'][message.guild.id].keys():
-        #         self.bot.dispatch('check_activity', message, self.Perk.cach['channels'][message.guild.id][message.channel.id])
+        # if message.guild.id in self.backend.cach['channels'].keys():
+        #     if message.channel.id in self.backend.cach['channels'][message.guild.id].keys():
+        #         self.bot.dispatch('check_activity', message, self.backend.cach['channels'][message.guild.id][message.channel.id])
         if message.interaction is not None:
-            if message.channel.id in self.Perk.cach['channels'][message.guild.id].keys():
-                self.bot.dispatch('check_cmd_activity', message, self.Perk.cach['channels'][message.guild.id][message.channel.id])
+            if message.channel.id in self.backend.cach['channels'][message.guild.id].keys():
+                self.bot.dispatch('check_cmd_activity', message, self.backend.cach['channels'][message.guild.id][message.channel.id])
 
     @commands.Cog.listener()
     async def on_auto_highlight(self, message: discord.Message):
-        if message.guild.id not in self.Perk.cach['highlight'].keys(): return
-        guild_data = self.Perk.cach['highlight'][message.guild.id]
+        if message.guild.id not in self.backend.cach['highlight'].keys(): return
+        guild_data = self.backend.cach['highlight'][message.guild.id]
         message_content = message.content.lower()
         message_content = message_content.split(" ")
 
@@ -963,14 +799,14 @@ class Perks(commands.Cog, name="perk", description="manage your custom perks"):
         except:
             pass
         user_data['last_trigger'] = now
-        await self.Perk.update_cache(Perk_Type.highlights, message.guild, user_data)
-        await self.Perk.update(Perk_Type.highlights, user_data)
+        await self.backend.update_cache(self.backend.types.highlights, message.guild, user_data)
+        await self.backend.update(self.backend.types.highlights, user_data)
 
     @commands.Cog.listener()
     async def on_auto_react(self, message: discord.Message):
         if len(message.mentions) == 0: return
-        if message.guild.id not in self.Perk.cach['react'].keys(): return
-        guild_data = self.Perk.cach['react'][message.guild.id]
+        if message.guild.id not in self.backend.cach['react'].keys(): return
+        guild_data = self.backend.cach['react'][message.guild.id]
         now = datetime.datetime.utcnow()
         for mention in message.mentions:
             if mention.id in guild_data.keys():
@@ -981,7 +817,7 @@ class Perks(commands.Cog, name="perk", description="manage your custom perks"):
                     except:
                         continue
                     user_data['last_react'] = datetime.datetime.utcnow()
-                    await self.Perk.update_cache(Perk_Type.reacts, message.guild, user_data)
+                    await self.backend.update_cache(self.backend.types.reacts, message.guild, user_data)
                 else:
                     if now > user_data['last_react'] + datetime.timedelta(seconds=5):
                         try:
@@ -989,7 +825,7 @@ class Perks(commands.Cog, name="perk", description="manage your custom perks"):
                         except Exception as e:
                             continue
                         user_data['last_react'] = datetime.datetime.utcnow()
-                        await self.Perk.update_cache(Perk_Type.reacts, message.guild, user_data)
+                        await self.backend.update_cache(self.backend.types.reacts, message.guild, user_data)
 
 
 class Voice(commands.Cog):
