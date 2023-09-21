@@ -78,12 +78,12 @@ class Dev(commands.Cog, name="dev", description="Dev commands"):
     ])
     async def _host(self, interaction: discord.Interaction, servers: str,signal: Literal["kill", "restart", "start"]):
         view = Confirm(interaction.user, 30)
-        await interaction.response.send_message(embed=discord.Embed(description="Are you sure you want to restart the bot?", color=interaction.client.default_color), view=view)
+        await interaction.response.send_message(embed=discord.Embed(description=f"Are you sure you want send {signal} signal to {servers}", color=interaction.client.default_color), view=view)
         view.message = await interaction.original_response()
         await view.wait()
 
         if view.value:
-            await view.interaction.response.edit_message(embed=discord.Embed(description=f"Successfully sent {signal} signal to {servers}", color=interaction.client.default_color))
+            await view.interaction.response.edit_message(embed=discord.Embed(description=f"Successfully sent {signal} signal to {servers}", color=interaction.client.default_color), view=None)
             try:
                 async with aiohttp.ClientSession() as session:
                     headders = {
