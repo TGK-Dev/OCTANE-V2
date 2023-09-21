@@ -15,7 +15,8 @@ class Confirm(View):
 	async def on_timeout(self):		
 		for button in self.children:
 			button.disabled = True
-		await self.message.edit(view=self)
+		if isinstance(self.message, discord.Message):
+			await self.message.edit(view=self)
 		self.stop()
 	
 	async def interaction_check(self, interaction: discord.Interaction) -> bool:
