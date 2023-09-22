@@ -29,7 +29,7 @@ class Perks(commands.Cog, name="perk", description="manage your custom perks"):
         self.profile_roles.cancel()
     
     async def interaction_check(self, interaction: discord.Interaction):
-        data = await self.backend.bans.find({'user_id': interaction.user.id, 'guild_id': interaction.guildid})
+        data = await self.backend.bans.find({'user_id': interaction.user.id, 'guild_id': interaction.guild.id})
         if data:
             raise Blocked(interaction)
         else:
