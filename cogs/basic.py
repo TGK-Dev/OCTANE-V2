@@ -423,7 +423,7 @@ class karuta(commands.Cog):
         self.bot = bot
     
     @commands.command(name='karuta-access', aliases=['ka'])
-    @commands.has_any_role(811307879318945872, 810128688267919381)
+    @commands.has_any_role(811308304197222410, 810128688267919381)
     async def karuta_access(self, ctx):
         if not ctx.guild: return
         if ctx.author.guild.id != 785839283847954433: return
@@ -432,7 +432,7 @@ class karuta(commands.Cog):
         if blacklist_role in ctx.author.roles:
             await ctx.author.remove_roles(access_role)
             return await ctx.send("You are blacklisted from using this command!")
-        level_role = ctx.guild.get_role(811307879318945872)
+        level_role = ctx.guild.get_role(811308304197222410)
         donor_role = ctx.guild.get_role(810128688267919381)
         if level_role in ctx.author.roles or donor_role in ctx.author.roles:
             if access_role in ctx.author.roles:
