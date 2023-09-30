@@ -443,6 +443,16 @@ class karuta(commands.Cog):
         else:
             await ctx.send("You need to be level 10 or a donor to use this command!")
     
+    @commands.command(name="karuta-remove", aliases=['kr'])
+    async def karuta_remove(self, ctx, user:discord.Member):
+        if not ctx.guild: return
+        if ctx.author.guild.id != 785839283847954433: return
+        access_role = ctx.guild.get_role(1034072149247397938)
+        if ctx.author.id not in [538061886386733067, 488614633670967307, 677443545656721409]:
+            return await ctx.send("You can't use this command!")
+        await user.remove_roles(access_role)
+        await ctx.send("User has been removed from the karuta access list")
+
     @commands.command(name="karuta-bl")
     @commands.has_permissions(ban_members=True)
     async def karuta_bl(self, ctx, user:discord.Member):
