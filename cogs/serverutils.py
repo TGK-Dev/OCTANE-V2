@@ -18,10 +18,10 @@ from io import BytesIO
 from PIL import Image, ImageDraw, ImageFont, ImageChops
 
 auto_payout = {
-	1040975933772931172: {'prize': 10000000, 'event': 'Daily Rumble'},
-	1042408506181025842: {'prize': 25000000, 'event': 'Weekly Rumble'},
-	1110476759062827008: {'prize': 6900000, 'event': '100-Players Rumble'},
-	1111603846943354930: {'prize': 5000000, 'event': '30-Min Rumble'},
+	1040975933772931172: {'prize': 1, 'event': 'Daily Rumble', 'item': 'Pepe Trophy'}, #pepet
+	1042408506181025842: {'prize': 1, 'event': 'Weekly Rumble', 'item': 'Credit Card'}, #credit 
+	1110476759062827008: {'prize': 6900000, 'event': '100-Players Rumble', 'item': None},
+	
 }		
 
 class Payout(commands.GroupCog, name="payout", description="Payout commands"):
@@ -197,34 +197,13 @@ class Payout(commands.GroupCog, name="payout", description="Payout commands"):
 			return
 		if len(message.mentions) == 0: return
 		winner = message.mentions[0]
-		prize = auto_payout[message.channel.id]['prize']
-		event = auto_payout[message.channel.id]['event']
-		data = await self.bot.payout_config.find(message.guild.id)
-		claim_time = data['default_claim_time'] if data['default_claim_time'] is not None else 86400
-		claim_time_timestamp = int(round((datetime.datetime.utcnow() + datetime.timedelta(seconds=claim_time)).timestamp()))
-		claim_channel = message.guild.get_channel(data['pending_channel'])
-		if claim_channel is None: return
-		embed = await self.create_pending_embed(event, winner, prize, message.channel, message, claim_time_timestamp, message.guild.me, None)
-		
-		msg = await claim_channel.send(f"{winner.mention} Your prize has been queued for payout. Please claim it within <t:{claim_time_timestamp}:R> or it will rerolled.", embed=embed, view=Payout_claim())
-		queue_data = {
-			'_id': msg.id,
-			'guild': message.guild.id,
-			'channel': message.channel.id,
-			'event': event,
-			'winner': winner.id,
-			'prize': prize,
-			'item': None,
-			'queued_at': datetime.datetime.now(),
-			'claim_time': claim_time,
-			'claimed': False,
-			'winner_message_id': message.id,
-			'set_by': message.guild.me.id
-		}
-
-		await self.bot.payout_queue.insert(queue_data)
-		await message.add_reaction("<a:loading:998834454292344842>")
-		self.bot.dispatch("payout_queued", message.guild.me, f"Automatic payout", message, msg, winner, auto_payout[message.channel.id]['prize'])	
+		auto_payout_data = auto_payout[message.channel.id]
+		if auto_payout_data['item'] is not None:
+			item = await self.bot.dank_items.find(auto_payout_data['item'])
+			if item:
+				await self.create_payout(auto_payout_data['event'], winner, self.bot.user, auto_payout_data['prize'], message, item)
+		else:
+			await self.create_payout(auto_payout_data['event'], winner, self.bot.user, auto_payout_data['prize'], message)
 
 	@app_commands.command(name="set", description="configur the payout system settings")
 	@app_commands.describe(event="event name", message_id="winner message id", winners="winner of the event", quantity='A constant number like "123" or a shorthand like "5m"', item="what item did they win?")
