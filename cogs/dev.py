@@ -240,7 +240,7 @@ class Admin(commands.GroupCog):
         pass
 
     @admin.command(name="snipe", description="resets the channels snipes and editsnipes", aliases=['rs', 'rsnipe'])
-    @commands.has_any_role(785845265118265376, 785842380565774368)
+    @commands.has_any_role(785845265118265376, 785842380565774368, 941772431750750218)
     async def reset_snipe(self, ctx, channel: discord.TextChannel = None):
         if not channel: channel = ctx.channel
         if channel.id not in self.bot.snipes.keys() and channel.id not in self.bot.esnipes.keys(): return await ctx.send(embed=discord.Embed(description=f"There are no snipes in {channel.mention}", color=self.bot.default_color))
