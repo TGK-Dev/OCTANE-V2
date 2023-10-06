@@ -235,7 +235,7 @@ class Admin(commands.GroupCog):
 
 
     @commands.group(name="admin", description="Admin commands", invoke_without_command=False)
-    @commands.has_any_role(785845265118265376, 785842380565774368)
+    @commands.has_any_role(785845265118265376, 785842380565774368, 941772431750750218)
     async def admin(self, ctx):
         pass
 
