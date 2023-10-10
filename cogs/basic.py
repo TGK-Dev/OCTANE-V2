@@ -423,7 +423,6 @@ class karuta(commands.Cog):
         self.bot = bot
     
     @commands.command(name='karuta-access', aliases=['ka'])
-    @commands.has_any_role(811308304197222410, 810128688267919381)
     async def karuta_access(self, ctx):
         if not ctx.guild: return
         if ctx.author.guild.id != 785839283847954433: return
@@ -432,16 +431,11 @@ class karuta(commands.Cog):
         if blacklist_role in ctx.author.roles:
             await ctx.author.remove_roles(access_role)
             return await ctx.send("You are blacklisted from using this command!")
-        level_role = ctx.guild.get_role(811308304197222410)
-        donor_role = ctx.guild.get_role(810128688267919381)
-        if level_role in ctx.author.roles or donor_role in ctx.author.roles:
-            if access_role in ctx.author.roles:
-                await ctx.author.remove_roles(access_role)
-                return await ctx.send("Your access to the karuta has been revoked!")
-            await ctx.author.add_roles(access_role)
-            return await ctx.send("You now have access to the karuta commands!")
-        else:
-            await ctx.send("You need to be level 10 or a donor to use this command!")
+        if access_role in ctx.author.roles:
+            await ctx.author.remove_roles(access_role)
+            return await ctx.send("Your access to the karuta has been revoked!")
+        await ctx.author.add_roles(access_role)
+        return await ctx.send("You now have access to the karuta commands!")
     
     @commands.command(name="karuta-remove", aliases=['kr'])
     async def karuta_remove(self, ctx, user:discord.Member):
