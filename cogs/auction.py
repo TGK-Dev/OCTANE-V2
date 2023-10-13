@@ -239,6 +239,9 @@ class Auction(commands.GroupCog):
             return await interaction.response.send_message("There are no auctions pending!", ephemeral=True)
         item = self.bot.dank_items_cache.get(auction_data['item'])
 
+        if item['_id'] in config['banned_items']:
+            return await interaction.response.send_message("This item is banned from auction!", ephemeral=True)
+
         starting_big = int((item['price'] * auction_data['quantity'])/2)
         total_price = item['price'] * auction_data['quantity']
 
@@ -311,6 +314,91 @@ class Auction(commands.GroupCog):
         data['ended'] = False
         await self.backend.auction.update(data)
         await interaction.response.send_message("Auction has been re-queued!")
+
+    @app_commands.command(name="item-ban", description="Ban an item from auction")
+    @app_commands.autocomplete(item=item_autocomplete)
+    @app_commands.describe(item="Item to ban")
+    @app_commands.checks.has_permissions(administrator=True)
+    async def item_ban(self, interaction: discord.Interaction, item: str):
+        config = await self.backend.get_config(interaction.guild_id)
+        if not config: return await interaction.response.send_message("Auction is not setup yet!")
+        if item in config['banned_items']: 
+            config['banned_items'].remove(item)
+            await interaction.response.send_message(f"**{item}** has been unbanned from auction!")
+        else:
+            config['banned_items'].append(item)
+            await interaction.response.send_message(f"**{item}** has been banned from auction!")
+        await self.backend.update_config(interaction.guild_id, config)
+
+    @app_commands.command(name="start_from_pool", description="Start an auction from pool")
+    @app_commands.autocomplete(item=item_autocomplete)
+    @app_commands.describe(item="Item to start auction for", quantity="Quantity of item to start auction for")
+    @app_commands.checks.has_permissions(administrator=True)
+    async def start_from_pool(self, interaction: discord.Interaction, item: str, quantity:int = 1):
+        config = await self.backend.get_config(interaction.guild_id)
+        item = self.bot.dank_items_cache.get(item)
+        if item['_id'] in config['banned_items']:
+            return await interaction.response.send_message("This item is banned from auction!", ephemeral=True)
+
+        starting_big = int(item['price'] * quantity/2)
+        total_price = item['price'] * quantity
+
+        if total_price >= 100000000:
+            bet_incre = 1000000
+        else:
+            bet_incre = 50000
+
+        embed = discord.Embed(title=f"Auction Starting", description="", color=interaction.client.default_color)
+        embed.set_author(name="Auction Manager", icon_url="https://cdn.discordapp.com/emojis/1134834084728815677.webp?size=96&quality=lossless")
+        embed.add_field(name="Seller", value="Sponsored by Server Pool")
+        embed.add_field(name="Item", value=f"`{quantity}x` **{item['_id']}**")
+        embed.add_field(name="Net Worth", value=f"⏣ {total_price:,}")
+        embed.add_field(name="Auctioner", value=interaction.user.mention)
+        embed.add_field(name="Starting Bid", value=f"⏣ {starting_big:,}")
+        embed.add_field(name="Bid Increment", value=f"⏣ {bet_incre:,}")
+        embed.add_field(name="Current Bidder", value="`None`")
+        embed.add_field(name="Current Bid", value=f"⏣ {starting_big:,}")
+        embed.add_field(name="Time Left", value="`Waiting for start`")
+
+        view = Confirm(interaction.user, 60)
+        view.children[0].label = "Start Auction"
+        view.children[1].label = "Cancel Auction"
+        await interaction.response.send_message(embed=embed, view=view)
+        msg = await interaction.original_response()
+        view.message = msg
+        await view.wait()
+        if not view.value:
+            return await interaction.delete_original_response()
+        else:
+            await view.interaction.response.edit_message(view=None)
+        thread = await msg.create_thread(name=f"Auction for {item['_id']}", auto_archive_duration=1440)
+        data = {
+            "_id": thread.id,
+            "item": item['_id'],
+            "quantity": quantity,
+            "price": item['price'],
+            "starting_bid": starting_big,
+            "current_bid": starting_big,
+            "current_bidder": None,
+            "bet_increment": bet_incre,
+            "auctioner": interaction.user.id,
+            "donated_at": 'Sponsored by Server Pool',
+            "host": interaction.user.id,
+            "start_at": datetime.datetime.now(),
+            "last_bet": datetime.datetime.now(),
+            "time_left": 30,
+            "call_started": False,
+            "thread": thread,
+            "message": msg,
+            "ended": False,
+            "db_id": None,
+        }
+        self.backend.auction_cache[thread.id] = data
+        await interaction.followup.send(f"Auction started here {thread.mention}")
+        await self.update_message(message=msg, data=data, first=True)
+        if config['log_channel']:
+            channel = interaction.guild.get_channel(config['log_channel'])
+            self.bot.dispatch("auction_start_log", data['auctioner'], data['host'], data['item'], data['quantity'], channel)
 
     @app_commands.command(name="queue", description="Queue an auction")
     async def queue(self, interaction: discord.Interaction):
@@ -515,14 +603,19 @@ class Auction(commands.GroupCog):
         thread: discord.Thread = data['thread']
         if data['current_bidder'] == None and data['current_bid'] == data['starting_bid']:
             temp_data = await self.backend.auction.find(data['db_id'])
-            await self.backend.auction.delete(temp_data)
-            await self.backend.auction.insert(temp_data)
-            await message.reply("No one bid on your auction, so it has been cancelled and put back in queue!")
-            await thread.send("No one bid on this auction, so it has been cancelled and put back in queue!")
-            try:self.backend.auction_cache.pop(thread.id)
-            except:pass
-            await thread.edit(locked=False, archived=False)
-            return
+            if temp_data is None:
+                await message.reply("No one bid on your auction, so it has been cancelled")
+                await thread.edit(locked=False, archived=False)
+                return
+            else:
+                await self.backend.auction.delete(temp_data)
+                await self.backend.auction.insert(temp_data)
+                await message.reply("No one bid on your auction, so it has been cancelled and put back in queue!")
+                await thread.send("No one bid on this auction, so it has been cancelled and put back in queue!")
+                try:self.backend.auction_cache.pop(thread.id)
+                except:pass
+                await thread.edit(locked=False, archived=False)
+                return
         
         third_call = discord.Embed(description="# Going Thrice...", color=self.bot.default_color)
         embed = discord.Embed(description=f"# Sold to <@{data['current_bidder']}> for ⏣ {data['current_bid']:,}!", color=0x00ff00)
@@ -566,6 +659,8 @@ class Auction(commands.GroupCog):
         except:
             pass
         queue_data = await self.backend.auction.find(data['db_id'])
+        if queue_data is None:
+            return
         queue_channel = self.bot.get_channel(config['queue_channel'])
         try:
             qmsg = await queue_channel.fetch_message(queue_data['message_id'])
