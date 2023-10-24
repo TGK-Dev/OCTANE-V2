@@ -169,7 +169,9 @@ class Staff_Commands(commands.GroupCog, name="staff"):
             user_data = await self.backend.create_staff(user, interaction.guild)
 
         if position in user_data['positions']:
-            return await interaction.response.send_message("This user already has this position", ephemeral=True)
+            return await interaction.edit_original_response(
+                embed=discord.Embed(description=f"{user.mention} already has the position `{position.capitalize()}`",
+                                    color=self.bot.default_color))
 
         postdate: Post_data = {'name': position, 'appointed_by': interaction.user.id,
                                'appointed_at': datetime.datetime.utcnow()}
