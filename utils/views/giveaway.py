@@ -60,16 +60,18 @@ class Giveaway(View):
                 result['roles'] = f"You don't have the required role(s) to join this giveaway.\n> Missing roles: {', '.join(missing_roles)}"
 
         if data['channel_messages'] != {}:
-            user_level = await interaction.client.level.get_member_level(interaction.user)
             channel = str(data['channel_messages']['channel'])
+            user_data = data['channel_messages']['users'][str(interaction.user.id)] if str(interaction.user.id) in data['channel_messages']['users'].keys() else None
             try:
-                if channel not in user_level['messages'].keys():
-                    result['messages'] = f"You don't have the required messages to join this giveaway.\n> Required messages: Must sent {data['channel_messages']['count']} messages in <#{channel}>"
-                elif channel in user_level['messages'].keys():
-                    if user_level['messages'][channel] < data['channel_messages']['count']:
-                        result['messages'] = f"You don't have the required messages to join this giveaway.\n> Required messages: Must sent {data['channel_messages']['count']} messages in <#{channel}>"
-            except Exception:
-                result['messages'] = f"You don't have the required messages to join this giveaway.\n> Required messages: Must sent {data['channel_messages']['count']} messages in <#{channel}>"
+                if user_data is None:
+                    result['channel'] = f"You have not completed the channel message requirement.\n> Required messages: {data['channel_messages']['count']} in <#{channel}>\n > You have sent: 0"
+                elif user_data['count'] >= data['channel_messages']['count']:
+                    pass
+                else:
+                    result['channel'] = f"You have not completed the channel message requirement.\n> Required messages: {data['channel_messages']['count']} in <#{channel}>\n > You have sent: {user_data['count']}"
+            except Exception as e:
+                print(e)
+                pass
 
         bypassed = False    
         if len(result.keys()) > 0:

@@ -315,6 +315,7 @@ class Level(commands.GroupCog):
             annouce = message.guild.get_channel(config['announcement_channel'])
             if annouce is None: return
             await annouce.send(embed=level_up_embed, content=user.mention)
+
         if data['weekly'] >= config['weekly']['required_messages']:
             role = message.guild.get_role(config['weekly']['role'])
             if role is None: return
@@ -365,13 +366,6 @@ class Level(commands.GroupCog):
             annouce = message.guild.get_channel(config['announcement_channel'])
             if annouce is None: return
             await annouce.send(embed=level_up_embed, content=message.author.mention)
-
-        if 'messages' not in data.keys():
-            data['messages'] = {}
-        if str(message.channel.id) not in data['messages'].keys():
-            data['messages'][str(message.channel.id)] = 1
-        else:
-            data['messages'][str(message.channel.id)] += 1
 
         await self.levels.update_member_level(message.author, data)
         if data['weekly'] >= config['weekly']['required_messages']:
@@ -483,7 +477,6 @@ class Level(commands.GroupCog):
         new_data = []
         for i in data:
             i['weekly'] = 0
-            i['messages'] = {}
             new_data.append(i)
             self.levels.level_cache[i['_id']] = i
         await self.levels.ranks.bulk_update(new_data)
@@ -539,9 +532,20 @@ class Giveaways_Backend:
             return None
         return giveaway
 
-    async def update_giveaway(self, message: discord.Message, data: dict):
+    async def update_giveaway(self, message: discord.Message | int, data: dict):
         await self.giveaways.update(data)
-        self.giveaways_cache[message.id] = data
+        if isinstance(message, discord.Message):
+            self.giveaways_cache[message.id] = data
+        else:
+            self.giveaways_cache[message] = data
+    
+    async def get_message_giveaways(self, message: discord.Message) -> list:
+        giveaways = []
+        for giveaway in self.giveaways_cache.values():
+            if giveaway['channel_messages'] == {}: continue
+            if giveaway['channel_messages']['channel'] == message.channel.id:
+                giveaways.append(giveaway)
+        return giveaways
 
 class Giveaways(commands.GroupCog, name="giveaways"):
     def __init__(self, bot):
@@ -841,9 +845,10 @@ class Giveaways(commands.GroupCog, name="giveaways"):
             msg_count = int(channel_message[1])
             msg_channel = interaction.guild.get_channel(int(channel_message[0][2:-1]))
             if not msg_channel: return await interaction.followup.send("Provide a valid channel for channel message!")
-            embed.description += f"> **Must have sent {msg_count} messages in {msg_channel.mention}**\n"
+            embed.add_field(name="Required Messages", value=f"{msg_channel.mention}: {msg_count}", inline=False)
             data["channel_messages"]["channel"] = msg_channel.id
             data["channel_messages"]["count"] = msg_count
+            data["channel_messages"]["users"] = {}
 
         embed.timestamp = datetime.datetime.now() + datetime.timedelta(seconds=duration)
         embed.set_footer(text=f"{winners} winner{'s' if winners > 1 else ''} | Ends at")
@@ -892,9 +897,7 @@ class Giveaways(commands.GroupCog, name="giveaways"):
         self.bot.dispatch("giveaway_end", giveawa_data)
         await interaction.response.send_message("Giveaway rerolled successfully! Make sure to cancel the already queued payouts use `/payout search`", ephemeral=True)
         chl = interaction.client.get_channel(1130057933468745849)
-        await chl.send(f"Rerolled giveaway by {interaction.user.mention} in {interaction.guild.name} for {winners} winners {message.jump_url}")
-
-    
+        await chl.send(f"Rerolled giveaway by {interaction.user.mention} in {interaction.guild.name} for {winners} winners {message.jump_url}")    
     
 
     @app_commands.command(name="end", description="End a giveaway")
@@ -933,6 +936,35 @@ class Giveaways(commands.GroupCog, name="giveaways"):
                 total += multi
         embed.description += f"**Total Multiplier** - `{total}x`"
         await ctx.reply(embed=embed, allowed_mentions=discord.AllowedMentions.none())
+
+    @commands.Cog.listener()
+    async def on_message(self, message: discord.Message):
+        if message.author.bot: return
+        if message.guild is None: return
+        user: discord.Member = message.author
+        giveaways = await self.backend.get_message_giveaways(message)
+        if len(giveaways) == 0: return
+        for giveaway in giveaways:
+            if user.id in giveaway['entries'].keys(): continue
+            if giveaway['ended']: continue
+            if giveaway['channel_messages']:
+                if message.channel.id != giveaway['channel_messages']['channel']: continue
+                if str(user.id) not in giveaway['channel_messages']['users'].keys():
+                    giveaway['channel_messages']['users'][str(user.id)] = {
+                        "count": 1,
+                        "last_message": message.created_at
+                    }
+                    await self.backend.giveaways.update(giveaway)
+                    self.backend.giveaways_cache[giveaway['_id']] = giveaway
+                else:
+                    time_diff = (message.created_at - giveaway['channel_messages']['users'][str(user.id)]['last_message']).total_seconds()
+                    if time_diff < 8:
+                        continue
+                    else:
+                        giveaway['channel_messages']['users'][str(user.id)]['count'] += 1
+                        giveaway['channel_messages']['users'][str(user.id)]['last_message'] = message.created_at
+                        await self.backend.giveaways.update(giveaway)
+                        self.backend.giveaways_cache[giveaway['_id']] = giveaway
 
     @commands.Cog.listener()
     async def on_giveaway_end_log(self, giveaway_data: dict):
