@@ -957,7 +957,7 @@ class Giveaways(commands.GroupCog, name="giveaways"):
                     await self.backend.giveaways.update(giveaway)
                     self.backend.giveaways_cache[giveaway['_id']] = giveaway
                 else:
-                    time_diff = (message.created_at - giveaway['channel_messages']['users'][str(user.id)]['last_message']).total_seconds()
+                    time_diff = (discord.utils.utcnow() - giveaway['channel_messages']['users'][str(user.id)]['last_message']).total_seconds()
                     if time_diff < 8:
                         continue
                     else:
