@@ -952,17 +952,20 @@ class Giveaways(commands.GroupCog, name="giveaways"):
                 if str(user.id) not in giveaway['channel_messages']['users'].keys():
                     giveaway['channel_messages']['users'][str(user.id)] = {
                         "count": 1,
-                        "last_message": message.created_at
+                        "last_message": datetime.datetime.utcnow()
                     }
                     await self.backend.giveaways.update(giveaway)
                     self.backend.giveaways_cache[giveaway['_id']] = giveaway
                 else:
-                    time_diff = (discord.utils.utcnow() - giveaway['channel_messages']['users'][str(user.id)]['last_message']).total_seconds()
+                    try:
+                        time_diff = (datetime.datetime.utcnow() - giveaway['channel_messages']['users'][str(user.id)]['last_message']).total_seconds()
+                    except TypeError:
+                        time_diff = 10
                     if time_diff < 8:
                         continue
                     else:
                         giveaway['channel_messages']['users'][str(user.id)]['count'] += 1
-                        giveaway['channel_messages']['users'][str(user.id)]['last_message'] = message.created_at
+                        giveaway['channel_messages']['users'][str(user.id)]['last_message'] = datetime.datetime.utcnow()
                         await self.backend.giveaways.update(giveaway)
                         self.backend.giveaways_cache[giveaway['_id']] = giveaway
 
