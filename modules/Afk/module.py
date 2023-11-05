@@ -36,9 +36,7 @@ class Afk(commands.GroupCog):
         try:
             await message.reply(f"`{user_data['last_nick']}` is afk: {user_data['reason']}", delete_after=10, allowed_mentions=discord.AllowedMentions.none(), mention_author=False)
         except discord.HTTPException:
-            await message.channel.send(f"{message.author.mention} `{user_data['last_nick']}` is afk: {user_data['reason']}", delete_after=10, allowed_mentions=discord.AllowedMentions.none())
-                                       
-
+            await message.channel.send(f"{message.author.mention} `{user_data['last_nick']}` is afk: {user_data['reason']}", delete_after=10, allowed_mentions=discord.AllowedMentions.none())                                       
 
     @commands.Cog.listener()
     async def on_afk_return(self, message):
