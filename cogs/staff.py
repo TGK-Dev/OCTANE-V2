@@ -130,6 +130,13 @@ class Staff_Commands(commands.GroupCog, name="staff"):
             webhook = discord.Webhook.from_url(webhook, session=session)
             await webhook.send(embed=embed, username="Staff System",
                                avatar_url=self.bot.user.avatar.url if self.bot.user.avatar else self.bot.user.default_avatar.url)
+    
+    @commands.Cog.listener()
+    async def on_staff_leave(self, webhook: str, embed: discord.Embed):
+        async with aiohttp.ClientSession() as session:
+            webhook = discord.Webhook.from_url(webhook, session=session)
+            await webhook.send(embed=embed, username="Staff Leave Logs",
+                               avatar_url=self.bot.user.avatar.url if self.bot.user.avatar else self.bot.user.default_avatar.url)
 
     @app_commands.command(name="appoint", description="Appoint a user to a position")
     @app_commands.describe(user="The user you want to appoint", position="The position you want to appoint them to")
@@ -385,6 +392,16 @@ class Staff_Commands(commands.GroupCog, name="staff"):
         await interaction.edit_original_response(
             embed=discord.Embed(description=f"Successfully set leave for {user.mention}",
                                 color=self.bot.default_color))
+        
+        if guild_config['webhook_url']:
+            embed = discord.Embed(title="Staff Leave", description=f"",
+                                    color=self.bot.default_color)
+            embed.add_field(name="Staff", value=user.mention, inline=False)
+            embed.add_field(name="Reason", value=reason, inline=False)
+            embed.add_field(name="Time", value=f"<t:{time}:R> (<t:{time}:f>)", inline=False)
+            embed.add_field(name="Started By", value=interaction.user.mention, inline=False)
+            self.bot.dispatch("staff_leave", guild_config['webhook_url'], embed)
+                                  
 
     @leave.command(name="remove", description="Remove leave for your staff members")
     @app_commands.describe(user="The user you want to remove leave for")
@@ -454,14 +471,13 @@ class Staff_Commands(commands.GroupCog, name="staff"):
         if not user_data:
             return await interaction.response.send_message(f"{user.mention} is not apart of any positions",
                                                            ephemeral=True)
-        print(user_data)
         embed = discord.Embed(title="", color=self.bot.default_color, description="")
         embed.set_author(name=user.name, icon_url=user.avatar.url if user.avatar else user.default_avatar.url)
         for post in user_data['positions']:
             post_role = interaction.guild.get_role(guild_config['positions'][post]['role'])
             if post_role is None:
                 continue
-            embed.add_field(name="Position: {post.capitalize()}", value=f"**Appointed By:** <@{user_data['positions'][post]['appointed_by']}>\n**Appointed At:** {user_data['positions'][post]['appointed_at'].strftime('%d/%m/%Y %H:%M:%S')} (<t:{int(user_data['positions'][post]['appointed_at'].timestamp())}:R>)", inline=False)
+            embed.add_field(name=f"Position: {post.capitalize()}", value=f"**Appointed By:** <@{user_data['positions'][post]['appointed_by']}>\n**Appointed At:** {user_data['positions'][post]['appointed_at'].strftime('%d/%m/%Y %H:%M:%S')} (<t:{int(user_data['positions'][post]['appointed_at'].timestamp())}:R>)")
 
         if user_data['leave']['on_leave'] is True:
             if user_data['leave']['on_leave']:
