@@ -194,7 +194,7 @@ class Staff_Commands(commands.GroupCog, name="staff"):
                                 color=self.bot.default_color))
 
     @app_commands.command(name="demote", description="Demote a user from a position")
-    @app_commands.describe(user="The user you want to demote", position="The position you want to demote them from", reaason="The reason you want to demote them")
+    @app_commands.describe(user="The user you want to demote", position="The position you want to demote them from", reason="The reason you want to demote them")
     @app_commands.autocomplete(position=post_auto)
     @app_commands.default_permissions(administrator=True)
     async def demote(self, interaction: discord.Interaction, user: discord.Member, position: str, reason: str):

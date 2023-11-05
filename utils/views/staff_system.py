@@ -89,8 +89,6 @@ class Staff_config_edit(View):
             await interaction.client.staff_db.update_config(interaction.guild.id, self.data)
             await interaction.delete_original_response()
             await self.message.edit(embed=await self.update_embed(self.data, interaction))
-
-            
     
     @button(label="Leave Role", style=discord.ButtonStyle.gray, emoji="<:tgk_role:1073908306713780284>", row=1)
     async def leave_role(self, interaction: Interaction, button: Button):
@@ -105,9 +103,7 @@ class Staff_config_edit(View):
             self.data['last_edit'] = datetime.datetime.now()
             await interaction.client.staff_db.update_config(interaction.guild.id, self.data)
             await interaction.delete_original_response()
-            await self.message.edit(embed=await self.update_embed(self.data, interaction))
-
-            
+            await self.message.edit(embed=await self.update_embed(self.data, interaction))            
     
     @button(label="Leave Channel", style=discord.ButtonStyle.gray, emoji="<:tgk_channel:1073908465405268029>", row=2)
     async def leave_channel(self, interaction: Interaction, button: Button):
