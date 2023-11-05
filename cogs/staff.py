@@ -79,7 +79,7 @@ class Staff_DB:
         return data
 
     async def create_staff(self, user: discord.Member, guild: discord.Guild) -> Staff:
-        data: Staff = {'user_id': user.id, 'guild': guild.id, 'positions': {}, 'leave': {}}
+        data: Staff = {'user_id': user.id, 'guild': guild.id, 'positions': {}, 'leave': {'reason': None, 'last_leave': None, "on_leave": False, 'message_id': None, 'time': None }}
         await self.staff.insert(data)
         return data
     
@@ -194,10 +194,10 @@ class Staff_Commands(commands.GroupCog, name="staff"):
                                 color=self.bot.default_color))
 
     @app_commands.command(name="demote", description="Demote a user from a position")
-    @app_commands.describe(user="The user you want to demote", position="The position you want to demote them from")
+    @app_commands.describe(user="The user you want to demote", position="The position you want to demote them from", reaason="The reason you want to demote them")
     @app_commands.autocomplete(position=post_auto)
     @app_commands.default_permissions(administrator=True)
-    async def demote(self, interaction: discord.Interaction, user: discord.Member, position: str):
+    async def demote(self, interaction: discord.Interaction, user: discord.Member, position: str, reason: str):
         guild_config = await self.backend.get_config(interaction.guild_id)
 
         if interaction.user.id != interaction.guild.owner.id and interaction.user.id not in guild_config['owners'] and interaction.user.id not in guild_config['staff_manager']:
@@ -343,10 +343,15 @@ class Staff_Commands(commands.GroupCog, name="staff"):
         user_data = await self.backend.get_staff(user, interaction.guild)
         if not user_data:
             user_data = await self.backend.create_staff(user, interaction.guild)
-        leave_data: Leave = {'reason': reason, 'time': time,
-                             'end_time': datetime.datetime.utcnow() + datetime.timedelta(
-                                 seconds=time), 'on_leave': True}
-        user_data['leave'] = leave_data
+
+        user_data['leave']['reason'] = reason
+        user_data['leave']['time'] = time
+        user_data['leave']['end_time'] = datetime.datetime.utcnow() + datetime.timedelta(seconds=time)
+        user_data['leave']['on_leave'] = True
+        user_data['leave']['last_leave'] = datetime.datetime.utcnow()
+        user_data['leave']['last_leave_reason'] = reason
+    
+
         await self.backend.update_staff(user, interaction.guild, user_data)
 
         leave_role = interaction.guild.get_role(guild_config['leave_role'])
@@ -374,7 +379,7 @@ class Staff_Commands(commands.GroupCog, name="staff"):
 
         if leave_channel:
             msg = await leave_channel.send(embed=embed)
-            leave_data['message_id'] = msg.id
+            user_data['leave']['message_id'] = msg.id
             await self.backend.update_staff(user, interaction.guild, user_data)
 
         await interaction.edit_original_response(
@@ -424,7 +429,12 @@ class Staff_Commands(commands.GroupCog, name="staff"):
         except KeyError:
             pass
 
-        user_data['leave'] = {}
+        user_data['leave']['reason'] = None
+        user_data['leave']['time'] = None
+        user_data['leave']['end_time'] = None
+        user_data['leave']['on_leave'] = False
+        user_data['leave']['message_id'] = None
+
         await self.backend.update_staff(user, interaction.guild, user_data)
         await interaction.edit_original_response(
             embed=discord.Embed(description=f"Successfully removed leave for {user.mention}",
@@ -451,16 +461,21 @@ class Staff_Commands(commands.GroupCog, name="staff"):
             post_role = interaction.guild.get_role(guild_config['positions'][post]['role'])
             if post_role is None:
                 continue
-            embed.add_field(name=" ", value=f"**Position:** {post.capitalize()}\n**Appointed By:** <@{user_data['positions'][post]['appointed_by']}>\n**Appointed At:** {user_data['positions'][post]['appointed_at'].strftime('%d/%m/%Y %H:%M:%S')}", inline=True)
+            embed.add_field(name="Position: {post.capitalize()}", value=f"**Appointed By:** <@{user_data['positions'][post]['appointed_by']}>\n**Appointed At:** {user_data['positions'][post]['appointed_at'].strftime('%d/%m/%Y %H:%M:%S')} (<t:{int(user_data['positions'][post]['appointed_at'].timestamp())}:R>)", inline=False)
 
-        if user_data['leave'] != {}:
+        if user_data['leave']['on_leave'] is True:
             if user_data['leave']['on_leave']:
                 embed.description += f"**Leave Reason:** {user_data['leave']['reason']}\n"
                 embed.description += f"**Leave Time:** {user_data['leave']['time']}\n"
-                embed.description += f"**Leave End Time:** {user_data['leave']['end_time'].strftime('%d/%m/%Y %H:%M:%S')}\n"
-
+                embed.description += f"**Leave End Time:** {user_data['leave']['end_time'].strftime('%d/%m/%Y %H:%M:%S')} (<t:{int(user_data['leave']['end_time'].timestamp())}:R>)\n"
+        
+        elif user_data['leave']['on_leave'] is False:
+            embed.description += "**Leave:** Not on leave\n"
+        
+        if user_data['leave']['last_leave'] is not None:
+            embed.description += f"**Last Leave:** {user_data['leave']['last_leave'].strftime('%d/%m/%Y %H:%M:%S')} (<t:{int(user_data['leave']['last_leave'].timestamp())}:R>)\n"
+            embed.description += f"**Last Leave Reason:** {user_data['leave']['last_leave_reason']}\n"
         await interaction.response.send_message(embed=embed)
-
 
     @commands.command(name="recover", description="Verify your indentitiy by using your recovery code")
     @commands.dm_only()
