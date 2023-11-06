@@ -8,6 +8,7 @@ from utils.views import staff_system
 from utils.paginator import Paginator
 from utils.transformer import TimeConverter
 from utils.transformer import MultipleMember
+from utils.views.buttons import Confirm
 from typing import TypedDict
 from bson import ObjectId
 import bcrypt
@@ -120,6 +121,14 @@ class Staff_Commands(commands.GroupCog, name="staff"):
         choices = []
         for position in config['positions']:
             choices.append(app_commands.Choice(name=position, value=position))
+        return choices[:24]
+
+    async def user_post_auto(self, interaction: discord.Interaction, current: str) -> List[app_commands.Choice[str]]:
+        user_data = await self.backend.get_staff(interaction.user, interaction.guild)
+        choices = []
+        for position in user_data['positions'].keys():
+            choices.append(app_commands.Choice(name=position, value=position))
+        #choices.append(app_commands.Choice(name="All", value="all"))
         return choices[:24]
 
     leave = app_commands.Group(name="leave", description="Leave System Commands")
@@ -492,6 +501,62 @@ class Staff_Commands(commands.GroupCog, name="staff"):
             embed.description += f"**Last Leave:** {user_data['leave']['last_leave'].strftime('%d/%m/%Y %H:%M:%S')} (<t:{int(user_data['leave']['last_leave'].timestamp())}:R>)\n"
             embed.description += f"**Last Leave Reason:** {user_data['leave']['last_leave_reason']}\n"
         await interaction.response.send_message(embed=embed)
+
+    @app_commands.command(name="resign", description="Resign from a position")
+    @app_commands.describe(position="The position you want to resign from", reason="The reason you want to resign from the position")
+    @app_commands.autocomplete(position=user_post_auto)
+    async def resign(self, interaction: discord.Interaction, position: str, reason: str):
+        user_data = await self.backend.get_staff(interaction.user, interaction.guild)
+        config = await self.backend.get_config(interaction.guild_id)
+
+        if not user_data:
+            return await interaction.response.send_message("You are not apart of any positions", ephemeral=True)
+        embed = discord.Embed(description="Are you sure you want to resign from the following positions?\n", color=self.bot.default_color)
+        if position == "all":
+            for post in user_data['positions'].keys():
+                embed.description += f"* `{post.capitalize()}`\n"
+        else:
+            embed.description += f"* `{position.capitalize()}`\n"
+        
+        view = Confirm(user=interaction.user, timeout=60)
+        await interaction.response.send_message(embed=embed, view=view)
+        view.message = await interaction.original_response()
+
+        await view.wait()
+        if view.value is not True:
+            await interaction.delete_original_response()
+        
+        await view.interaction.response.edit_message(
+            embed=discord.Embed(description="Please wait while we resign you from the position...", color=self.bot.default_color), view=None)
+        
+        if position == "all":
+            if len(user_data['positions'].keys()) != 0:
+                user_posts = user_data['positions'].copy()
+                for post in user_posts.keys():
+                    post_role = interaction.guild.get_role(config['positions'][post]['role'])
+                    if post_role is None:
+                        continue
+                    await interaction.user.remove_roles(post_role, reason=f"Resigned from position due to {reason}")
+                    self.bot.dispatch("staff_update", config['webhook_url'], discord.Embed(title="Staff Update", description=f"{interaction.user.mention} resigned from {post} due to {reason}", color=self.bot.default_color))
+                    del user_data['positions'][post]
+        else:
+            post_role = interaction.guild.get_role(config['positions'][position]['role'])
+            if post_role is None:
+                return await interaction.user.send("Position role does not exist")
+            await interaction.user.remove_roles(post_role, reason=f"Resigned from position due to {reason}")
+            self.bot.dispatch("staff_update", config['webhook_url'], discord.Embed(title="Staff Update", description=f"{interaction.user.mention} resigned from {position} due to {reason}", color=self.bot.default_color))
+            del user_data['positions'][position]
+        
+        await self.backend.update_staff(interaction.user, interaction.guild, user_data)
+        
+        if len(user_data['positions'].keys()) == 0:
+            base_role = interaction.guild.get_role(config['base_role'])
+            await interaction.user.remove_roles(base_role, reason="Resigned from all positions")
+        
+        await interaction.user.send(embed=discord.Embed(description=f"Successfully resigned from `{position.capitalize()}`", color=self.bot.default_color))
+        await view.interaction.edit_original_response(
+            embed=discord.Embed(description=f"{interaction.user.mention} successfully resigned from `{position.capitalize()}`", color=self.bot.default_color))
+        
 
     @commands.command(name="recover", description="Verify your indentitiy by using your recovery code")
     @commands.dm_only()
