@@ -196,7 +196,8 @@ class RoleMenus(commands.GroupCog, name="role_menus", description="Role menus"):
             case "small":
                 embed = discord.Embed(title=profile['display_name'], description="",color=interaction.client.default_color)
                 view = RoleMenu_Perent(data, interaction.guild, timeout, labled=True, _type=_type)
-        await interaction.response.send_message(embed=embed, view=view, ephemeral=False)
+        await interaction.response.send_message("Sent Successfully")
+        await interaction.channel.send(embed=embed, view=view)
         if timeout is not None:
             view.message = await interaction.original_response()
 
