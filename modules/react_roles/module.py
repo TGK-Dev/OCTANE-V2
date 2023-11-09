@@ -18,7 +18,7 @@ class RoleMenus(commands.GroupCog, name="role_menus", description="Role menus"):
     async def profile_auto(self, interaction: discord.Interaction, current: str) -> List[app_commands.Choice[str]]:
         guild_config = await self.backend.get_config(interaction.guild_id)
         choices = [
-            app_commands.Choice(name=profile['display_name'], value=profile['name']) 
+            app_commands.Choice(name=profile['name'], value=profile['name']) 
             for profile in guild_config['roles'].values()
         ]
         return choices[:24]
@@ -31,7 +31,7 @@ class RoleMenus(commands.GroupCog, name="role_menus", description="Role menus"):
         for key, value in self.backend.Cach.items():
             for profile in value['roles'].values():
                 profile = RoleMenuProfile(**profile)
-                viewb = RoleMenu_Perent(profile, self.bot.get_guild(key), _type="buttom")
+                viewb = RoleMenu_Perent(profile, self.bot.get_guild(key), _type="button")
                 viewd = RoleMenu_Perent(profile, self.bot.get_guild(key), _type="dropdown")
                 self.bot.add_view(viewb)
                 self.bot.add_view(viewd)
@@ -196,10 +196,12 @@ class RoleMenus(commands.GroupCog, name="role_menus", description="Role menus"):
             case "small":
                 embed = discord.Embed(title=profile['display_name'], description="",color=interaction.client.default_color)
                 view = RoleMenu_Perent(data, interaction.guild, timeout, labled=True, _type=_type)
-        await interaction.response.send_message("Sent Successfully")
+        await interaction.response.send_message("Sent Successfully", ephemeral=True)
         await interaction.channel.send(embed=embed, view=view)
         if timeout is not None:
             view.message = await interaction.original_response()
+        else:
+            self.bot.add_view(view)
 
 async def setup(bot):
     await bot.add_cog(RoleMenus(bot))

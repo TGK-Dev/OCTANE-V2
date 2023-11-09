@@ -77,6 +77,22 @@ class RoleMenu_Panel(View):
         embed.add_field(name="Roles", value=roles, inline=False)
         await self.message.edit(embed=embed)
     
+    @button(label="Display Name", style=ButtonStyle.gray, emoji="<:tgk_entries:1124995375548338176>")
+    async def _display_name(self, interaction: Interaction, button: Button):
+        modal = General_Modal(title="Display Name", interaction=interaction)
+        modal.value = None
+        modal.text = TextInput(label="Enter a display name", placeholder="Display Name", max_length=100)
+        modal.add_item(modal.text)
+        await interaction.response.send_modal(modal)
+
+        await modal.wait()
+        if modal.value is None or False:
+            return
+        self.profile['display_name'] = modal.text.value
+        await modal.interaction.response.send_message(content=f"Set display name to {modal.text.value}", view=None)
+        await self.update_embed()
+
+    
     @button(label="Required Role", style=ButtonStyle.gray, emoji="<:tgk_role:1073908306713780284>")
     async def _req_role(self, interaction: Interaction, button: Button):
         view = View()
@@ -226,7 +242,7 @@ class RoleMenu_Panel(View):
                     await add_role.select.interaction.response.send_message("I can't add roles higher than my top role", ephemeral=True)
                     return
                 
-                if add_role.values[0].permissions.administrator or add_role.values[0].permissions.manage_roles or add_role.values[0].permissions.manage_guild or add_role.values[0].permissions.ban_members or add_role.values[0].permissions.kick_members:
+                if add_role.select.values[0].permissions.administrator or add_role.select.values[0].permissions.manage_roles or add_role.select.values[0].permissions.manage_guild or add_role.select.values[0].permissions.ban_members or add_role.select.values[0].permissions.kick_members:
                     await add_role.select.interaction.response.send_message("Due to security reason you can't add this role", ephemeral=True)
                     return
 
@@ -262,26 +278,38 @@ class RoleMenu_Panel(View):
             case "remove":
                 remove_view = View()
                 remove_view.value = None
-                remove_view.select = Select_General(interaction=interaction,
-                    placeholder="Select role you want to remove",
-                    options=[],
-                    max_values=10,
-                    min_values=1,
-                )
+                option = []
                 for roles in self.profile['roles'].values():
                     role = self.guild.get_role(int(roles['role_id']))
                     if not role:
                         del self.profile['roles'][str(roles['role_id'])]
                         continue
-                    remove_view.select.add_option(label=role.name, value=str(roles['role_id']))
+                    option.append(SelectOption(label=role.name, value=role.id, emoji=roles['emoji']))
+                remove_view.select = Select_General(interaction=interaction,
+                    placeholder="Select role you want to remove",
+                    options=option,
+                    max_values=len(option),
+                    min_values=1,
+                )
                 remove_view.add_item(remove_view.select)
                 await op_view.select.interaction.response.edit_message(view=remove_view)
+                await remove_view.wait()
+                if remove_view.value is None or False:
+                    await op_view.select.interaction.delete_original_response()
+                    return      
+                for role in remove_view.select.values:
+                    del self.profile['roles'][str(role)]
+                await remove_view.select.interaction.response.edit_message(content="Removed role(s)", view=None, embed=None)
+
+                await self.update_embed()
             
             case "clear":
                 self.profile['roles'] = {}
                 await self.update_embed()
                 await interaction.client.rm.update_profile(self.guild.id, self.profile['name'] ,self.profile)
                 await op_view.select.interaction.response.edit_message(content="Cleared all roles", view=None, embed=None)
+
+                await self.update_embed()
 
 class RoleMenu_Button(Button):
     def __init__(self, **kwargs):
