@@ -7,7 +7,7 @@ humanfriendly==9.2
 motor==3.1.1
 python-dotenv
 psutil
-Pillow==9.4.0
+Pillow==10.0.1
 chat_exporter==2.5.3
 unidecode
 stringcase
