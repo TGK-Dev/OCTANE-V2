@@ -31,8 +31,10 @@ class RoleMenus(commands.GroupCog, name="role_menus", description="Role menus"):
         for key, value in self.backend.Cach.items():
             for profile in value['roles'].values():
                 profile = RoleMenuProfile(**profile)
-                view = RoleMenu_Perent(profile, self.bot.get_guild(key))
-                self.bot.add_view(view)
+                viewb = RoleMenu_Perent(profile, self.bot.get_guild(key), _type="buttom")
+                viewd = RoleMenu_Perent(profile, self.bot.get_guild(key), _type="dropdown")
+                self.bot.add_view(viewb)
+                self.bot.add_view(viewd)
         print("Loaded role menus")
     
     @app_commands.command(name="create", description="Create a role menu")
@@ -164,13 +166,20 @@ class RoleMenus(commands.GroupCog, name="role_menus", description="Role menus"):
             
     @app_commands.command(name="send", description="Send a role menu")
     @app_commands.autocomplete(profile=profile_auto)
-    @app_commands.describe(profile="The profile to send")
-    @app_commands.choices(embed=[
+    @app_commands.describe(profile="The profile to send", timeout="How long the menu should be active for", embed="The embed format", _type="The interaction type of the menu (button or dropdown)")
+    @app_commands.choices(
+        embed=[
         app_commands.Choice(name="big", value="big"),
         app_commands.Choice(name="small", value="small")
-    ])
+        ],
+        _type=[
+            app_commands.Choice(name="button", value="button"),
+            app_commands.Choice(name="dropdown", value="dropdown")
+        ]
+
+    )
     @app_commands.rename(embed="embed_format")
-    async def send(self, interaction: discord.Interaction, profile: str, timeout: app_commands.Transform[int, TimeConverter]=None, embed: str="big"):
+    async def send(self, interaction: discord.Interaction, profile: str, timeout: app_commands.Transform[int, TimeConverter]=None, embed: str="big", _type: str="button"):
         data = await self.backend.get_profile(interaction.guild_id, profile)
         if data is None:
             await interaction.response.send_message("That profile does not exist", ephemeral=True)
@@ -178,15 +187,15 @@ class RoleMenus(commands.GroupCog, name="role_menus", description="Role menus"):
         profile = RoleMenuProfile(**data)        
         match embed:
             case "big":
-                view = RoleMenu_Perent(data, interaction.guild, timeout, labled=False)
-                embed = discord.Embed(title=profile['display_name'], description="",color=interaction.client.default_color)
+                view = RoleMenu_Perent(data, interaction.guild, timeout, labled=False, _type=_type)
+                embed: discord.Embed = discord.Embed(title=profile['display_name'], description="",color=interaction.client.default_color)
                 embed.description += f"Press the below buttons to interact with menu\n"
                 embed.set_footer(text=f"Menu type: {str(ReactRoleMenuType(profile['type']))}")
                 for role in data['roles']:
-                    embed.description += f"###  {data['roles'][role]['emoji']}: {interaction.guild.get_role(data['roles'][role]['role_id']).mention}\n"
+                    embed.description += f"###  {data['roles'][role]['emoji']} : {interaction.guild.get_role(data['roles'][role]['role_id']).mention}\n"
             case "small":
                 embed = discord.Embed(title=profile['display_name'], description="",color=interaction.client.default_color)
-                view = RoleMenu_Perent(data, interaction.guild, timeout, labled=True)
+                view = RoleMenu_Perent(data, interaction.guild, timeout, labled=True, _type=_type)
         await interaction.response.send_message(embed=embed, view=view, ephemeral=False)
         if timeout is not None:
             view.message = await interaction.original_response()

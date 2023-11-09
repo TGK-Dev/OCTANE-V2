@@ -215,9 +215,21 @@ class RoleMenu_Panel(View):
                 await op_view.select.interaction.response.edit_message(embed=embed, view=add_role)
 
                 await add_role.wait()
+
                 if add_role.value is None or False:
                     await op_view.select.interaction.delete_original_response()
                     return
+                if interaction.user.top_role.position < add_role.select.values[0].position:
+                    await add_role.select.interaction.response.send_message("You can't add roles higher than your top role", ephemeral=True)
+                    return
+                if add_role.select.values[0].position > interaction.guild.me.top_role.position:
+                    await add_role.select.interaction.response.send_message("I can't add roles higher than my top role", ephemeral=True)
+                    return
+                
+                if add_role.values[0].permissions.administrator or add_role.values[0].permissions.manage_roles or add_role.values[0].permissions.manage_guild or add_role.values[0].permissions.ban_members or add_role.values[0].permissions.kick_members:
+                    await add_role.select.interaction.response.send_message("Due to security reason you can't add this role", ephemeral=True)
+                    return
+
                 data['role_id'] = add_role.select.values[0].id
                 emoji_modal = General_Modal(title="Emoji Selection", interaction=add_role.select.interaction)
                 emoji_modal.value = None
@@ -289,24 +301,98 @@ class RoleMenu_Button(Button):
                     return
                 await interaction.user.add_roles(role)
                 await interaction.response.send_message(embed=discord.Embed(description=f"Added {role.mention}", color=interaction.client.default_color), ephemeral=True)
-
+                return
+            
             case ReactRoleMenuType.REMOVE_ONLY.value:
                 if role not in interaction.user.roles:
                     await interaction.response.send_message(embed=discord.Embed(description="You don't have this role", color=discord.Color.red()), ephemeral=True)
                     return
                 await interaction.user.remove_roles(role)
                 await interaction.response.send_message(embed=discord.Embed(description=f"Removed {role.mention}", color=interaction.client.default_color), ephemeral=True)
+                return
             
             case ReactRoleMenuType.ADD_AND_REMOVE.value | ReactRoleMenuType.DEFAULT:
                 if role in interaction.user.roles:
                     await interaction.user.remove_roles(role)
                     await interaction.response.send_message(embed=discord.Embed(description=f"Removed {role.mention}", color=interaction.client.default_color), ephemeral=True)
+
                 else:
                     await interaction.user.add_roles(role)
                     await interaction.response.send_message(embed=discord.Embed(description=f"Added {role.mention}", color=interaction.client.default_color), ephemeral=True)
+                return
+            
+            case _:
+                await interaction.response.send_message(embed=discord.Embed(description=f"Invalid menu type", color=discord.Color.red()), ephemeral=True)
+                return
+
+class RoleMenu_Select(Select):
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+    
+    async def callback(self, interaction: Interaction):
+
+        menu: RoleMenuProfile = self.view.menu
+        _roles: list[discord.Role] = []
+        for role in self.values:
+            role = interaction.guild.get_role(int(role))
+            if role: _roles.append(role)
+
+        match menu['type']:
+
+            case ReactRoleMenuType.ADD_ONLY.value:
+                added_roles = ""
+                await interaction.response.defer(ephemeral=True, thinking=True)
+                roles_to_add = []
+                for role in _roles:
+                    if role not in interaction.user.roles:
+                        roles_to_add.append(role)
+                await interaction.user.add_roles(*roles_to_add)              
+                embed = discord.Embed(color=interaction.client.default_color)
+                embed.add_field(name="Added Role(s)", value=added_roles, inline=False)
+                await interaction.followup.send(embed=embed, ephemeral=True)
+                return
+            
+            case ReactRoleMenuType.REMOVE_ONLY.value:
+                removed_roles = ""
+                roles_to_remove = []
+                await interaction.response.defer(ephemeral=True, thinking=True)
+                for role in _roles:
+                    if role in interaction.user.roles:
+                        roles_to_remove.append(role)
+                        removed_roles += f"{role.mention}, "
+                await interaction.user.remove_roles(*roles_to_remove)
+                embed = discord.Embed(color=interaction.client.default_color)
+                embed.add_field(name="Removed Role(s)", value=removed_roles, inline=False)
+                await interaction.followup.send(embed=embed, ephemeral=True)
+                return
+            
+            case ReactRoleMenuType.ADD_AND_REMOVE.value | ReactRoleMenuType.DEFAULT:
+                added_roles = ""
+                removed_roles = ""
+                roles_to_add = []
+                roles_to_remove = []
+                await interaction.response.defer(ephemeral=True, thinking=True)
+                for role in _roles:
+                    if role in interaction.user.roles:
+                        roles_to_remove.append(role)
+                        removed_roles += f"{role.mention}, "
+                    else:
+                        roles_to_add.append(role)
+                        added_roles += f"{role.mention}, "
+                await interaction.user.add_roles(*roles_to_add)
+                await interaction.user.remove_roles(*roles_to_remove)
+                embed = discord.Embed(color=interaction.client.default_color)
+                embed.add_field(name="Added Role(s)", value=added_roles, inline=False)
+                embed.add_field(name="Removed Role(s)", value=removed_roles, inline=False)
+                await interaction.followup.send(embed=embed, ephemeral=True)
+                return
+            case _:
+                await interaction.response.send_message(embed=discord.Embed(description=f"Invalid menu type", color=discord.Color.red()), ephemeral=True)
+                return
+
 
 class RoleMenu_Perent(View):
-    def __init__(self, menu: RoleMenuProfile, guild: discord.Guild, timeout: int=None, message: discord.Message=None, labled:bool=False):
+    def __init__(self, menu: RoleMenuProfile, guild: discord.Guild, timeout: int=None, message: discord.Message=None, labled:bool=False, _type: str="button"):
         self.menu = menu
         self.requried_roles = self.menu['req_roles']
         self.blacklisted_roles = self.menu['bl_roles']
@@ -314,28 +400,40 @@ class RoleMenu_Perent(View):
         self.guild = guild
         self.message = message
         self.labled = labled
+        self._type = _type
         super().__init__(timeout=timeout)
-        for role in self.menu['roles'].values():
-            if self.labled is False:
-                self.add_item(
-                    RoleMenu_Button(
-                        style=ButtonStyle.gray,
-                        emoji=role['emoji'],
-                        custom_id=f"react_roles:{self.guild.id}:{self.menu['name']}:{role['role_id']}"
-                    )
-                )
-            else:
-                _role = self.guild.get_role(role['role_id'])
-                if _role:
-                    self.add_item(
-                        Button(
-                            style=ButtonStyle.gray,
-                            label=_role.name,
-                            emoji=role['emoji'],
-                            custom_id=f"react_roles:{self.guild.id}:{self.menu['name']}:{_role.id}"
+        match self._type:
+            case "button":
+                for role in self.menu['roles'].values():
+                    if self.labled is False:
+                        self.add_item(
+                            RoleMenu_Button(
+                                style=ButtonStyle.gray,
+                                emoji=role['emoji'],
+                                custom_id=f"react_roles:{self.guild.id}:{self.menu['name']}:{role['role_id']}"
+                            )
                         )
-                    )
-        
+                    else:
+                        _role = self.guild.get_role(role['role_id'])
+                        if _role:
+                            self.add_item(
+                                Button(
+                                    style=ButtonStyle.gray,
+                                    label=_role.name,
+                                    emoji=role['emoji'],
+                                    custom_id=f"react_roles:{self.guild.id}:{self.menu['name']}:{_role.id}"
+                                )
+                            )
+            case "dropdown":
+                option: list[SelectOption] = []
+                for role in self.menu['roles'].values():
+                    _role = self.guild.get_role(role['role_id'])
+                    if _role:
+                        option.append(SelectOption(label=_role.name, value=_role.id, emoji=role['emoji']))
+
+                select = RoleMenu_Select(placeholder="Tap here to modify your roles", options=option, max_values=len(option), min_values=1, custom_id=f"react_roles:{self.guild.id}:{self.menu['name']}")
+                self.add_item(select)
+
     async def interaction_check(self, interaction: Interaction):
         user_role = [role.id for role in interaction.user.roles]
         if (set(user_role) & set(self.blacklisted_roles)):
