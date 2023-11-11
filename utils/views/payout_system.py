@@ -331,17 +331,11 @@ class Payout_Buttton(discord.ui.View):
             return f"/serverevents payout user:{winner.id} quantity:{amount}"
         else:
             return f"/serverevents payout user:{winner.id} quantity:{amount} item:{item}"
-
-    @discord.ui.button(label="Payout", style=discord.ButtonStyle.gray, emoji="<a:nat_check:1010969401379536958>", custom_id="payout")
-    async def payout(self, interaction: discord.Interaction, button: discord.ui.Button):
-        await interaction.response.send_message("This button is now no longer supported, please use the new payout command `/payout express`", ephemeral=True)
-        button.disabled = True
-        await interaction.message.edit(view=self)
     
     @discord.ui.button(label="Reject", style=discord.ButtonStyle.gray, emoji="<a:nat_cross:1010969491347357717>", custom_id="reject")
     async def reject(self, interaction: discord.Interaction, button: discord.ui.Button):
         view = Confirm(interaction.user, 30)
-        await interaction.response.send_message("Are you sure you want to reject this payout?", view=view, ephemeral=True)
+        await interaction.response.send_message("Are you sure you want to reject this payout?", view=view, ephemeral=False)
         await view.wait()
         if not view.value: return await interaction.delete_original_response()
         data = await interaction.client.payout_pending.find(interaction.message.id)
