@@ -449,7 +449,7 @@ class RoleMenu_Perent(View):
                                     style=ButtonStyle.gray,
                                     label=_role.name,
                                     emoji=role['emoji'],
-                                    custom_id=f"react_roles:{self.guild.id}:{self.menu['name']}:{_role.id}"
+                                    custom_id=f"react_roles:{self.guild.id}:{self.menu['name']}:{role['role_id']}"
                                 )
                             )
             case "dropdown":

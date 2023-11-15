@@ -2,7 +2,7 @@ import discord
 from discord.ext import commands
 from discord import app_commands
 from utils.db import Document
-from .ui import RoleMenu_Panel, RoleMenu_Perent
+from .view import RoleMenu_Panel, RoleMenu_Perent
 from utils.paginator import Paginator
 from .db import Backend, RoleMenu, RoleMenuProfile, ReactRoleMenuType, RoleMenuRoles
 from typing import List
@@ -200,8 +200,7 @@ class RoleMenus(commands.GroupCog, name="role_menus", description="Role menus"):
         await interaction.channel.send(embed=embed, view=view)
         if timeout is not None:
             view.message = await interaction.original_response()
-        else:
-            self.bot.add_view(view)
+        self.bot.add_view(view)
 
 async def setup(bot):
     await bot.add_cog(RoleMenus(bot))
