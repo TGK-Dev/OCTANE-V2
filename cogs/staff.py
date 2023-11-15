@@ -80,7 +80,7 @@ class Staff_DB:
         return data
 
     async def create_staff(self, user: discord.Member, guild: discord.Guild) -> Staff:
-        data: Staff = {'user_id': user.id, 'guild': guild.id, 'positions': {}, 'leave': {'reason': None, 'last_leave': None, "on_leave": False, 'message_id': None, 'time': None }}
+        data: Staff = {'user_id': user.id, 'guild': guild.id, 'positions': {}, 'history': [], 'leave': {'reason': None, 'last_leave': None, "on_leave": False, 'message_id': None, 'time': None }}
         await self.staff.insert(data)
         return data
     
@@ -263,12 +263,13 @@ class Staff_Commands(commands.GroupCog, name="staff"):
                 embed=discord.Embed(description=f"{user.mention} is no longer apart of any staff positions",
                                      color=self.bot.default_color))
             
-            await self.backend.staff.delete(user_data)
         else:
             await interaction.edit_original_response(
                 embed=discord.Embed(description=f"{user.mention} was revoked from `{position.capitalize()}`",
                                      color=self.bot.default_color))
-            await self.backend.staff.update(user_data)
+        
+        user_data['history'].append({'post': position,'reason': reason,'time': datetime.datetime.utcnow()})
+        await self.backend.staff.update(user_data)
 
         if guild_config['webhook_url']:
             embed = discord.Embed(title="Staff Update", description=f"{user.mention} was revoked from {position}",
@@ -500,7 +501,16 @@ class Staff_Commands(commands.GroupCog, name="staff"):
         if user_data['leave']['last_leave'] is not None:
             embed.description += f"**Last Leave:** {user_data['leave']['last_leave'].strftime('%d/%m/%Y %H:%M:%S')} (<t:{int(user_data['leave']['last_leave'].timestamp())}:R>)\n"
             embed.description += f"**Last Leave Reason:** {user_data['leave']['last_leave_reason']}\n"
-        await interaction.response.send_message(embed=embed)
+        
+        history_embed = discord.Embed(title=f"{user.mention}'s staff history", color=self.bot.default_color, description="")
+        for index, historty in enumerate(user_data['history']):
+            history_embed.description += f"**{index + 1}.**"
+            history_embed.description += f"**Post:** {historty['post'].capitalize()}\n"
+            history_embed.description += f"**Reason:** {historty['reason']}\n"
+            history_embed.description += f"**Time:** {historty['time'].strftime('%d/%m/%Y %H:%M:%S')} (<t:{int(historty['time'].timestamp())}:R>)\n"
+
+        await Paginator(interaction=interaction, pages=[embed, history_embed]).start(embeded=True, quick_navigation=False)
+    
 
     @app_commands.command(name="resign", description="Resign from a position")
     @app_commands.describe(position="The position you want to resign from", reason="The reason you want to resign from the position")
@@ -546,7 +556,9 @@ class Staff_Commands(commands.GroupCog, name="staff"):
             await interaction.user.remove_roles(post_role, reason=f"Resigned from position due to {reason}")
             self.bot.dispatch("staff_update", config['webhook_url'], discord.Embed(title="Staff Update", description=f"{interaction.user.mention} resigned from {position} due to {reason}", color=self.bot.default_color))
             del user_data['positions'][position]
-        
+
+        user_data['history'].append({'post': position,'reason': reason,'time': datetime.datetime.utcnow()})
+
         await self.backend.update_staff(interaction.user, interaction.guild, user_data)
         
         if len(user_data['positions'].keys()) == 0:
