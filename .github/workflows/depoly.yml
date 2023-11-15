@@ -1,10 +1,13 @@
 name: Sync with Panel
 
-on:
-  push:
-    branches:
-      - master
+#run this workflow when syntax-check.yml workflow is successful
 
+on:
+  workflow_run:
+    workflows: ["Syntax check"]
+    types:
+      - completed
+    
 jobs:
   sync:
     runs-on: ubuntu-latest
