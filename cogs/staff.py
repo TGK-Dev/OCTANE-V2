@@ -509,7 +509,7 @@ class Staff_Commands(commands.GroupCog, name="staff"):
             history_embed.description += f"**Reason:** {historty['reason']}\n"
             history_embed.description += f"**Time:** {historty['time'].strftime('%d/%m/%Y %H:%M:%S')} (<t:{int(historty['time'].timestamp())}:R>)\n"
 
-        await Paginator(interaction=interaction, pages=[embed, history_embed]).start(embeded=True, quick_navigation=False)
+        await Paginator(interaction=interaction, pages=[embed, history_embed]).start(embeded=True, quick_navigation=False, hidden=False)
     
 
     @app_commands.command(name="resign", description="Resign from a position")
