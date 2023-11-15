@@ -126,6 +126,8 @@ class Perks(commands.Cog, name="perk", description="manage your custom perks"):
                 log_channel = guild.get_channel(1145404806316425287)    
                 if log_channel:
                     await log_channel.send(f"**User**: {data['user_id']} has left the server and his custom channel `{channel.name}` will been deleted")                    
+                await channel.delete()
+            await self.backend.delete(self.backend.types.channels, data)
             return
         
         channel = guild.get_channel(data['channel_id'])
