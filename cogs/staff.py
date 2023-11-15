@@ -502,7 +502,7 @@ class Staff_Commands(commands.GroupCog, name="staff"):
             embed.description += f"**Last Leave:** {user_data['leave']['last_leave'].strftime('%d/%m/%Y %H:%M:%S')} (<t:{int(user_data['leave']['last_leave'].timestamp())}:R>)\n"
             embed.description += f"**Last Leave Reason:** {user_data['leave']['last_leave_reason']}\n"
         
-        history_embed = discord.Embed(title=f"{user.mention}'s staff history", color=self.bot.default_color, description="")
+        history_embed = discord.Embed(title=f"{user.name}'s staff history", color=self.bot.default_color, description="")
         for index, historty in enumerate(user_data['history']):
             history_embed.description += f"**{index + 1}.**"
             history_embed.description += f"**Post:** {historty['post'].capitalize()}\n"
