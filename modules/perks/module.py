@@ -19,8 +19,8 @@ class Perks(commands.Cog, name="perk", description="manage your custom perks"):
         self.bot = bot
         self.backend: Perks_DB = Perks_DB(bot, Document)
         self.refresh_cache.start()
-        #self.profile_roles.start()
-        #self.profile_channels.start()
+        self.profile_roles.start()
+        self.profile_channels.start()
         self.bot.Perk = self.backend
     
     def cog_unload(self):
@@ -71,31 +71,38 @@ class Perks(commands.Cog, name="perk", description="manage your custom perks"):
         total_duraction = 0
         total_friend_limit = 0
         for key, item in config['profiles']['roles'].items():
-            role = guild.get_role(int(key))
-            if not role: continue
-            if role in user.roles:
+            perk_role = guild.get_role(int(key))
+            if not perk_role: 
+                del config['profiles']['roles'][key]
+                await self.backend.update(self.backend.types.config, config)
+                continue
+
+            if perk_role in user.roles:
                 if item['duration'] == "permanent":total_duraction = "permanent"
                 else:total_duraction += item['duration']
                 if total_friend_limit < 10: total_friend_limit += item['friend_limit']
                 elif total_friend_limit >= 10: total_friend_limit = 10
-        if total_duraction == "permanent": 
-            return
+
+            if total_friend_limit == 0:
+                total_friend_limit = 3
+
         if total_friend_limit != data['friend_limit']:
             data['friend_limit'] = total_friend_limit
             await self.backend.update(self.backend.types.roles, data)
-        elif total_duraction == 0:
-            channel = guild.get_channel(1145404806316425287)
-            if channel:
-                await channel.send(f"**User**: {user.mention} is going to lose his custom role `{role.name}`")
-            # role = guild.get_role(data['role_id'])
-            # if role: 
-            #     await role.delete()
-            # #await self.backend.delete(self.backend.types.roles, data)
-            # try:
-            #     await user.send(embed=discord.Embed(description=f"Your custom role `{role.name}` has been deleted because you have no active custom roles", color=self.bot.default_color))
-            # except:
-            #     pass
-            # return
+
+        # elif total_duraction == 0:
+        #     channel = guild.get_channel(1145404806316425287)
+        #     if channel:
+        #         await channel.send(f"**User**: {user.mention} is going to lose his custom role `{role.name}`", allowed_mentions=discord.AllowedMentions.none())
+        #     # role = guild.get_role(data['role_id'])
+        #     # if role: 
+        #     #     await role.delete()
+        #     # #await self.backend.delete(self.backend.types.roles, data)
+        #     # try:
+        #     #     await user.send(embed=discord.Embed(description=f"Your custom role `{role.name}` has been deleted because you have no active custom roles", color=self.bot.default_color))
+        #     # except:
+        #     #     pass
+        #     # return
     
     @tasks.loop(minutes=2)
     async def profile_channels(self):
@@ -115,8 +122,12 @@ class Perks(commands.Cog, name="perk", description="manage your custom perks"):
         if not user:
             await self.backend.delete(self.backend.types.channels, data)
             channel = guild.get_channel(data['channel_id'])
-            if channel: await channel.delete()
+            if channel: 
+                log_channel = guild.get_channel(1145404806316425287)    
+                if log_channel:
+                    await log_channel.send(f"**User**: {data['user_id']} has left the server and his custom channel `{channel.name}` will been deleted")                    
             return
+        
         channel = guild.get_channel(data['channel_id'])
         if not channel:
             data['channel_id'] = None
@@ -137,19 +148,25 @@ class Perks(commands.Cog, name="perk", description="manage your custom perks"):
                 else:total_duraction += item['duration']
                 if total_friend_limit < 10: total_friend_limit += item['friend_limit']
                 elif total_friend_limit >= 10: total_friend_limit = 10
-        if total_duraction == "permanent":
-            return
-        elif total_duraction == 0:
-            channel = guild.get_channel(1145404806316425287)
-            if channel:
-                await channel.send(f"**User**: {user.mention} is going to lose his custom channel `{channel.name}`")
-            # await self.backend.delete(self.backend.types.channels, data)
-            # await channel.delete()
-            # try:
-            #     await user.send(embed=discord.Embed(description=f"Your custom channel `{channel.name}` has been deleted because you have no active custom channels", color=self.bot.default_color))
-            # except:
-            #     pass
-            # return
+        
+        if total_friend_limit == 0:
+            total_friend_limit = 3
+
+        if total_friend_limit != data['friend_limit']:
+            data['friend_limit'] = total_friend_limit
+            await self.backend.update(self.backend.types.channels, data)
+
+        # if total_duraction == 0:
+        #     channel = guild.get_channel(1145404806316425287)
+        #     if channel:
+        #         await channel.send(f"**User**: {user.mention} is going to lose his custom channel `{channel.name}`")
+        #     # await self.backend.delete(self.backend.types.channels, data)
+        #     # await channel.delete()
+        #     # try:
+        #     #     await user.send(embed=discord.Embed(description=f"Your custom channel `{channel.name}` has been deleted because you have no active custom channels", color=self.bot.default_color))
+        #     # except:
+        #     #     pass
+        #     # return
         
     async def highlight_remove_auto(self, interaction: Interaction, current: str) -> List[app_commands.Choice[str]]:
         user_data = await self.backend.get_data(self.backend.types.highlights, interaction.guild.id, interaction.user.id)
@@ -827,91 +844,5 @@ class Perks(commands.Cog, name="perk", description="manage your custom perks"):
                         user_data['last_react'] = datetime.datetime.utcnow()
                         await self.backend.update_cache(self.backend.types.reacts, message.guild, user_data)
 
-
-class Voice(commands.Cog):
-    def __init__(self, bot):
-        self.bot = bot
-        self.db = bot.mongo["Voice"]
-        self.config = Document(self.db, "config")
-        self.channels = Document(self.db, "channels")
-        self.bot.vc_channel = self.channels
-        self.config_cache = {1069906467370565652: None}
-        self.voice_expire.start()
-        
-    
-    def cog_unload(self):
-        self.voice_expire.cancel()
-
-    @commands.Cog.listener()
-    async def on_ready(self):
-        for config in await self.config.get_all():
-            self.config_cache[config['join_create']] = config
-        self.bot.add_view(Voice_UI())
-
-
-    @tasks.loop(seconds=10)
-    async def voice_expire(self):
-        now = datetime.datetime.utcnow()
-        for data in await self.channels.get_all():
-            if data['last_activity'] is None: continue
-            if now > data['last_activity'] + datetime.timedelta(minutes=5):
-                channel = self.bot.get_channel(data['_id'])
-                if channel is None: 
-                    await self.channels.delete(data['_id'])
-                    continue
-                if len(channel.members) != 0: 
-                    data['last_activity'] = None
-                    await self.channels.update(data)
-                    continue
-                await channel.delete(reason="Voice channel expired")
-                await self.channels.delete(data['_id'])
-    
-    @voice_expire.before_loop
-    async def before_voice_expire(self):
-        await self.bot.wait_until_ready()
-
-
-    @commands.Cog.listener()
-    async def on_voice_state_update(self, member: discord.Member, before: discord.VoiceState, after: discord.VoiceState):
-        if before.channel is not None and after.channel is None:
-            data = await self.channels.find({"_id": before.channel.id})
-            if not data: return
-            if len(before.channel.members) == 0:
-                data['last_activity'] = datetime.datetime.utcnow()
-                await self.channels.update(data)
-
-        if before.channel is None and after.channel is not None:
-            channel: discord.VoiceChannel = after.channel
-            
-            dup = await self.channels.find({"owner": member.id})
-            if dup: 
-                channel = self.bot.get_channel(dup['_id'])
-                if channel is None: 
-                    await self.channels.delete(dup['_id'])
-                    return                
-                if len(channel.members) > 0:
-                    dup['last_activity'] = None
-                    await self.channels.update(dup)
-                    await member.move_to(channel)
-                return
-            if channel.id not in self.config_cache.keys(): return
-            overrite = {
-                member: discord.PermissionOverwrite(view_channel=True,connect=True, speak=True, stream=True, use_voice_activation=True, priority_speaker=True),
-                member.guild.default_role: discord.PermissionOverwrite(connect=False, speak=False, stream=False, use_voice_activation=False, priority_speaker=False, use_application_commands=True),
-                member.guild.me: discord.PermissionOverwrite(view_channel=True)
-            }
-            private_channel = await member.guild.create_voice_channel(name=f"{member.display_name}'s Voice", category=channel.category, overwrites=overrite, reason="Private Voice Channel")
-            await member.move_to(private_channel)
-            data = {
-                "_id": private_channel.id,
-                "owner": member.id,
-                "guild_id": member.guild.id,
-                "friends": [],
-                "last_activity": None,
-            }
-            await private_channel.send(f"Welcome to your private voice channel {member.mention}", view=Voice_UI())
-            await self.channels.insert(data)
-
 async def setup(bot):
     await bot.add_cog(Perks(bot))
-    await bot.add_cog(Voice(bot))
