@@ -15,14 +15,11 @@ from motor.motor_asyncio import AsyncIOMotorClient
 from utils.converters import dict_to_tree
 from utils.checks import Blocked
 
-load_dotenv()
-discord.utils.setup_logging(
-    level=logging.INFO,
-    formatter=logging.Formatter('[{asctime}] [{levelname:<8}] {name}: {message}', '%Y-%m-%d %H:%M:%S', style='{'),
-    handler=logging.handlers.RotatingFileHandler(filename='discord.log', encoding='utf-8', maxBytes=32 * 1024 * 1024)
-)
+load_dotenv() 
 
-
+discord.utils.setup_logging(handler=logging.handlers.RotatingFileHandler(filename="discord.log", maxBytes=1000000,backupCount=5, encoding="utf-8"),
+                            formatter=logging.Formatter("%(asctime)s:%(levelname)s:%(name)s: %(message)s", "%d-%m-%Y %H:%M:%S"),
+                            root=True)
 
 class Botbase(commands.Bot):
     def __init__(self, application_id, sync: bool = False):
