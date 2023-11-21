@@ -816,9 +816,10 @@ class Perks(commands.Cog, name="perk", description="manage your custom perks"):
         user_active = False
         async for history in message.channel.history(limit=20):
             if history.author.id == user.id:
-                if now > history.created_at + datetime.timedelta(minutes=5): 
+                if not now > history.created_at + datetime.timedelta(minutes=5):
                     user_active = True
                     break
+
             before_messages.append(history)
         
         if user_active: return
