@@ -785,7 +785,7 @@ class Perks(commands.Cog, name="perk", description="manage your custom perks"):
         guild_data = self.backend.cach['highlight'][message.guild.id]
         message_content = message.content.lower()
         message_content = message_content.split(" ")
-
+        trigger_users = []
         for word in message_content:
             for user_data in guild_data:
                 word = str(word)
@@ -796,7 +796,11 @@ class Perks(commands.Cog, name="perk", description="manage your custom perks"):
                     if user is None: continue
                     perm = message.channel.permissions_for(user)
                     if not perm.view_channel or perm.view_channel == False: continue
+                    if user in trigger_users: 
+                        continue
+                    trigger_users.append(user)
                     self.bot.dispatch('highlight_found', message, user_data)
+
                     continue
 
 
