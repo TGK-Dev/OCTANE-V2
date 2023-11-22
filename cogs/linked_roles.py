@@ -108,11 +108,11 @@ class Linked_Roles(commands.GroupCog, name="linkedroles"):
 	@app_commands.describe(user="The user you want to update the roles for", link="The link you want to update", value="The value you want to set the link to")
 	@app_commands.choices(link=[app_commands.Choice(name="♡੭𓈒 Beast Donor ♡੭𓈒", value="top_dono"), app_commands.Choice(name="࿔･ﾟ♛ Weekly Topper ♛ ࿔･ﾟ", value="weekly_champ"), app_commands.Choice(name="Ex-Staff of TGK", value="ex_staff")])
 	async def _update(self, interaction: Interaction, user: discord.Member, link: app_commands.Choice[str], value: bool=False):
-		data = await self.bot.auth.find(user.id)
+		data = await self.bot.auth.find({'discordId': str(user.id)})
 		if data is None:
 			data = {
-				"_id": user.id,
-				"access_token": None,
+				"discordId": str(user.id),
+				"access_token": None,				
 				"refresh_token": None,
 				"expires_in": None,
 				"expires_at": None,
@@ -124,7 +124,7 @@ class Linked_Roles(commands.GroupCog, name="linkedroles"):
 				}
 			}
 			data['metadata']['metadata'][link.value] = 1 if value == True else 0
-			await self.bot.auth.upsert(data)
+			await self.bot.auth.update(data)
 			embed = discord.Embed(description=f"User {user.mention} is not linked with OCTANE but metadata has been created for them", color=discord.Color.red())
 			return await interaction.response.send_message(embed=embed, ephemeral=True)
 		
@@ -140,6 +140,7 @@ class Linked_Roles(commands.GroupCog, name="linkedroles"):
 		if metadata != data['metadata']:
 			data['metadata'] = metadata
 			await self.bot.auth.upsert(data)
+
 		data['metadata']['metadata'][link.value] = 1 if value == True else 0
 		response = await self.update_metadata(data['access_token'], data['metadata'])
 		if response == "Error":
@@ -153,7 +154,7 @@ class Linked_Roles(commands.GroupCog, name="linkedroles"):
 	@app_commands.describe(user="The user you want to show the linked roles for")
 	async def _show(self, interaction: Interaction, user: discord.Member=None):
 		user = user if user != None else interaction.user
-		data = await self.bot.auth.find(user.id)
+		data = await self.bot.auth.find({'discordId': str(user.id)})
 		if data is None:
 			return await interaction.response.send_message(f"{'you' if user.id == interaction.user.id else user.mention} have not linked your account yet", ephemeral=True)
 		
