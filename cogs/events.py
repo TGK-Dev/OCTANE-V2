@@ -22,7 +22,7 @@ class Events(commands.Cog):
         self.free_task = self.update_free.start()
         self.activiy_webhook = None
         self.vote_task_progress = False
-
+    
     def cog_unload(self):
         self.vote_remider_task.cancel()
         self.counter_task.cancel()
@@ -107,7 +107,7 @@ class Events(commands.Cog):
         view.add_item(discord.ui.Button(label="Vote for TGK at Top.gg", emoji="<a:tgk_icon:1002504426172448828>",url="https://top.gg/servers/785839283847954433/vote"))
 
         guild = self.bot.get_guild(785839283847954433)
-        member = guild.get_member(data['_id'])
+        member = guild.get_member(int(data['discordId']))
         if member is None:
             return await self.bot.votes.delete(data['_id'])
 
