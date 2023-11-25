@@ -78,7 +78,7 @@ class Events(commands.Cog):
         for data in current_data:
             if data["reminded"] == True: continue
         
-            expired_time = data['last_vote'] + datetime.timedelta(hours=12)
+            expired_time = data['lastVote'] + datetime.timedelta(hours=12)
             if current_time >= expired_time and data["reminded"] == False:
                 self.bot.dispatch("vote_reminder", data)
             

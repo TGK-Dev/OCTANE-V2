@@ -806,7 +806,7 @@ class Perks(commands.Cog, name="perk", description="manage your custom perks"):
 
     @commands.Cog.listener()
     async def on_highlight_found(self, message: discord.Message, user_data: dict):
-        now = datetime.datetime.utcnow()
+        now = discord.utils.utcnow()
         user = message.guild.get_member(user_data['user_id'])
 
         if user_data['last_trigger'] is not None:
