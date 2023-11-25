@@ -611,7 +611,7 @@ class Ticket_controll(View):
 
                 transcript_message = await transcript_channel.send(file=transcript, content=f"**Channel:** {interaction.channel.name}\n**User:** <@{ticket_data['user']}>(`{ticket_data['user']}`)")
                 link_view = discord.ui.View()
-                link_view.add_item(discord.ui.Button(label="View Transcript", url=f"https://api-tgk.vercel.app/api/transcript?url={transcript_message.attachments[0].url}"))
+                link_view.add_item(discord.ui.Button(label="View Transcript", url=f"https://api-tgk.vercel.app/api/transcripts?url={transcript_message.attachments[0].url}"))
                 await transcript_message.edit(view=link_view)
                 try:
                     log_message = await log_channel.fetch_message(ticket_data["log_message_id"])
