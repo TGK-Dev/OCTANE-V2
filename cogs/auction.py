@@ -249,7 +249,12 @@ class Auction(commands.GroupCog):
             bet_incre = 1000000
         else:
             bet_incre = 50000
-
+        seller = interaction.guild.get_member(auction_data['user_id'])
+        
+        if seller is None:
+            await self.backend.auction.delete(auction_data)
+            return await interaction.response.send_message("Seller is not in the server anymore, auction has been cancelled! Please start again!", ephemeral=True)
+        
         embed = discord.Embed(title=f"Auction Starting", description="", color=interaction.client.default_color)
         embed.set_author(name="Auction Manager", icon_url="https://cdn.discordapp.com/emojis/1134834084728815677.webp?size=96&quality=lossless")
         embed.add_field(name="Seller", value=interaction.guild.get_member(auction_data['user_id']).mention)
