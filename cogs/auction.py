@@ -412,10 +412,14 @@ class Auction(commands.GroupCog):
         if len(data) == 0:
             return await interaction.response.send_message("No auction is running right now!", ephemeral=True)
         for auction in data:
+            seller = interaction.guild.get_member(auction['user_id'])
+            if seller is None: 
+                await self.backend.auction.delete(auction)
+                continue
             item = self.bot.dank_items_cache.get(auction['item'])
             embed = discord.Embed(title=f"Auction for {auction['item']}", description="", color=interaction.client.default_color)
             embed.set_author(name="Auction Manager", icon_url="https://cdn.discordapp.com/emojis/1134834084728815677.webp?size=96&quality=lossless")
-            embed.add_field(name="Seller", value=interaction.guild.get_member(auction['user_id']).mention)
+            embed.add_field(name="Seller", value=seller.mention)
             embed.add_field(name="Item", value=f"`{auction['quantity']}x` **{auction['item']}**")
             embed.add_field(name="Worth", value=f"⏣ {int(item['price'] * auction['quantity']):,}")
             pages.append(embed)
