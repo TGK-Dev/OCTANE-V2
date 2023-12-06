@@ -810,32 +810,22 @@ class Perks(commands.Cog, name="perk", description="manage your custom perks"):
         user = message.guild.get_member(user_data['user_id'])
 
         if user_data['last_trigger'] is not None:
-            if not now > user_data['last_trigger'] + datetime.timedelta(minutes=5):
+            if not now > user_data['last_trigger'] + datetime.timedelta(minutes=1):
                 return
         
         if message.channel.id in user_data['ignore_channel'] or message.author.id in user_data['ignore_users']:
             return
 
-        before_messages = []
-        user_active = False
-        async for history in message.channel.history(limit=20):
-            if history.author.id == user.id:
-                if not now > history.created_at + datetime.timedelta(minutes=5):
-                    user_active = True
-                    break
-
-            before_messages.append(history)
-        
-        if user_active: return
-
-        before_messages = before_messages[:-10]
+        before_messages = [message async for message in message.channel.history(limit=10, before=message)]
 
         embed = discord.Embed(title=f"Hightlight found in {message.guild.name}", color=self.bot.default_color, description="")
         before_messages.reverse()
         for bmessage in before_messages:
             if bmessage.id == user_data['user_id']:
-                if not now > message.created_at + datetime.timedelta(minutes=5): return
+                if not now > message.created_at + datetime.timedelta(minutes=5): 
+                    return
                 pass
+            
             embed.description += f"**[<t:{round(bmessage.created_at.timestamp())}:T>] {bmessage.author.display_name}:** {bmessage.content}\n"        
         embed.add_field(name="Trigger Message", value=f"[<t:{round(message.created_at.timestamp())}:T>] {message.author.display_name}: {message.content}", inline=False)
         embed.set_footer(text=f"Triggered by {message.author.global_name}", icon_url=message.author.avatar.url if message.author.avatar else message.author.default_avatar)
