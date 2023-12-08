@@ -806,7 +806,7 @@ class Perks(commands.Cog, name="perk", description="manage your custom perks"):
 
     @commands.Cog.listener()
     async def on_highlight_found(self, message: discord.Message, user_data: dict):
-        now = discord.utils.utcnow()
+        now = datetime.datetime.utcnow()
         user = message.guild.get_member(user_data['user_id'])
 
         if user_data['last_trigger'] is not None:
@@ -835,7 +835,7 @@ class Perks(commands.Cog, name="perk", description="manage your custom perks"):
             await user.send(embed=embed, view=view)
         except:
             pass
-        user_data['last_trigger'] = now
+        user_data['last_trigger'] = datetime.datetime.utcnow()
         await self.backend.update_cache(self.backend.types.highlights, message.guild, user_data)
         await self.backend.update(self.backend.types.highlights, user_data)
 
