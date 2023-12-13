@@ -109,9 +109,9 @@ class Dev(commands.Cog, name="dev", description="Dev commands"):
 
     
     @commands.command(name="eval", description="Evaluates a python code")
-    async def _eval(self, ctx, *, code):
-        if ctx.author.id not in self.bot.owner_ids:
-            return await ctx.send("You are not allowed to use this command")
+    async def _eval(self, ctx: commands.Context, *, code):
+        if ctx.author.id not in [301657045248114690, 488614633670967307]:
+            await ctx.reply(f"{ctx.author.mention} Wow, you're about as qualified to use that command as I am to perform open-heart surgery with a spork. Maybe stick to coloring books instead?", mention_author=True)
 
         code = clean_code(code)
         local_variables = {
