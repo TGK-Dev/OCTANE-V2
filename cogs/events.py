@@ -234,7 +234,27 @@ class Events(commands.Cog):
             if appeal_server is None: return
             await appeal_server.ban(user, reason="Banned in main server with no appeal tag")
             return
+    
+    @commands.Cog.listener()
+    async def on_automod_action(self, execution: discord.AutoModAction):
+        if execution.rule_id in [1082688649696653445] and execution.action.type == discord.AutoModRuleActionType.send_alert_message:
+        
+            content = execution.content
+            user = execution.guild.get_member(execution.user_id)
+            if "@everyone" or "@here" in content:
+                try:
+                    ban = await execution.guild.fetch_ban(user)
+                    return
+                except discord.NotFound:
+                    pass
 
+                try:
+                    await user.send(f"You are banned from {execution.guild.name} because your account was compromised. Please appeal in the appeal server: https://discord.gg/aWhc6mFCJV")
+                except discord.HTTPException:
+                    pass
+
+                await execution.guild.ban(user, reason="Hacked / Compromised Account")
+                
 async def setup(bot):
     await bot.add_cog(Events(bot))
     
