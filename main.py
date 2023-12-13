@@ -31,7 +31,6 @@ class Botbase(commands.Bot):
         self.error_color = 0xFF0000
         self.start_time = datetime.datetime.now()
         self.sync = sync
-        self.token = os.environ.get("TOKEN")
         self.secret = os.environ.get("SECRET")
         self.connection_url = os.environ.get("MONGO")
         self.connection_url2 = os.environ.get("ACE_DB")
@@ -88,7 +87,7 @@ tree = bot.tree
 
 
 async def main():
-    await bot.start(bot.token)
+    await bot.start(str(os.environ.get("TOKEN")))
 
 
 @bot.event
