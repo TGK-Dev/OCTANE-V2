@@ -241,7 +241,7 @@ class Events(commands.Cog):
         
             content = execution.content
             user = execution.guild.get_member(execution.user_id)
-            if "@everyone" or "@here" in content:
+            if "@here" in content or "@everyone" in content:
                 try:
                     ban = await execution.guild.fetch_ban(user)
                     return
@@ -254,7 +254,7 @@ class Events(commands.Cog):
                     pass
 
                 await execution.guild.ban(user, reason="Hacked / Compromised Account")
-                
+
 async def setup(bot):
     await bot.add_cog(Events(bot))
     
