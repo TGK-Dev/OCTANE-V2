@@ -69,11 +69,11 @@ class Perks(commands.Cog, name="perk", description="manage your custom perks"):
         if not config: return
         
         if not user:
-            if role:
-                await role.delete()
+            if crole:
+                await crole.delete()
             log_channel = guild.get_channel(1145404806316425287)
             if log_channel:
-                await log_channel.send(f"**User**: {data['user_id']} has left the server and his custom role `{role.name}` will been deleted")
+                await log_channel.send(f"**User**: {data['user_id']} has left the server and his custom role `{crole.name}` will been deleted")
             await self.backend.delete(self.backend.types.roles, data)
             
             return    
