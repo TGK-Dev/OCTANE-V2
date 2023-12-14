@@ -330,7 +330,7 @@ class Blacklist_cog(commands.GroupCog, name="blacklist"):
                 pass
     
     @strike.command(name="remove", description="Remove strike from user")
-    @app_commands.describe(profile="Profile to remove strike", user="User to remove strike", reason="Reason for removing strike")
+    @app_commands.describe(profile="Profile to remove strike", user="User to remove strike")
     @app_commands.autocomplete(profile=profile_auto_strike)
     async def _strick_remove(self, interaction: discord.Interaction, user: discord.Member, profile: str):
         config: Config = await self.backend.get_config(interaction.guild_id)
