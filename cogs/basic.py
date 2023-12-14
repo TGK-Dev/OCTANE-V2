@@ -16,7 +16,6 @@ class Basic(commands.Cog):
         self.bot.snipes = {}
         self.bot.esnipes = {}
         self.bot.votes = Document(bot.db, "Votes")
-
     
     @app_commands.command(name="stats")
     async def stats(self, interaction: Interaction):
@@ -464,7 +463,7 @@ class karuta(commands.Cog):
             await ctx.send("User has been blacklisted")        
                 
 async def setup(bot):
-    await bot.add_cog(Basic(bot), guilds=[discord.Object(785839283847954433)])
+    await bot.add_cog(Basic(bot))
     await bot.add_cog(Appeal_server(bot), guilds=[discord.Object(988761284956799038)])
     await bot.add_cog(karuta(bot))
     await bot.add_cog(Logging(bot))

@@ -145,27 +145,77 @@ class Profile_create(View):
             "create_at": datetime.datetime.utcnow(),
             "role_add": [],
             "role_remove": [],
+            "type": None,
+            "strike_limit": 0,
         }
         self.member = member
         self.value = None
         self.interaction = None
         super().__init__(timeout=120)
     
-    @discord.ui.select(placeholder="Please select roles you want to add", min_values=1, max_values=10, cls=RoleSelect)
+    @discord.ui.select(placeholder="Please select roles you want to add", min_values=1, max_values=10, cls=RoleSelect, custom_id="role_add")
     async def role_add(self, interaction: Interaction, select: Role_select):
         self.data["role_add"] = [role.id for role in select.values]
         select.disabled = True
         await interaction.response.edit_message(view=self)
     
-    @discord.ui.select(placeholder="Please select roles you want to remove", min_values=1, max_values=10, cls=RoleSelect)
+    @discord.ui.select(placeholder="Please select roles you want to remove", min_values=1, max_values=10, cls=RoleSelect, custom_id="role_remove")
     async def role_remove(self, interaction: Interaction, select: Role_select):
         self.data["role_remove"] = [role.id for role in select.values]
         select.disabled = True
         await interaction.response.edit_message(view=self)
     
+    @discord.ui.select(placeholder="Select Profile Type", custom_id="type", options=[SelectOption(label="Strike", value="strike"), SelectOption(label="Normal ", value="normal")], max_values=1, min_values=1)
+    async def type(self, interaction: Interaction, select: discord.ui.Select):
+        self.data["type"] = select.values[0]
+        select.disabled = True
+        if select.values[0] == "strike":
+            for chl in self.children: 
+                if chl.custom_id in ['role_add', 'role_remove']: self.remove_item(chl)
+
+            self.add_item(Strik_limit())    
+            self.add_item(Strik_expire())
+            self.children[-1].disabled = False
+            self.children[-2].disabled = False
+            
+            select.options[1].default = True
+        else:
+            select.options[0].default = True
+        await interaction.response.edit_message(view=self)
+
     @button(label="Submit", style=discord.ButtonStyle.green, custom_id="submit")
     async def submit(self, interaction: Interaction, button: Button):
         button.disabled = True
         self.value = True
         self.interaction = interaction
         self.stop()
+
+class Strik_limit(discord.ui.Select):
+    def __init__(self):
+        super().__init__(placeholder="Select Strike Limit", custom_id="strike_limit", options=[SelectOption(label=str(i), value=str(i)) for i in range(1, 11)], disabled=True)
+    
+    async def callback(self, interaction: Interaction):
+        self.view.data["strike_limit"] = int(self.values[0])
+        self.disabled = True
+        await interaction.response.edit_message(view=self.view)
+
+class Strik_expire(discord.ui.Select):
+    def __init__(self):
+        super().__init__(placeholder="Select Strike Expire duration", custom_id="strike_expire",
+                          options=[
+                            SelectOption(label="1 Day", value=f"{86400}"),
+                             SelectOption(label="2 Days", value=f"{86400*2}"),
+                             SelectOption(label="3 Days", value=f"{86400*3}"),
+                             SelectOption(label="4 Days", value=f"{86400*4}"),
+                             SelectOption(label="5 Days", value=f"{86400*5}"),
+                             SelectOption(label="6 Days", value=f"{86400*6}"),
+                             SelectOption(label="7 Days", value=f"{86400*7}"),
+                             SelectOption(label="8 Days", value=f"{86400*8}"),
+                             SelectOption(label="9 Days", value=f"{86400*9}"),
+                             SelectOption(label="10 Days", value=f"{86400*10}"),
+                          ], max_values=1, min_values=1, disabled=True)
+
+    async def callback(self, interaction: Interaction):
+        self.view.data["strike_expire"] = int(self.values[0])
+        self.disabled = True
+        await interaction.response.edit_message(view=self.view)        
