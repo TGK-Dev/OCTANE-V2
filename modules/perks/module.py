@@ -63,8 +63,8 @@ class Perks(commands.Cog, name="perk", description="manage your custom perks"):
         if not guild: return
         user: discord.Member = guild.get_member(data['user_id'])
         if not user: return
-        role: discord.Role = guild.get_role(data['role_id'])
-        if not role: return
+        crole: discord.Role = guild.get_role(data['role_id'])
+        if not crole: return
         config = await self.backend.get_data(self.backend.types.config, guild.id, user.id)
         if not config: return
         
@@ -75,36 +75,36 @@ class Perks(commands.Cog, name="perk", description="manage your custom perks"):
             if log_channel:
                 await log_channel.send(f"**User**: {data['user_id']} has left the server and his custom role `{role.name}` will been deleted")
             await self.backend.delete(self.backend.types.roles, data)
-            return
-
-
+            
+            return    
 
         total_duraction = 0
         total_friend_limit = 0
+
         for key, item in config['profiles']['roles'].items():
-            perk_role = guild.get_role(int(key))
-            if not perk_role: 
+            role = guild.get_role(int(key))
+            if not role: 
                 del config['profiles']['roles'][key]
                 await self.backend.update(self.backend.types.config, config)
                 continue
-
-            if perk_role in user.roles:
+            if role in user.roles:
                 if item['duration'] == "permanent":total_duraction = "permanent"
                 else:total_duraction += item['duration']
                 if total_friend_limit < 10: total_friend_limit += item['friend_limit']
                 elif total_friend_limit >= 10: total_friend_limit = 10
 
-            if total_friend_limit == 0:
-                total_friend_limit = 3
+        if total_friend_limit == 0:
+            total_friend_limit = 3
 
-        if total_friend_limit != data['friend_limit']:
-            data['friend_limit'] = total_friend_limit
-            await self.backend.update(self.backend.types.roles, data)
+        data['friend_limit'] = total_friend_limit
+        data['duration'] = total_duraction
 
-        # elif total_duraction == 0:
+        await self.backend.update(self.backend.types.roles, data)
+
+        # if total_duraction == 0:
         #     channel = guild.get_channel(1145404806316425287)
         #     if channel:
-        #         await channel.send(f"**User**: {user.mention} is going to lose his custom role `{role.name}`", allowed_mentions=discord.AllowedMentions.none())
+        #         await channel.send(f"**User**: {user.mention} is going to lose his custom role `{crole.name}`", allowed_mentions=discord.AllowedMentions.none())
         #     # role = guild.get_role(data['role_id'])
         #     # if role: 
         #     #     await role.delete()
@@ -127,47 +127,43 @@ class Perks(commands.Cog, name="perk", description="manage your custom perks"):
 
     @commands.Cog.listener()
     async def on_check_profile_channels(self, data: dict):
-        guild = self.bot.get_guild(data['guild_id'])
+        guild: discord.Guild = self.bot.get_guild(data['guild_id'])
+        config = await self.backend.get_data(self.backend.types.config, guild.id, data['user_id'])
         if not guild: return
         user = guild.get_member(data['user_id'])
-        if not user:
-            await self.backend.delete(self.backend.types.channels, data)
-            channel = guild.get_channel(data['channel_id'])
-            if channel: 
-                log_channel = guild.get_channel(1145404806316425287)    
-                if log_channel:
-                    await log_channel.send(f"**User**: {data['user_id']} has left the server and his custom channel `{channel.name}` will been deleted")                    
-                await channel.delete()
-            await self.backend.delete(self.backend.types.channels, data)
-            return
-        
         channel = guild.get_channel(data['channel_id'])
-        if not channel:
-            data['channel_id'] = None
-            await self.backend.update(self.backend.types.channels, data)
+        if not user: 
+            if channel:
+                await channel.delete()
+            log_channel = guild.get_channel(1145404806316425287)
+            if log_channel:
+                await log_channel.send(f"**User**: {data['user_id']} has left the server and his custom channel `{channel.name}` has been deleted")
+            
+            await self.backend.delete(self.backend.types.channels, data)            
             return
         
-        config = await self.backend.get_data(self.backend.types.config, guild.id, user.id)
-        if not config: return
-
         total_duraction = 0
         total_friend_limit = 0
 
         for key, item in config['profiles']['channels'].items():
             role = guild.get_role(int(key))
-            if not role: continue
+            if not role: 
+                del config['profiles']['channels'][key]
+                await self.backend.update(self.backend.types.config, config)
+                continue
             if role in user.roles:
                 if item['duration'] == "permanent":total_duraction = "permanent"
                 else:total_duraction += item['duration']
                 if total_friend_limit < 10: total_friend_limit += item['friend_limit']
                 elif total_friend_limit >= 10: total_friend_limit = 10
-        
+
         if total_friend_limit == 0:
             total_friend_limit = 3
 
-        if total_friend_limit != data['friend_limit']:
-            data['friend_limit'] = total_friend_limit
-            await self.backend.update(self.backend.types.channels, data)
+        data['friend_limit'] = total_friend_limit
+        data['duration'] = total_duraction
+
+        await self.backend.update(self.backend.types.channels, data)
 
         # if total_duraction == 0:
         #     channel = guild.get_channel(1145404806316425287)
@@ -800,7 +796,6 @@ class Perks(commands.Cog, name="perk", description="manage your custom perks"):
                         continue
                     trigger_users.append(user)
                     self.bot.dispatch('highlight_found', message, user_data)
-
                     continue
 
 
