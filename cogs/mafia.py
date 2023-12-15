@@ -54,7 +54,7 @@ class Mafia(commands.GroupCog):
                 message_record += f"Night {night}: {data['players'][player][night]}\n"
             user = channel.guild.get_member(int(player))
             embed.add_field(name=f"{user.name}", value=message_record)
-        channel = self.bot.get_channel(824614406410993725)
+        channel = self.bot.get_channel(1096669152447582318)
         await channel.send(embed=embed)
     
     @app_commands.command(name="scrap", description="Scrap a channel for mafia game data")

@@ -138,6 +138,8 @@ async def on_app_command_error(interaction: discord.Interaction, error: Exceptio
     if isinstance(error, Blocked):
         return await interaction.response.send_message(
             f"Sorry, you have been blocked from using custom perks commands.", ephemeral=True, delete_after=10)
+    if isinstance(error, app_commands.errors.CheckFailure):
+        return 
     else:
         embed = discord.Embed(description=f"```\n{error}\n```", color=bot.default_color)
         try:
