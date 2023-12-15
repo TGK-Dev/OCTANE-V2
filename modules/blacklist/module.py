@@ -370,16 +370,21 @@ class Blacklist_cog(commands.GroupCog, name="blacklist"):
             user_data['strikes'].pop(int(index)-1)
         
         await view.select.interaction.response.send_message("Removing strike...", ephemeral=True)
-        await self.backend.strike.update(user_data)
+
+        if len(user_data['strikes']) == 0:
+            await self.backend.strike.delete(user_data['_id'])
+        else:
+            await self.backend.strike.update(user_data)
+            
         await interaction.edit_original_response(view=view)
         await interaction.followup.send(content=f"Suscessfully removed {len(view.select.values)} strike from {user.mention} in profile `{profile}`")
-
 
     @app_commands.command(name="viewmystrike", description="View your strikes")
     async def _viewmystrike(self, interaction: discord.Interaction):
         profiles: [StrikeUser] = await self.backend.strike.find_many_by_custom({"user_id": interaction.user.id, "guild_id": interaction.guild_id})
         if len(profiles) == 0:
             return await interaction.response.send_message("You don't have any active strikes", ephemeral=True)
+        
         pages = []
         config = await self.backend.get_config(interaction.guild_id)
         for profile in profiles:
