@@ -414,7 +414,7 @@ class Perks(commands.Cog, name="perk", description="manage your custom perks"):
                 name=f"{config['custom_category']['name']} {len(config['custom_category']['cat_list']) + 1}", 
                 position=last_cat.position + 1, overwrites=last_cat.overwrites, reason="Custom Category")
             config['custom_category']['cat_list'].append(category.id)
-            config['custom_category']['last_cat'] = category
+            config['custom_category']['last_cat'] = category.id
             await self.backend.update(self.backend.types.config, config)
             
         overwrites = category.overwrites
