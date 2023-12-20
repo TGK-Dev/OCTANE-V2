@@ -690,9 +690,9 @@ class donation(commands.Cog):
 		# 		await log_channel.send(content=f"Sent {member.mention} the following message:", embed=payment_pending, allowed_mentions=discord.AllowedMentions(users=False, everyone=False,roles=False))
 		# 		await asyncio.sleep(0.5)
 			
-	# @grinder_reminder.before_loop
-	# async def before_grinder_reminder(self):
-	# 	await self.bot.wait_until_ready()
+	@grinder_reminder.before_loop
+	async def before_grinder_reminder(self):
+		await self.bot.wait_until_ready()
 	
 	# @tasks.loop(time=time)
 	# async def celeb_lb(self):
