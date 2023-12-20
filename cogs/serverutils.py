@@ -617,7 +617,7 @@ class Payout(commands.GroupCog, name="payout", description="Payout commands"):
 		await interaction.followup.send("Finished Express Payout", ephemeral=True)
 
 utc = datetime.timezone.utc
-time = datetime.time(hour=6, minute=45, tzinfo=utc)
+time = datetime.time(hour=7, minute=0, tzinfo=utc)
 
 class donation(commands.Cog):
 	def __init__(self, bot):
@@ -625,7 +625,6 @@ class donation(commands.Cog):
 		self.db2 = bot.aceDb["TGK"]
 		self.bot.donorBank = Document(self.db2, "donorBank")
 		self.grinder_reminder.start()
-		# self.celeb_lb = self.celeb_lb.start()
 
 	def cog_unload(self):
 		self.grinder_reminder.cancel()
@@ -635,60 +634,65 @@ class donation(commands.Cog):
 	@tasks.loop(time=time)
 	async def grinder_reminder(self):
 
-		# gk = self.bot.get_guild(785839283847954433)
-		# grinder = gk.get_role(836228842397106176)
-		# trial = gk.get_role(932149422719107102)
+		gk = self.bot.get_guild(785839283847954433)
+		grinder = gk.get_role(836228842397106176)
+		trial = gk.get_role(932149422719107102)
 		print('grinder reminder is running')
 
-		# members = grinder.members
-		# members.extend(trial.members)
+		members = grinder.members
+		members.extend(trial.members)
 
-		# records = await self.bot.donorBank.find_many_by_custom( {"grinder_record" : {"$exists":"true"}})
-		# data = {}
-		# for record in records:
-		# 	data[str(record['_id'])] = record['grinder_record']
+		records = await self.bot.donorBank.find_many_by_custom( {"grinder_record" : {"$exists":"true"}})
+		data = {}
+		for record in records:
+			data[str(record['_id'])] = record['grinder_record']
 
-		# # get current time
-		# date = datetime.date.today()
-		# current_time = datetime.datetime(date.year, date.month, date.day) + datetime.timedelta(days=0)
+		# get current time
+		date = datetime.date.today()
+		current_time = datetime.datetime(date.year, date.month, date.day) + datetime.timedelta(days=0)
 
-		# for member in members:
-		# 	record = data[str(member.id)]
-		# 	if record['time'] == current_time:
-		# 		time_diff = 0
-		# 	else:
-		# 		time_diff = int(str(record['time'] - current_time).split(" ")[0])
+		for member in members:
+			record = data[str(member.id)]
+			if record['time'] == current_time:
+				time_diff = 0
+			else:
+				time_diff = int(str(record['time'] - current_time).split(" ")[0])
 
-		# 	content = ''
-		# 	if time_diff <= 0:
-		# 		message_for_pending = ""
-		# 		if time_diff < -1:
-		# 			message_for_pending += f"> **Pending from:** {-time_diff} days!\n\n"
-		# 		elif time_diff == -1:
-		# 			message_for_pending += f"> **Pending from:** {-time_diff} day!\n\n"
-		# 		elif time_diff == 0:
-		# 			message_for_pending += f"> **Donation is due today!\n\n"
-		# 		else:
-		# 			message_for_pending += f"> **Due in:** {time_diff} days!\n\n"
-		# 		payment_pending = discord.Embed(
-		# 			title=f"<a:TGK_Pandaswag:830525027341565982>  __TGK's Grinders Team__  <a:TGK_Pandaswag:830525027341565982>\n\n",
-		# 			description=f" <:tgk_redarrow:1005361235715424296> Your grinder donations are pending for **{-time_diff+1} days**. \n"
-		# 						f" <:tgk_redarrow:1005361235715424296> Please send `⏣ {(int(-time_diff+1)*record['amount_per_grind']):,}` in <#851663580620521472> today. \n"
-		# 						f" <:tgk_redarrow:1005361235715424296> Inform staff if you have any trouble with donations.  \n",
-		# 			colour=discord.Color.random(),
-		# 			timestamp=datetime.datetime.utcnow()
-		# 		)
-		# 		payment_pending.set_footer(text=f"Developed by utki007 & Jay",
-		# 								   icon_url=gk.icon_url)
-		# 		try:
-		# 			await member.send(content=f"Hello {member.name}! I have a message for you:", embed=payment_pending)
-		# 		except:
-		# 			grinder_channel = self.bot.get_channel(851663580620521472)
-		# 			await grinder_channel.send(content=f"Hello {member.mention}! I have a message for you:", embed=payment_pending)
+			content = ''
+			if time_diff <= 0:
+				message_for_pending = ""
+				if time_diff < -1:
+					message_for_pending += f"> **Pending from:** {-time_diff} days!\n\n"
+				elif time_diff == -1:
+					message_for_pending += f"> **Pending from:** {-time_diff} day!\n\n"
+				elif time_diff == 0:
+					message_for_pending += f"> **Donation is due today!\n\n"
+				else:
+					message_for_pending += f"> **Due in:** {time_diff} days!\n\n"
+				payment_pending = discord.Embed(
+					title=f"<a:TGK_Pandaswag:830525027341565982>  __TGK's Grinders Team__  <a:TGK_Pandaswag:830525027341565982>\n\n",
+					description=f" <:tgk_redarrow:1005361235715424296> Your grinder donations are pending for **{-time_diff+1} days**. \n"
+								f" <:tgk_redarrow:1005361235715424296> Please send `⏣ {(int(-time_diff+1)*record['amount_per_grind']):,}` in <#851663580620521472> today. \n"
+								f" <:tgk_redarrow:1005361235715424296> Inform staff if you have any trouble with donations.  \n",
+					colour=discord.Color.random(),
+					timestamp=datetime.datetime.utcnow()
+				)
+				payment_pending.set_footer(text=f"Developed by utki007 & Jay",
+										   icon_url=gk.icon_url)
+				try:
+					await member.send(content=f"Hello {member.name}! I have a message for you:", embed=payment_pending)
+				except:
+					grinder_channel = self.bot.get_channel(851663580620521472)
+					await grinder_channel.send(content=f"Hello {member.mention}! I have a message for you:", embed=payment_pending)
 				
-		# 		log_channel = self.bot.get_channel(1119998681924509747)
-		# 		await log_channel.send(content=f"Sent {member.mention} the following message:", embed=payment_pending, allowed_mentions=discord.AllowedMentions(users=False, everyone=False,roles=False))
-		# 		await asyncio.sleep(0.5)
+				log_channel = self.bot.get_channel(1119998681924509747)
+				await log_channel.send(content=f"Sent {member.mention} the following message:", embed=payment_pending, allowed_mentions=discord.AllowedMentions(users=False, everyone=False,roles=False))
+				await asyncio.sleep(0.5)
+	
+	@grinder_reminder.error
+	async def grinder_reminder_error(self, error):
+		chal = self.bot.get_channel(999555462674522202)
+		await chal.send(f"<@488614633670967307> <@301657045248114690> ,Error in grinder reminder: {error}")
 
 	@grinder_reminder.before_loop
 	async def before_grinder_reminder(self):
