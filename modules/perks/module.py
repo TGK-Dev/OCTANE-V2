@@ -20,6 +20,7 @@ class Perks(commands.Cog, name="perk", description="manage your custom perks"):
         self.backend: Perks_DB = Perks_DB(bot, Document)
         self.refresh_cache.start()
         self.profile_roles.start()
+        self.profile_reacts.start()
         self.profile_channels.start()
         self.bot.Perk = self.backend
     
@@ -61,17 +62,16 @@ class Perks(commands.Cog, name="perk", description="manage your custom perks"):
     async def on_check_profile_roles(self, data: dict):
         guild: discord.Guild = self.bot.get_guild(data['guild_id'])
         if not guild: return
-        user: discord.Member = guild.get_member(data['user_id'])
-        if not user: return
         crole: discord.Role = guild.get_role(data['role_id'])
         if not crole: return
-        config = await self.backend.get_data(self.backend.types.config, guild.id, user.id)
+        config = await self.backend.get_data(self.backend.types.config, guild.id, self.bot.user.id)
         if not config: return
-        
-        if not user:
+
+        user: discord.Member = guild.get_member(data['user_id'])
+        if not isinstance(user, discord.Member):
             if crole:
                 await crole.delete()
-            log_channel = guild.get_channel(1145404806316425287)
+            log_channel = guild.get_channel(1186937287183958056)
             if log_channel:
                 await log_channel.send(f"**User**: {data['user_id']} has left the server and his custom role `{crole.name}` will been deleted")
             await self.backend.delete(self.backend.types.roles, data)
@@ -101,20 +101,23 @@ class Perks(commands.Cog, name="perk", description="manage your custom perks"):
 
         await self.backend.update(self.backend.types.roles, data)
 
-        # if total_duraction == 0:
-        #     channel = guild.get_channel(1145404806316425287)
-        #     if channel:
-        #         await channel.send(f"**User**: {user.mention} is going to lose his custom role `{crole.name}`", allowed_mentions=discord.AllowedMentions.none())
-        #     # role = guild.get_role(data['role_id'])
-        #     # if role: 
-        #     #     await role.delete()
-        #     # #await self.backend.delete(self.backend.types.roles, data)
-        #     # try:
-        #     #     await user.send(embed=discord.Embed(description=f"Your custom role `{role.name}` has been deleted because you have no active custom roles", color=self.bot.default_color))
-        #     # except:
-        #     #     pass
-        #     # return
+        if total_duraction == 0:
+            channel = guild.get_channel(1186937287183958056)
+            if channel:
+                await channel.send(f"**User**: {user.mention} is going to lose his custom role `{crole.name}`", allowed_mentions=discord.AllowedMentions.none())
+            try:
+                await user.send(embed=discord.Embed(description=f"Your custom role `{role.name}` has been deleted because you have no active custom roles", color=self.bot.default_color))
+            except:
+                pass
+                
+            role = guild.get_role(data['role_id'])
+            if role: 
+                await role.delete()
+            await self.backend.delete(self.backend.types.roles, data)
+
+            return
     
+
     @tasks.loop(minutes=2)
     async def profile_channels(self):
         channel_data = await self.backend.channel.get_all()
@@ -130,12 +133,13 @@ class Perks(commands.Cog, name="perk", description="manage your custom perks"):
         guild: discord.Guild = self.bot.get_guild(data['guild_id'])
         config = await self.backend.get_data(self.backend.types.config, guild.id, data['user_id'])
         if not guild: return
+
         user = guild.get_member(data['user_id'])
         channel = guild.get_channel(data['channel_id'])
-        if not user: 
+        if not isinstance(user, discord.Member): 
             if channel:
                 await channel.delete()
-            log_channel = guild.get_channel(1145404806316425287)
+            log_channel = guild.get_channel(1186937287183958056)
             if log_channel:
                 await log_channel.send(f"**User**: {data['user_id']} has left the server and his custom channel `{channel.name}` has been deleted")
             
@@ -165,18 +169,77 @@ class Perks(commands.Cog, name="perk", description="manage your custom perks"):
 
         await self.backend.update(self.backend.types.channels, data)
 
-        # if total_duraction == 0:
-        #     channel = guild.get_channel(1145404806316425287)
-        #     if channel:
-        #         await channel.send(f"**User**: {user.mention} is going to lose his custom channel `{channel.name}`")
-        #     # await self.backend.delete(self.backend.types.channels, data)
-        #     # await channel.delete()
-        #     # try:
-        #     #     await user.send(embed=discord.Embed(description=f"Your custom channel `{channel.name}` has been deleted because you have no active custom channels", color=self.bot.default_color))
-        #     # except:
-        #     #     pass
-        #     # return
+        if total_duraction == 0:
+            channel = guild.get_channel(1186937287183958056)
+            if channel:
+                await channel.send(f"**User**: {user.mention} is going to lose his custom channel `{channel.name}`")
+            try:
+                await user.send(embed=discord.Embed(description=f"Your custom channel `{channel.name}` has been deleted because you have no active custom channels", color=self.bot.default_color))
+            except:
+                pass
+
+            await self.backend.delete(self.backend.types.channels, data)
+            await channel.delete()
+        return
+    
+    @tasks.loop(minutes=2)
+    async def profile_reacts(self):
+        react_data = await self.backend.react.get_all()
+        for data in react_data:
+            self.bot.dispatch("check_profile_reacts", data)
+    
+
+    @profile_reacts.before_loop
+    async def before_profile_reacts(self):
+        await self.bot.wait_until_ready()
+
+    @commands.Cog.listener()
+    async def on_check_profile_reacts(self, data: dict):
+        guild: discord.Guild = self.bot.get_guild(data['guild_id'])
+        if not guild: return
+        config = await self.backend.get_data(self.backend.types.config, guild.id, data['user_id'])
+        if not config: return
+
+        user = guild.get_member(data['user_id'])
+
+        if not isinstance(user, discord.Member): 
+            await self.backend.delete(self.backend.types.reacts, data)
+            del self.backend.cach['react'][data['guild_id']][data['user_id']]
+            return
         
+        total_duraction = 0
+        total_reaction_limit = 0
+
+        for key, item in config['profiles']['reacts'].items():
+            role = guild.get_role(int(key))
+            if not role: 
+                del config['profiles']['reacts'][key]
+                await self.backend.update(self.backend.types.config, config)
+                continue
+            if role in user.roles:
+                if item['duration'] == "permanent":total_duraction = "permanent"
+                else:total_duraction += item['duration']
+                if total_reaction_limit < 10: total_reaction_limit += item['friend_limit']
+                elif total_reaction_limit >= 10: total_reaction_limit = 10
+
+        if total_duraction == 0:
+            chal = self.bot.get_channel(1186937287183958056)
+            await chal.send(f"**User**: {user.mention} is going to lose his custom react {data['emojis']}")
+            try:
+                await user.send(embed=discord.Embed(description=f"Your custom react has been deleted because you have no active custom reacts", color=self.bot.default_color))
+            except:
+                pass
+            await self.backend.delete(self.backend.types.reacts, data)
+            del self.backend.cach['react'][data['guild_id']][data['user_id']]
+            return
+
+        data['max_emoji'] = total_reaction_limit
+        data['duration'] = total_duraction
+
+        await self.backend.update(self.backend.types.reacts, data)
+        self.backend.cach['react'][data['guild_id']][data['user_id']] = data
+
+
     async def highlight_remove_auto(self, interaction: Interaction, current: str) -> List[app_commands.Choice[str]]:
         user_data = await self.backend.get_data(self.backend.types.highlights, interaction.guild.id, interaction.user.id)
         if user_data == None:
@@ -666,6 +729,7 @@ class Perks(commands.Cog, name="perk", description="manage your custom perks"):
         embeds = []
         if role:
             role_data = await self.backend.roles.find({"role_id": role.id, "guild_id": interaction.guild.id})
+            if not role_data: return await interaction.response.send_message("No results found", ephemeral=True)
             user_data = interaction.guild.get_member(role_data['user_id'])
             duration = humanfriendly.format_timespan(role_data['duration']) if role_data['duration'] != "permanent" else "Permanent"
             role_embed = discord.Embed(title="Custom Role Info", color=interaction.client.default_color, description="")
@@ -677,6 +741,7 @@ class Perks(commands.Cog, name="perk", description="manage your custom perks"):
             embeds.append(role_embed)
         if channel:
             channel_data = await self.backend.channel.find({"channel_id": channel.id, "guild_id": interaction.guild.id})
+            if not channel_data: return await interaction.response.send_message("No results found", ephemeral=True)
             user_data = interaction.guild.get_member(channel_data['user_id'])
             duration = humanfriendly.format_timespan(channel_data['duration']) if channel_data['duration'] != "permanent" else "Permanent"
             channel_embed = discord.Embed(title="Custom Channel Info", color=interaction.client.default_color, description="")
