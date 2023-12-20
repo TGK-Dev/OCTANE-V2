@@ -35,7 +35,6 @@ class RoleMenus(commands.GroupCog, name="role_menus", description="Role menus"):
                 viewd = RoleMenu_Perent(profile, self.bot.get_guild(key), _type="dropdown")
                 self.bot.add_view(viewb)
                 self.bot.add_view(viewd)
-        print("Loaded role menus")
     
     @app_commands.command(name="create", description="Create a role menu")
     async def create(self, interaction: discord.Interaction, display_name: str):

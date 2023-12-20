@@ -10,16 +10,12 @@ class Mafia(commands.GroupCog):
         self.bot = bot
         self.mafia_channels = {}
         self.mafia_inprosses = []
-
-    @commands.Cog.listener()
-    async def on_ready(self):
-        print("Mafia cog is ready")
-
     
     @commands.Cog.listener()
     async def on_message(self, message: discord.Message):
         if message.channel.id in self.mafia_inprosses:
             return
+        if not message.guild: return
         if message.channel.name == "mafia" and message.channel.id not in self.mafia_channels.keys():
             self.mafia_channels[message.channel.id] = {'current_night': 1, 'players': {}}
         
@@ -28,7 +24,6 @@ class Mafia(commands.GroupCog):
                 new_night = night_pattern.findall(message.embeds[0].title)
                 if new_night != []: 
                     self.mafia_channels[message.channel.id]['current_night'] = int(new_night[0])       
-                    print("New night: ", self.mafia_channels[message.channel.id]['current_night'])
             
             if message.author.id == 511786918783090688 and message.embeds != [] and isinstance(message.embeds[0].description, str):
                 if message.embeds[0].description == "Thank you all for playing! Deleting this channel in 10 seconds":
@@ -68,7 +63,6 @@ class Mafia(commands.GroupCog):
                     new_night = night_pattern.findall(message.embeds[0].title)
                     if new_night != []: 
                         current_night = int(new_night[0])       
-                        print("New night: ", current_night)
             
             if message.author.bot:
                 continue
