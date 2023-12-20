@@ -617,7 +617,7 @@ class Payout(commands.GroupCog, name="payout", description="Payout commands"):
 		await interaction.followup.send("Finished Express Payout", ephemeral=True)
 
 utc = datetime.timezone.utc
-time = datetime.time(hour=7, minute=0, tzinfo=utc)
+time = datetime.time(hour=7, minute=10, tzinfo=utc)
 
 class donation(commands.Cog):
 	def __init__(self, bot):
@@ -631,10 +631,10 @@ class donation(commands.Cog):
 		# self.celeb_lb.cancel()
 
 	# for grinders reminder
-	@tasks.loop(time=time)
+	@tasks.loop(seconds=20)
 	async def grinder_reminder(self):
 
-		gk = self.bot.get_guild(785839283847954433)
+		gk: discord.Guild = self.bot.get_guild(785839283847954433)
 		grinder = gk.get_role(836228842397106176)
 		trial = gk.get_role(932149422719107102)
 		print('grinder reminder is running')
@@ -678,7 +678,7 @@ class donation(commands.Cog):
 					timestamp=datetime.datetime.utcnow()
 				)
 				payment_pending.set_footer(text=f"Developed by utki007 & Jay",
-										   icon_url=gk.icon_url)
+										   icon_url=gk.icon.url)
 				try:
 					await member.send(content=f"Hello {member.name}! I have a message for you:", embed=payment_pending)
 				except:
