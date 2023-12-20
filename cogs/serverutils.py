@@ -617,7 +617,7 @@ class Payout(commands.GroupCog, name="payout", description="Payout commands"):
 		await interaction.followup.send("Finished Express Payout", ephemeral=True)
 
 utc = datetime.timezone.utc
-time = datetime.time(hour=6, minute=30, tzinfo=utc)
+time = datetime.time(hour=6, minute=45, tzinfo=utc)
 
 class donation(commands.Cog):
 	def __init__(self, bot):
@@ -635,9 +635,9 @@ class donation(commands.Cog):
 	@tasks.loop(time=time)
 	async def grinder_reminder(self):
 
-		gk = self.bot.get_guild(785839283847954433)
-		grinder = gk.get_role(836228842397106176)
-		trial = gk.get_role(932149422719107102)
+		# gk = self.bot.get_guild(785839283847954433)
+		# grinder = gk.get_role(836228842397106176)
+		# trial = gk.get_role(932149422719107102)
 		print('grinder reminder is running')
 
 		# members = grinder.members
@@ -689,7 +689,7 @@ class donation(commands.Cog):
 		# 		log_channel = self.bot.get_channel(1119998681924509747)
 		# 		await log_channel.send(content=f"Sent {member.mention} the following message:", embed=payment_pending, allowed_mentions=discord.AllowedMentions(users=False, everyone=False,roles=False))
 		# 		await asyncio.sleep(0.5)
-			
+
 	@grinder_reminder.before_loop
 	async def before_grinder_reminder(self):
 		await self.bot.wait_until_ready()
