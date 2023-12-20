@@ -617,7 +617,7 @@ class Payout(commands.GroupCog, name="payout", description="Payout commands"):
 		await interaction.followup.send("Finished Express Payout", ephemeral=True)
 
 utc = datetime.timezone.utc
-time = datetime.time(hour=7, minute=10, tzinfo=utc)
+time = datetime.time(hour=4, minute=30, tzinfo=utc)
 
 class donation(commands.Cog):
 	def __init__(self, bot):
@@ -631,7 +631,7 @@ class donation(commands.Cog):
 		# self.celeb_lb.cancel()
 
 	# for grinders reminder
-	@tasks.loop(seconds=20)
+	@tasks.loop(time=time)
 	async def grinder_reminder(self):
 
 		gk: discord.Guild = self.bot.get_guild(785839283847954433)
