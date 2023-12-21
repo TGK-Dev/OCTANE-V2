@@ -221,46 +221,46 @@ class Level(commands.GroupCog):
         if data['last_updated'] + datetime.timedelta(seconds=8) < datetime.datetime.utcnow():
             self.bot.dispatch("level_up", message, data)
     
-    @commands.Cog.listener()
-    async def on_member_remove(self, member: discord.Member):
-        if member.bot: return
-        if member.guild.id != 785839283847954433: return
-        guild: discord.Guild = member.guild
-        try:
-            ban = await guild.fetch_ban(member)        
-            if ban: return
-        except discord.NotFound:
-            pass
-        member_data = await self.levels.get_member_level(member)
-        if member_data['weekly'] < 10:
-            if member_data['level'] > 5: return
-            data = await self.bot.free.find(member.id)
-            if data is None:
-                data = {
-                    "_id": member.id,
-                    "total_ff": 1,
-                    "banned": False,
-                    "ban_days": 7,
-                    "unbanAt": None,
-                }
-                await self.bot.free.insert(data)
-            if data['total_ff'] == 1:
-                data['unbanAt'] = datetime.datetime.utcnow() + datetime.timedelta(days=data['ban_days'])
-            else:
-                days = data['ban_days'] * data['total_ff']
-                data['unbanAt'] = datetime.datetime.utcnow() + datetime.timedelta(days=days)
-            await guild.ban(member, reason=f"Freeloaded after Heist. Total Freeloads: {data['total_ff']}")
-            embed = discord.Embed(title="Freeloader Banned", description=f"", color=discord.Color.red())
-            embed.description += f"**User:** {member.mention} | `{member.id}`\n"
-            embed.description += f"**Total Freeloads:** {data['total_ff']}\n"
-            embed.description += f"**Ban Duration:** {data['ban_days']} days\n"
-            embed.description += f"**Unban in** <t:{round(data['unbanAt'].timestamp())}:R>\n"
-            embed.set_thumbnail(url=member.avatar.url if member.avatar else member.default_avatar)
-            embed.set_footer(text="The Gambler's Kingdom", icon_url=guild.icon.url)
-            await self.webhook.send(embed=embed)
-            data['total_ff'] += 1
-            data['banned'] = True
-            await self.bot.free.update(data)
+    # @commands.Cog.listener()
+    # async def on_member_remove(self, member: discord.Member):
+    #     if member.bot: return
+    #     if member.guild.id != 785839283847954433: return
+    #     guild: discord.Guild = member.guild
+    #     try:
+    #         ban = await guild.fetch_ban(member)        
+    #         if ban: return
+    #     except discord.NotFound:
+    #         pass
+    #     member_data = await self.levels.get_member_level(member)
+    #     if member_data['weekly'] < 10:
+    #         if member_data['level'] > 5: return
+    #         data = await self.bot.free.find(member.id)
+    #         if data is None:
+    #             data = {
+    #                 "_id": member.id,
+    #                 "total_ff": 1,
+    #                 "banned": False,
+    #                 "ban_days": 7,
+    #                 "unbanAt": None,
+    #             }
+    #             await self.bot.free.insert(data)
+    #         if data['total_ff'] == 1:
+    #             data['unbanAt'] = datetime.datetime.utcnow() + datetime.timedelta(days=data['ban_days'])
+    #         else:
+    #             days = data['ban_days'] * data['total_ff']
+    #             data['unbanAt'] = datetime.datetime.utcnow() + datetime.timedelta(days=days)
+    #         await guild.ban(member, reason=f"Freeloaded after Heist. Total Freeloads: {data['total_ff']}")
+    #         embed = discord.Embed(title="Freeloader Banned", description=f"", color=discord.Color.red())
+    #         embed.description += f"**User:** {member.mention} | `{member.id}`\n"
+    #         embed.description += f"**Total Freeloads:** {data['total_ff']}\n"
+    #         embed.description += f"**Ban Duration:** {data['ban_days']} days\n"
+    #         embed.description += f"**Unban in** <t:{round(data['unbanAt'].timestamp())}:R>\n"
+    #         embed.set_thumbnail(url=member.avatar.url if member.avatar else member.default_avatar)
+    #         embed.set_footer(text="The Gambler's Kingdom", icon_url=guild.icon.url)
+    #         await self.webhook.send(embed=embed)
+    #         data['total_ff'] += 1
+    #         data['banned'] = True
+    #         await self.bot.free.update(data)
 
     @commands.Cog.listener()
     async def on_slash_command(self, message: discord.Message):
