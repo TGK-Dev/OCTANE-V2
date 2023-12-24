@@ -187,7 +187,7 @@ class Blacklist_cog(commands.GroupCog, name="blacklist"):
         }
         await self.backend.insert_blacklist(user_data)
 
-        role_add = [interaction.guild.get_role(role_id) for role_id in profile_data['add_role']]
+        role_add = [interaction.guild.get_role(role_id) for role_id in profile_data['role_add']]
         role_remove = [interaction.guild.get_role(role_id) for role_id in profile_data['role_remove']]
         await user.add_roles(*role_add, reason=f"Blacklist by {interaction.user} ({interaction.user.id})")
         await user.remove_roles(*role_remove, reason=f"Blacklist by {interaction.user} ({interaction.user.id})")
@@ -205,6 +205,11 @@ class Blacklist_cog(commands.GroupCog, name="blacklist"):
             embed.description += f"**By:** {interaction.user.mention} ({interaction.user.id})\n"
             await channel.send(embed=embed)
 
+    @user_add.error
+    async def user_add_error(self, interaction: discord.Interaction, error):
+        print(error)
+        await interaction.response.send_message(f"Error: {error}")
+
     @user.command(name="remove", description="remove blacklist from user")
     @app_commands.describe(profile="Profile to remove blacklist", user="User to remove blacklist", reason="Reason for removing blacklist")
     @app_commands.autocomplete(profile=profile_aucto_normal)
@@ -219,7 +224,7 @@ class Blacklist_cog(commands.GroupCog, name="blacklist"):
         if user_data is None:
             return await interaction.response.send_message(f"{user.mention} is not blacklisted in profile `{profile}`", ephemeral=True)
 
-        role_add = [interaction.guild.get_role(role_id) for role_id in profile_data['remove_role']]
+        role_add = [interaction.guild.get_role(role_id) for role_id in profile_data['role_remove']]
         role_remove = [interaction.guild.get_role(role_id) for role_id in profile_data['role_add']]
         await user.add_roles(*role_add, reason=f"Blacklist removed by {interaction.user} ({interaction.user.id})")
         await user.remove_roles(*role_remove, reason=f"Blacklist removed by {interaction.user} ({interaction.user.id})")

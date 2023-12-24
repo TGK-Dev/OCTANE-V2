@@ -90,7 +90,7 @@ class backend:
         self.config_cache[guild_id] = data
 
     async def get_blacklist(self, user: discord.Member, profile: Profile) -> Blacklist:
-        data = await self.blacklist.find({"user_id": user.id, "profile": profile.id, "guild_id": user.guild.id})
+        data = await self.blacklist.find({"user_id": user.id, "profile": profile['_id'], "guild_id": user.guild.id})
         if not data:
             return None
         del data["_id"]
