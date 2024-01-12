@@ -102,7 +102,7 @@ class Perks(commands.Cog, name="perk", description="manage your custom perks"):
         await self.backend.update(self.backend.types.roles, data)
 
         if total_duraction == 0:
-            channel = guild.get_channel(1186937287183958056)
+            channel = guild.get_channel(1190668526361518120)
             if channel:
                 await channel.send(f"**User**: {user.mention} is going to lose his custom role `{crole.name}`", allowed_mentions=discord.AllowedMentions.none())
             try:
@@ -139,7 +139,7 @@ class Perks(commands.Cog, name="perk", description="manage your custom perks"):
         if not isinstance(user, discord.Member): 
             if channel:
                 await channel.delete()
-            log_channel = guild.get_channel(1186937287183958056)
+            log_channel = guild.get_channel(1190668526361518120)
             if log_channel:
                 await log_channel.send(f"**User**: {data['user_id']} has left the server and his custom channel `{channel.name}` has been deleted")
             
@@ -223,7 +223,7 @@ class Perks(commands.Cog, name="perk", description="manage your custom perks"):
                 elif total_reaction_limit >= 10: total_reaction_limit = 10
 
         if total_duraction == 0:
-            chal = self.bot.get_channel(1186937287183958056)
+            chal = self.bot.get_channel(1190668526361518120)
             await chal.send(f"**User**: {user.mention} is going to lose his custom react {data['emojis']}")
             try:
                 await user.send(embed=discord.Embed(description=f"Your custom react has been deleted because you have no active custom reacts", color=self.bot.default_color))
