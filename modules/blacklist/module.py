@@ -242,7 +242,7 @@ class Blacklist_cog(commands.GroupCog, name="blacklist"):
         for blacklist in await self.backend.blacklist.find_many_by_custom({"user_id": user.id, "guild_id": interaction.guild_id}):
             profile:Profile = config['profiles'][blacklist['profile']]
             embed = discord.Embed(title=f"Blacklist of {user}", color=self.bot.default_color, description="")
-            embed.description += f"**Profile:** {profile["_id"]}\n"
+            embed.description += f"**Profile:** {profile['_id']}\n"
             embed.description += f"**Reason:** {blacklist['Blacklist_reason']}\n"
             embed.description += f"**Duration:** {format_timespan(blacklist['Blacklist_duration'])}\n"
             embed.description += f"**End:** <t:{int(blacklist['Blacklist_end'].timestamp())}:R>\n"
