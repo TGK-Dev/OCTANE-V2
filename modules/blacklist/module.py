@@ -137,12 +137,12 @@ class Blacklist_cog(commands.GroupCog, name="blacklist"):
             channel = guild.get_channel(config['log_channel'])
             embed = discord.Embed(title="Blacklist expired", color=self.bot.default_color, description="")
             embed.description += f"**User:** {user.mention} ({user.id})\n"
-            embed.description += f"**Profile:** {profile._id}\n"
+            embed.description += f"**Profile:** {profile['_id']}\n"
             embed.description += f"**Reason:** {blacklist['Blacklist_reason']}\n"
             embed.description += f"**By:** <@{blacklist['Blacklist_by']}> ({blacklist['Blacklist_by']})\n"
 
             await channel.send(embed=embed)
-        await self.backend.blacklist.delete({"user_id": user.id, "profile": profile._id, "guild_id": guild.id})
+        await self.backend.blacklist.delete({"user_id": user.id, "profile": profile["_id"], "guild_id": guild.id})
 
     @commands.Cog.listener()
     async def on_ready(self):
