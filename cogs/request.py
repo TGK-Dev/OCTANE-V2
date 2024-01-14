@@ -74,7 +74,7 @@ class Request_dv:
                 "<a>", "", 100);items = items.replace("  ", " ", 100)
             mathc = re.search(r"(\d+)x (.+)", items)
             item_found = mathc.group(2)
-            quantity_found = int(mathc.group(1).replace(",","",100))
+            quantity_found = int(items.split(" ")[0][:-1].replace(",","",100))
             if item.lower() == item_found.lower() and quantity == quantity_found:
                 return True
             else:
