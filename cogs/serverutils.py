@@ -637,7 +637,8 @@ class donation(commands.Cog):
 		gk: discord.Guild = self.bot.get_guild(785839283847954433)
 		grinder = gk.get_role(836228842397106176)
 		trial = gk.get_role(932149422719107102)
-		print('grinder reminder is running')
+		mythic = gk.get_role(835866409992716289)
+		legendary = gk.get_role(806804472700600400)
 
 		members = grinder.members
 		members.extend(trial.members)
@@ -687,6 +688,55 @@ class donation(commands.Cog):
 				
 				log_channel = self.bot.get_channel(1119998681924509747)
 				await log_channel.send(content=f"Sent {member.mention} the following message:", embed=payment_pending, allowed_mentions=discord.AllowedMentions(users=False, everyone=False,roles=False))
+				
+				try:
+					pending_from = -time_diff + 1
+					msg = ''
+					flag = 0
+					if pending_from >= 3:
+						if grinder in member.roles:
+							await member.remove_roles(grinder)
+							msg += f"- **Removed:** {grinder.mention}\n"
+							flag = 1
+						if trial not in member.roles:
+							await member.add_roles(trial)
+							msg += f"- **Added:** {trial.mention}\n"
+							flag = 1
+						if flag == 1:
+							title = f'Demoted from grinders team! ({pending_from} days pending)'
+						else:
+							continue
+					elif pending_from >= 6:
+						if grinder in member.roles:
+							await member.remove_roles(grinder)
+							msg += f"- **Removed:** {grinder.mention}\n"
+							flag = 1
+						if trial in member.roles:
+							await member.remove_roles(trial)
+							msg += f"- **Removed:** {trial.mention}\n"
+							flag = 1
+						if mythic in member.roles:
+							await member.remove_roles(mythic)
+							msg += f"- **Removed:** {mythic.mention}\n"
+							flag = 1
+						if legendary in member.roles:
+							await member.remove_roles(legendary)
+							msg += f"- **Removed:** {legendary.mention}\n"
+							flag = 1
+						if flag == 1:
+							title = f'Kicked from grinders team! ({pending_from} days pending)'
+						else:
+							continue
+				except:
+					msg = f"- **Error:** Unable to remove roles for {member.mention}\n"
+				
+				try:
+					payment_pending.title = title
+					payment_pending.description = msg				
+					await log_channel.send(embed=payment_pending)	
+				except:
+					pass						
+
 				await asyncio.sleep(0.5)
 	
 	@grinder_reminder.error
