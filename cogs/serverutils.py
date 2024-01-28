@@ -693,7 +693,7 @@ class donation(commands.Cog):
 					pending_from = -time_diff + 1
 					msg = ''
 					flag = 0
-					if pending_from >= 3:
+					if pending_from >= 3 and pending_from < 6:
 						if grinder in member.roles:
 							await member.remove_roles(grinder)
 							msg += f"- **Removed:** {grinder.mention}\n"
@@ -727,12 +727,16 @@ class donation(commands.Cog):
 							title = f'Kicked from grinders team! ({pending_from} days pending)'
 						else:
 							continue
+					else:
+						continue
 				except:
 					msg = f"- **Error:** Unable to remove roles for {member.mention}\n"
 				
 				try:
 					payment_pending.title = title
-					payment_pending.description = msg				
+					payment_pending.description = msg
+					payment_pending.set_thumbnail(url=member.avatar.url)
+					payment_pending.set_author(name=member.name, icon_url=member.avatar.url)		
 					await log_channel.send(embed=payment_pending)	
 				except:
 					pass						
