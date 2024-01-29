@@ -640,6 +640,9 @@ class donation(commands.Cog):
 		mythic = gk.get_role(835866409992716289)
 		legendary = gk.get_role(806804472700600400)
 
+		grinder_channel = self.bot.get_channel(851663580620521472)
+		log_channel = self.bot.get_channel(1119998681924509747)
+
 		members = grinder.members
 		members.extend(trial.members)
 
@@ -676,18 +679,16 @@ class donation(commands.Cog):
 								f" <:tgk_redarrow:1005361235715424296> Please send `⏣ {(int(-time_diff+1)*record['amount_per_grind']):,}` in <#851663580620521472> today. \n"
 								f" <:tgk_redarrow:1005361235715424296> Inform staff if you have any trouble with donations.  \n",
 					colour=discord.Color.random(),
-					timestamp=datetime.datetime.utcnow()
+					timestamp=datetime.datetime.now()
 				)
 				payment_pending.set_footer(text=f"Developed by utki007 & Jay",
 										   icon_url=gk.icon.url)
 				try:
 					await member.send(content=f"Hello {member.name}! I have a message for you:", embed=payment_pending)
 				except:
-					grinder_channel = self.bot.get_channel(851663580620521472)
 					await grinder_channel.send(content=f"Hello {member.mention}! I have a message for you:", embed=payment_pending)
 				
-				log_channel = self.bot.get_channel(1119998681924509747)
-				await log_channel.send(content=f"Sent {member.mention} the following message:", embed=payment_pending, allowed_mentions=discord.AllowedMentions(users=False, everyone=False,roles=False))
+				# await log_channel.send(content=f"Sent {member.mention} the following message:", embed=payment_pending, allowed_mentions=discord.AllowedMentions(users=False, everyone=False,roles=False))
 				
 				try:
 					pending_from = -time_diff + 1
@@ -703,7 +704,7 @@ class donation(commands.Cog):
 							msg += f"- **Added:** {trial.mention}\n"
 							flag = 1
 						if flag == 1:
-							title = f'Demoted from grinders team! ({pending_from} days pending)'
+							title = f'Demoted {member.name}!'
 						else:
 							continue
 					elif pending_from >= 6:
@@ -724,7 +725,7 @@ class donation(commands.Cog):
 							msg += f"- **Removed:** {legendary.mention}\n"
 							flag = 1
 						if flag == 1:
-							title = f'Kicked from grinders team! ({pending_from} days pending)'
+							title = f'Kicked {member.name}!'
 						else:
 							continue
 					else:
@@ -736,7 +737,8 @@ class donation(commands.Cog):
 					payment_pending.title = title
 					payment_pending.description = msg
 					payment_pending.set_thumbnail(url=member.avatar.url)
-					payment_pending.set_author(name=member.name, icon_url=member.avatar.url)		
+					# payment_pending.set_author(name=member.name, icon_url=member.avatar.url)
+					payment_pending.set_footer(text=f'ID: {member.id}')	
 					await log_channel.send(embed=payment_pending)	
 				except:
 					pass						
