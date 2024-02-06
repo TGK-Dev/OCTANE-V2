@@ -104,7 +104,7 @@ class Events(commands.Cog):
         if data["reminded"] == True: return
 
         view = discord.ui.View()
-        view.add_item(discord.ui.Button(label="Vote for TGK at Top.gg", emoji="<a:tgk_icon:1002504426172448828>",url="https://top.gg/servers/785839283847954433/vote"))
+        view.add_item(discord.ui.Button(label="Vote for TGK at disurl.me", emoji="<a:tgk_icon:1002504426172448828>",url="https://disurl.me/server/785839283847954433/vote"))
 
         guild = self.bot.get_guild(785839283847954433)
         member = guild.get_member(int(data['discordId']))
