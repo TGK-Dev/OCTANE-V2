@@ -357,7 +357,7 @@ class Perks(commands.Cog, name="perk", description="manage your custom perks"):
         await interaction.user.add_roles(role)
     
     @privrole.command(name="edit", description="Edit your custom role")
-    @app_commands.checks.cooldown(1, 1200, key= lambda i: (i.guild.id, i.user.id))
+    @app_commands.checks.cooldown(1, 600, key= lambda i: (i.guild.id, i.user.id))
     @app_commands.describe(name="name of your custom role", color="color of your custom role like #2b2d31", icon="role icon of your custom role")
     async def _prole_edit(self, interaction: Interaction, name: str=None, color: str=None, icon: discord.Attachment=None):
         if name == None and color == None and icon == None:
