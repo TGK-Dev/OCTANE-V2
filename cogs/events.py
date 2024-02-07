@@ -169,11 +169,17 @@ class Events(commands.Cog):
             embed = message.embeds[0]
 
             if embed.description.startswith("Your server can be bumped to"):
-                await message.reply.send("Bump server again with </bump:959230305699500072>")
+                gc = self.bot.get_channel(785847439579676672)
+                await gc.send(f"Kindly bump our server again at {message.jump_url}. Thank you!", delete_after=30)
+                await message.reply("Bump server again with </bump:959230305699500072>")
                 await message.channel.set_permissions(message.guild.default_role, send_messages=True)
 
             if embed.description.startswith("**Thanks for bumping"):
-                await message.reply.send("Thanks for bumping the server")
+                await message.reply("Thanks for bumping the server")
+                await message.channel.set_permissions(message.guild.default_role, send_messages=False)
+
+            if 'You cant bump' in embed.description:
+                await message.reply("You can't bump the server yet")
                 await message.channel.set_permissions(message.guild.default_role, send_messages=False)
         
     
