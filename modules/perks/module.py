@@ -14,6 +14,7 @@ from colour import Color
 from utils.checks import Blocked
 from .db import Perk_Type, Perks_DB
 
+time = datetime.time(hour=4, minute=30, tzinfo=datetime.timezone.utc)
 class Perks(commands.Cog, name="perk", description="manage your custom perks"):
     def __init__(self, bot):
         self.bot = bot
@@ -48,7 +49,7 @@ class Perks(commands.Cog, name="perk", description="manage your custom perks"):
     async def before_refresh_cache(self):
         await self.bot.wait_until_ready()
 
-    @tasks.loop(minutes=2)
+    @tasks.loop(time=time)
     async def profile_roles(self):
         role_data = await self.backend.roles.get_all()
         for data in role_data:
@@ -118,7 +119,7 @@ class Perks(commands.Cog, name="perk", description="manage your custom perks"):
             return
     
 
-    @tasks.loop(minutes=2)
+    @tasks.loop(time=time)
     async def profile_channels(self):
         channel_data = await self.backend.channel.get_all()
         for data in channel_data:
@@ -182,7 +183,7 @@ class Perks(commands.Cog, name="perk", description="manage your custom perks"):
             await channel.delete()
         return
     
-    @tasks.loop(minutes=2)
+    @tasks.loop(time=time)
     async def profile_reacts(self):
         react_data = await self.backend.react.get_all()
         for data in react_data:
