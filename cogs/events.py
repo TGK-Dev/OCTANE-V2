@@ -178,12 +178,13 @@ class Events(commands.Cog):
                 await message.reply("Thanks for bumping the server")
                 await message.channel.set_permissions(message.guild.default_role, send_messages=False)
                 await message.channel.send("While you wait for next bump, vote us at https://disurl.me/server/785839283847954433/vote")
+                await message.channel.purge(limit=50, check=lambda m: m.author == self.bot.user)
 
             if 'You cant bump' in embed.description:
                 await message.reply("You can't bump the server yet")
                 await message.channel.set_permissions(message.guild.default_role, send_messages=False)
                 await message.channel.send("While you wait for next bump, vote us at https://disurl.me/server/785839283847954433/vote")
-        
+                await message.channel.purge(limit=50, check=lambda m: m.author == self.bot.user)        
     
     @commands.Cog.listener()
     async def on_command_error(self, ctx, error):
