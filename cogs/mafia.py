@@ -99,8 +99,9 @@ class Mafia(commands.GroupCog):
     async def on_mafia_ends(self, data: MafiaData, channel: discord.TextChannel):
         self.mafia_inprosses.append(channel.id)
         log_channel = channel.guild.get_channel(1096669152447582318)
-        embed = discord.Embed(title="Scraped Data", description="Data scraped from the channel\n", color=self.bot.default_color)
+
         for night in data['Nights'].keys():
+            embed = discord.Embed(description="", color=self.bot.default_color)
             _str = f"## Night {night}\n"
 
             for index, player in enumerate(data['Nights'][night]['Players'].keys()):
@@ -117,12 +118,8 @@ class Mafia(commands.GroupCog):
                     _str += " <:tgk_deactivated:1082676877468119110>\n"
                 embed.description += _str
 
-            if len(embed.description) > 3500:
-                await log_channel.send(embed=embed)
-                embed = discord.Embed(title="Scraped Data", description="", color=self.bot.default_color)
-                continue
-
         dead_players_info = ""
+        embed = discord.Embed(title="", description="", color=self.bot.default_color)
         for i in data['players'].keys():
             if not data['players'][i]['alive']:
                 dead_players_info += f"{data['players'][i]['user'].mention} died on night {data['players'][i]['death_night']}\n"
