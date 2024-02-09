@@ -178,13 +178,17 @@ class Events(commands.Cog):
                 await message.reply("Thanks for bumping the server")
                 await message.channel.set_permissions(message.guild.default_role, send_messages=False)                
                 await message.channel.purge(limit=50, check=lambda m: m.author == self.bot.user)
-                await message.channel.send("While you wait for next bump, vote us at https://disurl.me/server/785839283847954433/vote")
+                view = discord.ui.View()
+                view.add_item(discord.ui.Button(label="Vote for TGK", emoji="<a:tgk_icon:1002504426172448828>",url="https://disurl.me/server/785839283847954433/vote"))
+                await message.channel.send("If you like our server, make sure to vote for us!", view=view)
 
             if 'You cant bump' in embed.description:
                 await message.channel.set_permissions(message.guild.default_role, send_messages=False)
-                await message.channel.purge(limit=50, check=lambda m: m.author == self.bot.user)      
-                await message.channel.send("While you wait for next bump, vote us at https://disurl.me/server/785839283847954433/vote")  
-    
+                await message.channel.purge(limit=50, check=lambda m: m.author == self.bot.user)
+                view = discord.ui.View()
+                view.add_item(discord.ui.Button(label="Vote for TGK", emoji="<a:tgk_icon:1002504426172448828>",url="https://disurl.me/server/785839283847954433/vote"))
+                await message.channel.send("If you like our server, make sure to vote for us!", view=view)
+                
     @commands.Cog.listener()
     async def on_command_error(self, ctx, error):
         if isinstance(error, commands.CommandNotFound):
