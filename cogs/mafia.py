@@ -103,7 +103,6 @@ class Mafia(commands.GroupCog):
         for night in data['Nights'].keys():
             embed = discord.Embed(description="", color=self.bot.default_color)
             _str = f"## Night {night}\n"
-
             for index, player in enumerate(data['Nights'][night]['Players'].keys()):
                 user = channel.guild.get_member(int(player))
                 if index+1 == len(data['Nights'][night]['Players'].keys()):
@@ -116,6 +115,11 @@ class Mafia(commands.GroupCog):
                     _str += " <:tgk_active:1082676793342951475>\n"
                 else:
                     _str += " <:tgk_deactivated:1082676877468119110>\n"
+            
+            if len(embed.description) + len(_str) > 4096:
+                await log_channel.send(embed=embed)
+                embed = discord.Embed(description="", color=self.bot.default_color)
+            else:
                 embed.description += _str
                 
             await log_channel.send(embed=embed)
