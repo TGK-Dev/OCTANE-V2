@@ -100,8 +100,8 @@ class Mafia(commands.GroupCog):
         self.mafia_inprosses.append(channel.id)
         log_channel = channel.guild.get_channel(1096669152447582318)
 
+        embed = discord.Embed(description="", color=self.bot.default_color)
         for night in data['Nights'].keys():
-            embed = discord.Embed(description="", color=self.bot.default_color)
             _str = f"## Night {night}\n"
             for index, player in enumerate(data['Nights'][night]['Players'].keys()):
                 user = channel.guild.get_member(int(player))
