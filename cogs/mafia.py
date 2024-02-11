@@ -122,7 +122,7 @@ class Mafia(commands.GroupCog):
             else:
                 embed.description += _str
                 
-            await log_channel.send(embed=embed)
+        await log_channel.send(embed=embed)
 
         dead_players_info = ""
         embed = discord.Embed(title="", description="", color=self.bot.default_color)
