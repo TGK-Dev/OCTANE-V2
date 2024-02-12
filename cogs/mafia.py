@@ -132,6 +132,7 @@ class Mafia(commands.GroupCog):
             if not data['players'][i]['alive']:
                 dead_players_info += f"{data['players'][i]['user'].mention} died on night {data['players'][i]['death_night']}\n"
         embed.add_field(name="Dead Players", value=dead_players_info)
+        await log_channel.send(embed=embed)
     
     @app_commands.command(name="scrap", description="Scrap a channel for mafia game data")
     async def scrap(self, interaction: discord.Interaction, channel: discord.TextChannel):
