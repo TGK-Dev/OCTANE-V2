@@ -102,6 +102,8 @@ class Mafia(commands.GroupCog):
 
         embed = discord.Embed(description="", color=self.bot.default_color)
         for night in data['Nights'].keys():
+            if len(data['Nights'][night]['Players'].keys()) == 0:
+                continue
             _str = f"## Night {night}\n"
             for index, player in enumerate(data['Nights'][night]['Players'].keys()):
                 user = channel.guild.get_member(int(player))
@@ -121,7 +123,7 @@ class Mafia(commands.GroupCog):
                 embed = discord.Embed(description="", color=self.bot.default_color)
             else:
                 embed.description += _str
-                
+
         await log_channel.send(embed=embed)
 
         dead_players_info = ""
