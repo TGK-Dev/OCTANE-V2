@@ -103,9 +103,9 @@ class Mafia(commands.GroupCog):
 
         if game_count is None:
             game_count = 1
-            await self.db.insert_one({"_id": channel.guild.id, "games": 1})
+            await self.db.insert_one({"_id": channel.guild.id, "game_count": 1})
         else:
-            game_count = game_count['games'] + 1
+            game_count = game_count['game_count'] + 1
             await self.db.update(game_count)
 
         embed = discord.Embed(description="", color=self.bot.default_color)
