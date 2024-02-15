@@ -175,7 +175,6 @@ class Events(commands.Cog):
                 await message.channel.set_permissions(message.guild.default_role, send_messages=True)
 
             if embed.description.startswith("**Thanks for bumping"):
-                await message.reply("Thanks for bumping the server")
                 await message.channel.set_permissions(message.guild.default_role, send_messages=False)                
                 await message.channel.purge(limit=50, check=lambda m: m.author == self.bot.user)
                 view = discord.ui.View()
