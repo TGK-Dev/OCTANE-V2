@@ -68,7 +68,7 @@ class Mafia(commands.GroupCog):
                 new_night = night_pattern.findall(message.embeds[0].title)
                 if new_night != []: 
                     self.mafia_channels[message.channel.id]['current_night'] = int(new_night[0])
-                    self.mafia_channels[message.channel.id]['Nights'][int(new_night[0])]: NightData = {
+                    self.mafia_channels[message.channel.id]['Nights'][int(new_night[0])] = {
                         "NightNumber": int(new_night[0]),
                         "Players": {}
                     }
@@ -99,12 +99,20 @@ class Mafia(commands.GroupCog):
     async def on_mafia_ends(self, data: MafiaData, channel: discord.TextChannel):
         self.mafia_inprosses.append(channel.id)
         log_channel = channel.guild.get_channel(1096669152447582318)
+        game_count = await self.db.find({"_id": channel.guild.id})
+
+        if game_count is None:
+            game_count = 1
+            await self.db.insert_one({"_id": channel.guild.id, "games": 1})
+        else:
+            game_count = game_count['games'] + 1
+            await self.db.update(game_count)
 
         embed = discord.Embed(description="", color=self.bot.default_color)
         for night in data['Nights'].keys():
             if len(data['Nights'][night]['Players'].keys()) == 0:
                 continue
-            _str = f"## Night {night}\n"
+            _str = f"## Night {night} #{game_count}\n"
             for index, player in enumerate(data['Nights'][night]['Players'].keys()):
                 user = channel.guild.get_member(int(player))
                 if index+1 == len(data['Nights'][night]['Players'].keys()):
@@ -149,7 +157,7 @@ class Mafia(commands.GroupCog):
         }
         players = await self.get_dead_plater(messages[0].content)
         for player in players:
-            data['players'][player]: PlayerData = {
+            data['players'][player] = {
                 "user": channel.guild.get_member(player),
                 "alive": True,
                 "death_night": None
@@ -162,7 +170,7 @@ class Mafia(commands.GroupCog):
                 if new_night != []: 
                     current_night = int(new_night[0])
                     data['current_night'] = current_night
-                    data['Nights'][current_night]: NightData = {
+                    data['Nights'][current_night] = {
                         "NightNumber": current_night,
                         "Players": {}
                     }
