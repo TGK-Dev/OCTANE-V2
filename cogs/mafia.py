@@ -128,18 +128,38 @@ class Mafia(commands.GroupCog):
             
             if len(embed.description) + len(_str) > 4096:
                 await log_channel.send(embed=embed)
-                embed = discord.Embed(description="", color=self.bot.default_color)
+                embed = discord.Embed(description=_str, color=self.bot.default_color)
             else:
                 embed.description += _str
 
         await log_channel.send(embed=embed)
 
-        dead_players_info = ""
-        embed = discord.Embed(title="", description="", color=self.bot.default_color)
+        embed = discord.Embed(title="Dead Info", description="", color=self.bot.default_color)
+        dead_players = {}
         for i in data['players'].keys():
             if not data['players'][i]['alive']:
-                dead_players_info += f"{data['players'][i]['user'].mention} died on night {data['players'][i]['death_night']}\n"
-        embed.add_field(name="Dead Players", value=dead_players_info)
+                if data['players'][i]['death_night'] in dead_players.keys():
+                    dead_players[data['players'][i]['death_night']].append(data['players'][i]['user'].id)
+                else:
+                    dead_players[data['players'][i]['death_night']] = [data['players'][i]['user'].id]
+        
+        keys = list(dead_players.keys())
+        keys.sort()
+        dead_players = {i:dead_players[i] for i in keys}
+
+        for night in dead_players.keys():
+            title = f'Night {night}\n'
+            _str = ''
+            for player in dead_players[night]:
+                index = dead_players[night].index(player)
+                if index+1 == len(dead_players[night]):
+                    emoji = "<:nat_reply:1146498277068517386>"
+                else:
+                    emoji = "<:nat_replycont:1146496789361479741>"
+                _str += f"{emoji} {channel.guild.get_member(player).mention}\n"
+            embed.add_field(name=title, value=_str, inline=True)
+            if night % 2 == 0:
+                embed.add_field(name = '\u200b', value= '\u200b', inline= True)
         await log_channel.send(embed=embed)
     
     @app_commands.command(name="scrap", description="Scrap a channel for mafia game data")
