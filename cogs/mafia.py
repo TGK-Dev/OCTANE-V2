@@ -102,11 +102,11 @@ class Mafia(commands.GroupCog):
         game_count = await self.db.find({"_id": channel.guild.id})
 
         if game_count is None:
-            game_count = 1
-            await self.db.insert_one({"_id": channel.guild.id, "game_count": 1})
-        else:
-            game_count = game_count['game_count'] + 1
-            await self.db.update(game_count)
+            game_count = {"_id": channel.guild.id, "game_count": 1}
+            await self.db.insert(game_count)
+        
+        game_count = game_count['game_count'] + 1
+        await self.db.update(game_count)
 
         embed = discord.Embed(description="", color=self.bot.default_color)
         for night in data['Nights'].keys():
