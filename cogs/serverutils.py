@@ -625,10 +625,11 @@ class donation(commands.Cog):
 		self.db2 = bot.aceDb["TGK"]
 		self.bot.donorBank = Document(self.db2, "donorBank")
 		self.grinder_reminder.start()
+		self.celeb_lb.start()
 
 	def cog_unload(self):
 		self.grinder_reminder.cancel()
-		# self.celeb_lb.cancel()
+		self.celeb_lb.cancel()
 
 	# for grinders reminder
 	@tasks.loop(time=time)
@@ -754,37 +755,46 @@ class donation(commands.Cog):
 	async def before_grinder_reminder(self):
 		await self.bot.wait_until_ready()
 	
-	# @tasks.loop(time=time)
-	# async def celeb_lb(self):
-	# 	gk = self.bot.get_guild(785839283847954433)
-	# 	leaderboard_channel = gk.get_channel(1094701054232375376)
+	@tasks.loop(time=time)
+	async def celeb_lb(self):
+		gk = self.bot.get_guild(785839283847954433)
+		leaderboard_channel = gk.get_channel(1209873854369898506)
+		beast_role = gk.get_role(821052747268358184)
+		members = beast_role.members
+		if leaderboard_channel is None: 
+			return
 
-	# 	if leaderboard_channel is None: 
-	# 		return
+		data = await self.bot.donorBank.find_many_by_custom( {"event" : { "$elemMatch": { "name": '10k',"bal":{"$gt":0} }}})
+		df = pd.DataFrame(data)
+		df['8k']  = df.event.apply(lambda x: x[-1]['bal'])
+		df = df.drop(['bal','grinder_record','event'], axis=1)
+		df = df.sort_values(by='10k',ascending=False)
+		top_3 = df.head(3)
 
-	# 	data = await self.bot.donorBank.find_many_by_custom( {"event" : { "$elemMatch": { "name": '8k',"bal":{"$gt":0} }}})
-	# 	df = pd.DataFrame(data)
-	# 	df['8k']  = df.event.apply(lambda x: x[-1]['bal'])
-	# 	df = df.drop(['bal','grinder_record','event'], axis=1)
-	# 	df = df.sort_values(by='8k',ascending=False)
-	# 	top_3 = df.head(3)
-
-	# 	leaderboard = []
-	# 	for index in top_3.index:
-	# 		user = gk.get_member(top_3['_id'][index])
-	# 		leaderboard.append({'user': user,'name': top_3['name'][index],'donated': top_3['8k'][index]}) 
+		leaderboard = []
+		users = []
+		for index in top_3.index:
+			user = gk.get_member(top_3['_id'][index])
+			users.append(user)
+			leaderboard.append({'user': user,'name': top_3['name'][index],'donated': top_3['8k'][index]}) 
+			if beast_role not in user.roles:
+				await user.add_roles(beast_role)
 		
-	# 	image = await self.create_winner_card(gk, "🎊 8K Celeb's LB 🎊", leaderboard)
+		for member in members:
+			if member not in users:
+				if beast_role in member.roles:
+					await member.remove_roles(beast_role)
+		image = await self.create_winner_card(gk, "🎊 10K Celeb's LB 🎊", leaderboard)
 
-	# 	with BytesIO() as image_binary:
-	# 		image.save(image_binary, 'PNG')
-	# 		image_binary.seek(0)
-	# 		await leaderboard_channel.send(file=discord.File(fp=image_binary, filename=f'{gk.name}_celeb_lb_card.png'))
-	# 		image_binary.close()
+		with BytesIO() as image_binary:
+			image.save(image_binary, 'PNG')
+			image_binary.seek(0)
+			await leaderboard_channel.send(file=discord.File(fp=image_binary, filename=f'{gk.name}_celeb_lb_card.png'))
+			image_binary.close()
 		
-	# @celeb_lb.before_loop
-	# async def before_celeb_lb(self):
-	# 	await self.bot.wait_until_ready()
+	@celeb_lb.before_loop
+	async def before_celeb_lb(self):
+		await self.bot.wait_until_ready()
 	
 	async def round_pfp(self, pfp: discord.User | discord.Guild | discord.User):
 		if isinstance(pfp, discord.Member) or isinstance(pfp, discord.User):
@@ -842,9 +852,9 @@ class donation(commands.Cog):
 	async def _leaderboard(self, interaction: discord.Interaction):
 		await interaction.response.defer(thinking=True, ephemeral=False)
 
-		data = await self.bot.donorBank.find_many_by_custom( {"event" : { "$elemMatch": { "name": '8k',"bal":{"$gt":0} }}})
+		data = await self.bot.donorBank.find_many_by_custom( {"event" : { "$elemMatch": { "name": '10k',"bal":{"$gt":0} }}})
 		df = pd.DataFrame(data)
-		df['8k']  = df.event.apply(lambda x: x[-1]['bal'])
+		df['10k']  = df.event.apply(lambda x: x[-1]['bal'])
 		df = df.drop(['bal','grinder_record','event'], axis=1)
 		df = df.sort_values(by='8k',ascending=False)
 		top_3 = df.head(3)
@@ -854,7 +864,7 @@ class donation(commands.Cog):
 			user = interaction.guild.get_member(top_3['_id'][index])
 			leaderboard.append({'user': user,'name': top_3['name'][index],'donated': top_3['8k'][index]}) 
 		
-		image = await self.create_winner_card(interaction.guild, "🎊 8K Celeb's LB 🎊", leaderboard)
+		image = await self.create_winner_card(interaction.guild, "🎊 10K Celeb's LB 🎊", leaderboard)
 
 		with BytesIO() as image_binary:
 			image.save(image_binary, 'PNG')
