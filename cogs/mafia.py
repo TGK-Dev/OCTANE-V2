@@ -105,14 +105,15 @@ class Mafia(commands.GroupCog):
             game_count = {"_id": channel.guild.id, "game_count": 0}
             await self.db.insert(game_count)
         
-        game_count = game_count['game_count'] + 1
+        game_num = game_count['game_count'] + 1
+        game_count['game_count'] = game_num
         await self.db.update(game_count)
 
         embed = discord.Embed(description="", color=self.bot.default_color)
         for night in data['Nights'].keys():
             if len(data['Nights'][night]['Players'].keys()) == 0:
                 continue
-            _str = f"## Night {night} #{game_count}\n"
+            _str = f"## Night {night} #{game_num}\n"
             for index, player in enumerate(data['Nights'][night]['Players'].keys()):
                 user = channel.guild.get_member(int(player))
                 if index+1 == len(data['Nights'][night]['Players'].keys()):
