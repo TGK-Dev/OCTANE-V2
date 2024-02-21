@@ -2,12 +2,21 @@ import discord
 import chat_exporter
 import datetime
 import io
+import urllib.parse
 from discord import Interaction, TextStyle
 from discord.ui import View, Button, button, TextInput, Item
 from .selects import Channel_select, Role_select, Color_Select
 from .modal import Question_Modal, Panel_Description_Modal, Panel_emoji, Panel_Question, General_Modal
 from .buttons import Confirm
 from typing import Any
+
+channel_emojis = {
+    "Support": "⸝⸝🎫。",
+    "Partnership": "⸝⸝🤝。",
+    "Perks Claim": "⸝⸝💎。",
+    "Admin Only": "⸝⸝🚨。",
+}
+
 class Config_Edit(View):
     def __init__(self, user: discord.Member, data: dict, message: discord.Message=None):
         self.user = user
@@ -384,8 +393,13 @@ class ParterShip_Button(Button):
         for i in panel['support_roles']:
                 role = interaction.guild.get_role(i)
                 if role is not None: over_write[role] = discord.PermissionOverwrite(view_channel=True, send_messages=True, read_message_history=True, attach_files=True, embed_links=True, add_reactions=True)
-        
-        ticket = await interaction.guild.create_text_channel(f"ticket-{interaction.user.display_name}", overwrites=over_write, category=interaction.guild.get_channel(ticket_config["category"]), topic=f"Ticket for {interaction.user.mention} ({interaction.user.id})")
+
+        if interaction.guild.id == 785839283847954433:
+            channel_name = f"⸝⸝🤝。{interaction.user.name}"
+        else:
+            channel_name = f"ticket-{interaction.user.display_name}"
+
+        ticket = await interaction.guild.create_text_channel(name=channel_name, overwrites=over_write, category=interaction.guild.get_channel(ticket_config["category"]), topic=f"Ticket for {interaction.user.mention} ({interaction.user.id})")
         ticket_embed = discord.Embed(title=f"Ticket for {interaction.user.display_name}", description="",color=0x2b2d31)
         ticket_embed.description += "Kindly wait patiently. A staff member will assist you shortly.If you're looking to approach a specific staff member, ping the member once. Do not spam ping any member or role."
         ticket_embed.set_footer(text=f"Developers: JAY#0138 & utki007#0007")
@@ -456,7 +470,13 @@ class Panel_Button(Button):
                 role = interaction.guild.get_role(i)
                 if role is not None: over_write[role] = discord.PermissionOverwrite(view_channel=True, send_messages=True, read_message_history=True, attach_files=True, embed_links=True, add_reactions=True)
 
-            ticket = await interaction.guild.create_text_channel(f"ticket-{interaction.user.display_name}", overwrites=over_write, category=interaction.guild.get_channel(ticket_config["category"]), topic=f"Ticket for {interaction.user.mention} ({interaction.user.id})")
+            if interaction.guild.id == 785839283847954433:
+                channel_name = f"{channel_emojis[panel['key']]}{interaction.user.name}"
+            else:
+                channel_name = f"ticket-{interaction.user.display_name}"
+
+            ticket = await interaction.guild.create_text_channel(name=channel_name, overwrites=over_write, category=interaction.guild.get_channel(ticket_config["category"]), topic=f"Ticket for {interaction.user.mention} ({interaction.user.id})")
+
             ticket_embed = discord.Embed(title=f"Ticket for {interaction.user.display_name}", description="",color=0x2b2d31)
             ticket_embed.description += "Kindly wait patiently. A staff member will assist you shortly.If you're looking to approach a specific staff member, ping the member once. Do not spam ping any member or role."
             ticket_embed.set_footer(text=f"Developers: JAY#0138 & utki007#0007")
@@ -464,7 +484,7 @@ class Panel_Button(Button):
             ticket_embed.add_field(name=modal.answer.label, value=modal.answer.value, inline=False)
             content = f"{interaction.user.mention}"
             if panel['ping_role'] is not None: content += f"|<@&{panel['ping_role']}>"
-            msg = await ticket.send(embed=ticket_embed, content=content, view=Ticket_controll())
+            msg = await ticket.send(embed=ticket_embed, content=content, view=Ticket_controll(), allowed_mentions=discord.AllowedMentions(roles=False, users=False, everyone=False))
             await msg.pin()
             ticket_data = {
                 "_id": ticket.id,
@@ -503,6 +523,21 @@ class Panel_View(View):
         except:
             await interaction.followup.send(content=f"An error occured: {error}", ephemeral=True)
     
+class Refresh_Trancsript(View):
+    def __init__(self):
+        super().__init__(timeout=None)
+    
+    @button(label="Refresh", style=discord.ButtonStyle.gray, emoji="<:reload:1068890244226764943>", custom_id="transcript:refresh")
+    async def refresh(self, interaction: Interaction, button: Button):
+        if len(interaction.message.attachments) <= 0: 
+            await interaction.response.send_message("No transcript found", ephemeral=True, delete_after=5)
+        
+        attachment = interaction.message.attachments[0]
+        attachment_url = urllib.parse.quote(attachment.url, safe="")
+        transcript_url = f"https://api.natbot.xyz/transcripts?url={attachment_url}"
+        view = Refresh_Trancsript()
+        view.add_item(discord.ui.Button(label="View Transcript", url=transcript_url, style=discord.ButtonStyle.url, emoji="<:tgk_link:1105189183523401828>"))
+        await interaction.response.edit_message(view=view)
 
 class Ticket_controll(View):
     def __init__(self):
@@ -523,7 +558,7 @@ class Ticket_controll(View):
         
         return await log_chanenl.send(embed=embed)
     
-    @button(custom_id="ticket:open", label="Open", style=discord.ButtonStyle.green, emoji="🔓")
+    @button(custom_id="ticket:open", label="Open", style=discord.ButtonStyle.gray, emoji="<:tgk_unlock:1072851439161983028>")
     async def open(self, interaction: Interaction, button: Button):
         ticket_data = await interaction.client.tickets.tickets.find(interaction.channel.id)
         if ticket_data is None: return await interaction.response.send_message("No ticket found", ephemeral=True, delete_after=5)
@@ -544,14 +579,18 @@ class Ticket_controll(View):
         ticket_data["status"] = "open"
         await interaction.client.tickets.tickets.update(ticket_data)
 
-        embed.description = "<:dynosuccess:1000349098240647188> | Ticket opened by {interaction.user.mention}"
+        if interaction.guild.id == 785839283847954433:
+            channel_name = channel_emojis[ticket_data["panel"]]
+            await interaction.channel.edit(name=f"{channel_name}{ticket_owner.name}")
+
+        embed.description = f"<:tgk_active:1082676793342951475> | Ticket opened by {interaction.user.mention}"
         await interaction.edit_original_response(embed=embed)
         ticket_config = await interaction.client.tickets.config.find(interaction.guild.id)
         if ticket_config['logging'] is not None:
             log_channel = interaction.guild.get_channel(ticket_config['logging'])
             if log_channel is not None: await self.log_embed(log_channel, "opened", interaction.channel, interaction.user)
     
-    @button(custom_id="ticket:close", label="Close", style=discord.ButtonStyle.red, emoji="🔒")
+    @button(custom_id="ticket:close", label="Close", style=discord.ButtonStyle.gray, emoji="<:tgk_lock:1072851190213259375>")
     async def close(self, interaction: Interaction, button: Button):
         ticket_data = await interaction.client.tickets.tickets.find(interaction.channel.id)
         if ticket_data is None: return await interaction.response.send_message("No ticket found", ephemeral=True, delete_after=5)
@@ -571,7 +610,10 @@ class Ticket_controll(View):
         if ticket_owner is not None: await interaction.channel.set_permissions(ticket_owner, overwrite=overwrite)
         else: return await interaction.edit_original_response(embed=discord.Embed(description="Ticket owner not found/left the server", color=0x2b2d31))
 
-        embed.description = f"<:dynosuccess:1000349098240647188> | Ticket closed by {interaction.user.mention}"
+        if interaction.guild.id == 785839283847954433:
+            await interaction.channel.edit(name=f"⸝⸝🔒。{ticket_owner.name}")
+
+        embed.description = f"<:tgk_active:1082676793342951475> | Ticket closed by {interaction.user.mention}"
         await interaction.edit_original_response(embed=embed)
         ticket_config = await interaction.client.tickets.config.find(interaction.guild.id)
         if ticket_config['logging'] is not None:
@@ -610,8 +652,9 @@ class Ticket_controll(View):
                 transcript = discord.File(io.BytesIO(transcript.encode()), filename=f"transcript-{interaction.channel.id}.html")
 
                 transcript_message = await transcript_channel.send(file=transcript, content=f"**Channel:** {interaction.channel.name}\n**User:** <@{ticket_data['user']}>(`{ticket_data['user']}`)")
-                link_view = discord.ui.View()
-                link_view.add_item(discord.ui.Button(label="View Transcript", url=f"https://api-tgk.vercel.app/api/transcripts?url={transcript_message.attachments[0].url}"))
+                transcript_url = urllib.parse.quote(transcript_message.attachments[0].url, safe="")
+                link_view = Refresh_Trancsript()
+                link_view.add_item(discord.ui.Button(label="View Transcript", url=f"https://api.natbot.xyz/transcripts?url={transcript_url}", style=discord.ButtonStyle.url, emoji="<:tgk_link:1105189183523401828>"))
                 await transcript_message.edit(view=link_view)
                 try:
                     log_message = await log_channel.fetch_message(ticket_data["log_message_id"])
