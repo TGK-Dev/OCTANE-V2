@@ -484,7 +484,7 @@ class Panel_Button(Button):
             ticket_embed.add_field(name=modal.answer.label, value=modal.answer.value, inline=False)
             content = f"{interaction.user.mention}"
             if panel['ping_role'] is not None: content += f"|<@&{panel['ping_role']}>"
-            msg = await ticket.send(embed=ticket_embed, content=content, view=Ticket_controll(), allowed_mentions=discord.AllowedMentions(roles=False, users=False, everyone=False))
+            msg = await ticket.send(embed=ticket_embed, content=content, view=Ticket_controll())
             await msg.pin()
             ticket_data = {
                 "_id": ticket.id,
@@ -620,7 +620,7 @@ class Ticket_controll(View):
             log_channel = interaction.guild.get_channel(ticket_config['logging'])
             if log_channel is not None: await self.log_embed(log_channel, "closed", interaction.channel, interaction.user)
     
-    @button(custom_id="ticket:delete", label="Delete", style=discord.ButtonStyle.red, emoji="🗑️")
+    @button(custom_id="ticket:delete", label="Delete", style=discord.ButtonStyle.gray, emoji="<:tgk_delete:1113517803203461222>")
     async def delete(self, interaction: Interaction, button: Button):
         ticket_data = await interaction.client.tickets.tickets.find(interaction.channel.id)
         if ticket_data is None: return await interaction.response.send_message("No ticket found", ephemeral=True, delete_after=5)
@@ -667,7 +667,7 @@ class Ticket_controll(View):
             await interaction.channel.delete()
             await interaction.client.tickets.tickets.delete(interaction.channel.id)
     
-    @button(custom_id="ticket:anonymous", label="Anonymous", style=discord.ButtonStyle.grey, emoji="🕵️")
+    @button(custom_id="ticket:anonymous", label="Anonymous", style=discord.ButtonStyle.grey, emoji="<:tgk_amongUs:1103542462628253726>")
     async def anonymous(self, interaction: Interaction, button: Button):
         ticket_data = await interaction.client.tickets.tickets.find(interaction.channel.id)
         if not interaction.user.guild_permissions.ban_members: return await interaction.response.send_message("You don't have permission to use this button", ephemeral=True, delete_after=5)
