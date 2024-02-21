@@ -766,7 +766,7 @@ class donation(commands.Cog):
 
 		data = await self.bot.donorBank.find_many_by_custom( {"event" : { "$elemMatch": { "name": '10k',"bal":{"$gt":0} }}})
 		df = pd.DataFrame(data)
-		df['8k']  = df.event.apply(lambda x: x[-1]['bal'])
+		df['10k']  = df.event.apply(lambda x: x[-1]['bal'])
 		df = df.drop(['bal','grinder_record','event'], axis=1)
 		df = df.sort_values(by='10k',ascending=False)
 		top_3 = df.head(3)
@@ -776,7 +776,7 @@ class donation(commands.Cog):
 		for index in top_3.index:
 			user = gk.get_member(top_3['_id'][index])
 			users.append(user)
-			leaderboard.append({'user': user,'name': top_3['name'][index],'donated': top_3['8k'][index]}) 
+			leaderboard.append({'user': user,'name': top_3['name'][index],'donated': top_3['10k'][index]}) 
 			if beast_role not in user.roles:
 				await user.add_roles(beast_role)
 		
@@ -856,13 +856,13 @@ class donation(commands.Cog):
 		df = pd.DataFrame(data)
 		df['10k']  = df.event.apply(lambda x: x[-1]['bal'])
 		df = df.drop(['bal','grinder_record','event'], axis=1)
-		df = df.sort_values(by='8k',ascending=False)
+		df = df.sort_values(by='10k',ascending=False)
 		top_3 = df.head(3)
 
 		leaderboard = []
 		for index in top_3.index:
 			user = interaction.guild.get_member(top_3['_id'][index])
-			leaderboard.append({'user': user,'name': top_3['name'][index],'donated': top_3['8k'][index]}) 
+			leaderboard.append({'user': user,'name': top_3['name'][index],'donated': top_3['10k'][index]}) 
 		
 		image = await self.create_winner_card(interaction.guild, "🎊 10K Celeb's LB 🎊", leaderboard)
 
