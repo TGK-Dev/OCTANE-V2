@@ -112,18 +112,24 @@ class Paginator:
 		self.pages = pages
 
 
-	async def start(self, embeded: Optional[bool] = False, timeout: int=60,quick_navigation: bool = True, hidden: bool = True, deffered: bool=False) -> None:
+	async def start(self, embeded: Optional[bool] = False, timeout: int=60,quick_navigation: bool = True, hidden: bool = True, deffered: bool=False, edit: bool = False) -> None:
 		"""Starts the paginator.
 
 		Parameters
 		-----------
 			'embeded' - Whether the pages are embeds or just text.
 			'quick_navigation' - Whether to include quick naviagtion or not.
+			'timeout' - The time in seconds before the paginator stops.
+			'hidden' - Whether the paginator is visible to everyone or just the user who initiated it.
+			'deffered' - Whether to use deffered responses or not.
+			'edit' - Whether to edit the original message or not.						
 
 		Raises
 		-------
 			'Missing pages' - an empty list was passed to 'pages'.
+			'ValueError' - Cannot use deffered and edit at the same time.
 		"""
+		if deffered and edit: raise ValueError("Cannot use deffered and edit at the same time")
 		if not (self.pages): raise ValueError("Missing pages")
 
 		view = _view(self.interaction.user, self.pages, embeded, timeout)
@@ -172,9 +178,13 @@ class Paginator:
 		kwargs['view'] = view
 		kwargs['ephemeral'] = hidden
 
-		if deffered:
+		if deffered or edit:
 			del kwargs['ephemeral']
+
+		if deffered:
 			await self.interaction.followup.send(**kwargs)
+		elif edit:			
+			await self.interaction.edit_original_response(**kwargs)
 		else:
 			await self.interaction.response.send_message(**kwargs)
 
@@ -182,7 +192,10 @@ class Paginator:
 
 		for button in view.children:
 			button.disabled = True
-		await self.interaction.edit_original_response(view=view)
+		try:
+			await self.interaction.edit_original_response(view=view)
+		except:
+			pass
 
 class Contex_Paginator:
 	def __init__(self, interaction: commands.Context, pages: list, custom_children: Optional[List[Union[Button, Select]]] = [], dm: bool = False):
