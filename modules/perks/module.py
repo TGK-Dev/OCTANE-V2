@@ -1,4 +1,5 @@
-import enum
+import io
+import aiohttp
 import random
 import discord
 import datetime
@@ -8,8 +9,8 @@ from discord import Interaction, app_commands
 from discord.ext import commands, tasks
 from utils.db import Document
 from typing import List, Literal
-from .views import Friends_manage, Perk_Ignore
-from utils.views.voice_ui import Voice_UI
+from .views import Friends_manage, Perk_Ignore, Emoji_Request
+from utils.embed import get_formated_embed, get_formated_field
 from colour import Color
 from utils.checks import Blocked
 from .db import Perk_Type, Perks_DB
@@ -39,6 +40,7 @@ class Perks(commands.Cog, name="perk", description="manage your custom perks"):
 
     @commands.Cog.listener()
     async def on_ready(self):
+        self.bot.add_view(Emoji_Request())
         await self.backend.create_cach()
 
     @tasks.loop(hours=3)
@@ -80,7 +82,7 @@ class Perks(commands.Cog, name="perk", description="manage your custom perks"):
             return    
 
         total_duraction = 0
-        total_friend_limit = 0
+        total_share_limit = 0
 
         for key, item in config['profiles']['roles'].items():
             role = guild.get_role(int(key))
@@ -91,13 +93,13 @@ class Perks(commands.Cog, name="perk", description="manage your custom perks"):
             if role in user.roles:
                 if item['duration'] == "permanent":total_duraction = "permanent"
                 else:total_duraction += item['duration']
-                if total_friend_limit < 10: total_friend_limit += item['friend_limit']
-                elif total_friend_limit >= 10: total_friend_limit = 10
+                if total_share_limit < 30: total_share_limit += item['share_limit']
+                elif total_share_limit >= 30: total_share_limit = 30
 
-        if total_friend_limit == 0:
-            total_friend_limit = 3
+        if total_share_limit == 0:
+            total_share_limit = 3
 
-        data['friend_limit'] = total_friend_limit
+        data['share_limit'] = total_share_limit
         data['duration'] = total_duraction
 
         await self.backend.update(self.backend.types.roles, data)
@@ -148,7 +150,7 @@ class Perks(commands.Cog, name="perk", description="manage your custom perks"):
             return
         
         total_duraction = 0
-        total_friend_limit = 0
+        total_share_limit = 0
 
         for key, item in config['profiles']['channels'].items():
             role = guild.get_role(int(key))
@@ -159,13 +161,13 @@ class Perks(commands.Cog, name="perk", description="manage your custom perks"):
             if role in user.roles:
                 if item['duration'] == "permanent":total_duraction = "permanent"
                 else:total_duraction += item['duration']
-                if total_friend_limit < 10: total_friend_limit += item['friend_limit']
-                elif total_friend_limit >= 10: total_friend_limit = 10
+                if total_share_limit < 30: total_share_limit += item['share_limit']
+                elif total_share_limit >= 30: total_share_limit = 30
 
-        if total_friend_limit == 0:
-            total_friend_limit = 3
+        if total_share_limit == 0:
+            total_share_limit = 3
 
-        data['friend_limit'] = total_friend_limit
+        data['share_limit'] = total_share_limit
         data['duration'] = total_duraction
 
         await self.backend.update(self.backend.types.channels, data)
@@ -220,7 +222,7 @@ class Perks(commands.Cog, name="perk", description="manage your custom perks"):
             if role in user.roles:
                 if item['duration'] == "permanent":total_duraction = "permanent"
                 else:total_duraction += item['duration']
-                if total_reaction_limit < 10: total_reaction_limit += item['friend_limit']
+                if total_reaction_limit < 10: total_reaction_limit += item['share_limit']
                 elif total_reaction_limit >= 10: total_reaction_limit = 10
 
         if total_duraction == 0:
@@ -267,6 +269,7 @@ class Perks(commands.Cog, name="perk", description="manage your custom perks"):
     privchannel = app_commands.Group(name="privchannel", description="Manage your custom channels")
     privreact = app_commands.Group(name="privreact", description="Manage your custom reacts")
     highlight = app_commands.Group(name="highlight", description="Manage your custom highlights")
+    privemoji = app_commands.Group(name="privemoji", description="Manage your custom emojis")
     perks = app_commands.Group(name="perks", description="Manage your custom perks")
     admin = app_commands.Group(name="admin", description="Manage your custom perks", parent=perks)
 
@@ -280,14 +283,14 @@ class Perks(commands.Cog, name="perk", description="manage your custom perks"):
         embed.set_author(name=f"{interaction.user}'s Private Roles", icon_url=interaction.user.display_avatar.url if interaction.user.display_avatar else interaction.user.default_avatar)
         user_data = await self.backend.get_data(self.backend.types.roles, interaction.guild.id, interaction.user.id)
         if not user_data:
-            return await interaction.edit_original_response(content="You have no custom role use /perk privrole claim to create one")
+            return await interaction.edit_original_response(content="You have no custom role use /privrole claim to create one")
         role = interaction.guild.get_role(user_data['role_id'])
         if not role:
             return await interaction.edit_original_response(content="Role not found")
         embed = discord.Embed(color=interaction.client.default_color,description="")
         embed.set_author(name=f"{interaction.user}'s Private Roles", icon_url=interaction.user.display_avatar.url if interaction.user.display_avatar else interaction.user.default_avatar)
         embed.add_field(name=" ", value=f"**Owner**: <@{user_data['user_id']}>\n**Role**: {role.mention}")
-        embed.add_field(name=" ", value=f"**Friend Limit**: {user_data['friend_limit']}"+ "\n**Friend List:**\n" +"\n".join(
+        embed.add_field(name=" ", value=f"**Friend Limit**: {user_data['share_limit']}"+ "\n**Friend List:**\n" +"\n".join(
             [f"`{user_data['friend_list'].index(friend) + 1}.` <@{friend}>" for friend in user_data['friend_list']]
         ))
         embed.add_field(name=" ", value=f"**Duration**: {humanfriendly.format_timespan(user_data['duration']) if user_data['duration'] != 'permanent' else 'Permanent'}")
@@ -301,9 +304,9 @@ class Perks(commands.Cog, name="perk", description="manage your custom perks"):
         if not config:
             return await interaction.response.send_message("Server has no custom perks", ephemeral=True)
         if user_data:
-            return await interaction.response.send_message("You already have a custom role use /perk privrole edit to edit it", ephemeral=True)
+            return await interaction.response.send_message("You already have a custom role use /privrole edit to edit it", ephemeral=True)
         total_duraction = 0
-        total_friend_limit = 0
+        total_share_limit = 0
         for key, item in config['profiles']['roles'].items():
             role = interaction.guild.get_role(int(key))
             if not role: continue
@@ -311,8 +314,8 @@ class Perks(commands.Cog, name="perk", description="manage your custom perks"):
 
                 if item['duration'] == "permanent":total_duraction = "permanent"
                 else:total_duraction += item['duration']
-                if total_friend_limit < 10: total_friend_limit += item['friend_limit']
-                elif total_friend_limit >= 10: total_friend_limit = 10
+                if total_share_limit < 10: total_share_limit += item['share_limit']
+                elif total_share_limit >= 10: total_share_limit = 10
             
         if total_duraction == 0:
             return await interaction.response.send_message("You have no active custom roles", ephemeral=True)
@@ -349,7 +352,7 @@ class Perks(commands.Cog, name="perk", description="manage your custom perks"):
 
         role = await interaction.guild.create_role(name=name, color=color, display_icon=icon)
         await role.edit(position=position)
-        user_data = await self.backend.create(self.backend.types.roles, interaction.user.id, interaction.guild.id, duration=total_duraction, friend_limit=total_friend_limit)
+        user_data = await self.backend.create(self.backend.types.roles, interaction.user.id, interaction.guild.id, duration=total_duraction, share_limit=total_share_limit)
         user_data['role_id'] = role.id
         user_data['created_at'] = datetime.datetime.utcnow()
         await self.backend.update(self.backend.types.roles, user_data)
@@ -367,7 +370,7 @@ class Perks(commands.Cog, name="perk", description="manage your custom perks"):
         if not config:
             return await interaction.response.send_message("Server has no custom perks", ephemeral=True)
         if not user_data:
-            return await interaction.response.send_message("You have no custom role use /perk privrole claim to create one", ephemeral=True)
+            return await interaction.response.send_message("You have no custom role use /privrole claim to create one", ephemeral=True)
         if name:
             if "AmariMod" in name:
                 return await interaction.response.send_message(content="Role name cannot contain AmariMod", embed=None)
@@ -410,10 +413,10 @@ class Perks(commands.Cog, name="perk", description="manage your custom perks"):
     async def _prole_friend(self, interaction: Interaction):
         user_data = await self.backend.get_data(self.backend.types.roles, interaction.guild.id, interaction.user.id)
         if not user_data:
-            return await interaction.response.send_message("You have no custom role use /perk privrole claim to create one", ephemeral=True)
+            return await interaction.response.send_message("You have no custom role use /privrole claim to create one", ephemeral=True)
         role = interaction.guild.get_role(user_data['role_id'])
         embed = discord.Embed(title=f"{interaction.user}'s Custom Role Friends", color=interaction.client.default_color if not role.color else role.color, description="")
-        embed.description += f"**Friends Limit:** {user_data['friend_limit']}\n"
+        embed.description += f"**Friends Limit:** {user_data['share_limit']}\n"
         friends = "".join([f"<@{friend}> `({friend})`\n" for friend in user_data['friend_list']])
         embed.add_field(name="Friends", value=friends if friends else "`No Friends ;(`")
         view = Friends_manage(interaction.user, user_data, "roles")
@@ -427,13 +430,13 @@ class Perks(commands.Cog, name="perk", description="manage your custom perks"):
         embed.set_author(name=f"{interaction.user.name}'s Private channel", icon_url=interaction.user.display_avatar.url if interaction.user.display_avatar else interaction.user.default_avatar)
         user_data = await self.backend.get_data(self.backend.types.channels, interaction.guild.id, interaction.user.id)
         if not user_data:
-            return await interaction.response.send_message("You have no custom channel use /perk privchannel claim to create one", ephemeral=True)
+            return await interaction.response.send_message("You have no custom channel use /privchannel claim to create one", ephemeral=True)
         channel = interaction.guild.get_channel(user_data['channel_id'])
         if not channel:
             return await interaction.response.send_message("Channel not found", ephemeral=True)
 
         embed.add_field(name=" ", value=f"**Owner**: <@{user_data['user_id']}>\n**Channel**: {channel.mention}")
-        embed.add_field(name=" ", value=f"**Friend Limit**: {user_data['friend_limit']}"+ "\n**Friend List:**\n" +"\n".join(
+        embed.add_field(name=" ", value=f"**Friend Limit**: {user_data['share_limit']}"+ "\n**Friend List:**\n" +"\n".join(
             [f"`{user_data['friend_list'].index(friend) + 1}.` <@{friend}>" for friend in user_data['friend_list']]
         ))
         embed.add_field(name=" ", value=f"**Category**: {channel.category.mention}\n**Duration**: {humanfriendly.format_timespan(user_data['duration']) if user_data['duration'] != 'permanent' else 'Permanent'}")
@@ -446,12 +449,12 @@ class Perks(commands.Cog, name="perk", description="manage your custom perks"):
         user_data = await self.backend.channel.find({'user_id': interaction.user.id, 'guild_id': interaction.guild.id})
         config = await self.backend.get_data(self.backend.types.config, interaction.guild.id, interaction.user.id)
         if user_data:
-            return await interaction.response.send_message("You already have a custom channel use /perk privchannel edit to edit it", ephemeral=True)
+            return await interaction.response.send_message("You already have a custom channel use /privchannel edit to edit it", ephemeral=True)
         if not config:
             return await interaction.response.send_message("Server has no custom perks", ephemeral=True)
         
         total_duraction = 0
-        total_friend_limit = 0
+        total_share_limit = 0
         for key, item in config['profiles']['channels'].items():
             role = interaction.guild.get_role(int(key))
             if not role: continue
@@ -459,8 +462,8 @@ class Perks(commands.Cog, name="perk", description="manage your custom perks"):
 
                 if item['duration'] == "permanent":total_duraction = "permanent"
                 else:total_duraction += item['duration']
-                if total_friend_limit < 10: total_friend_limit += item['friend_limit']
-                elif total_friend_limit >= 10: total_friend_limit = 10
+                if total_share_limit < 10: total_share_limit += item['share_limit']
+                elif total_share_limit >= 10: total_share_limit = 10
 
         if total_duraction == 0:
             return await interaction.response.send_message("You have no active custom channels", ephemeral=True)
@@ -487,7 +490,7 @@ class Perks(commands.Cog, name="perk", description="manage your custom perks"):
         channel = await interaction.guild.create_text_channel(name=name, category=category, topic=f"Private channel of {interaction.user.name}",
                                                               overwrites=overwrites)
 
-        user_data = await self.backend.create(self.backend.types.channels, interaction.user.id, interaction.guild.id, duration=total_duraction, friend_limit=total_friend_limit)
+        user_data = await self.backend.create(self.backend.types.channels, interaction.user.id, interaction.guild.id, duration=total_duraction, share_limit=total_share_limit)
         user_data['channel_id'] = channel.id
         user_data['created_at'] = datetime.datetime.utcnow()
         await self.backend.update(self.backend.types.channels, user_data)
@@ -503,7 +506,7 @@ class Perks(commands.Cog, name="perk", description="manage your custom perks"):
         if not config:
             return await interaction.response.send_message("Server has no custom perks", ephemeral=True)
         if not user_data:
-            return await interaction.response.send_message("You have no custom channel use /perk privchannel claim to create one", ephemeral=True)
+            return await interaction.response.send_message("You have no custom channel use /privchannel claim to create one", ephemeral=True)
         channel = interaction.guild.get_channel(user_data['channel_id'])
         if not channel:
             return await interaction.edit_original_response(content="Channel not found", embed=None)
@@ -515,7 +518,7 @@ class Perks(commands.Cog, name="perk", description="manage your custom perks"):
     async def _preact(self, interaction: Interaction):
         user_data = await self.backend.get_data(self.backend.types.reacts, interaction.guild.id, interaction.user.id)
         if not user_data:
-            return await interaction.response.send_message("You have no custom react use /perk privreact claim to create one", ephemeral=True)
+            return await interaction.response.send_message("You have no custom react use /privreact claim to create one", ephemeral=True)
         
         embed = discord.Embed(color=interaction.client.default_color,description="")
         embed.set_author(name=f"{interaction.user}'s Private Reacts", icon_url=interaction.user.display_avatar.url if interaction.user.display_avatar else interaction.user.default_avatar)
@@ -528,9 +531,9 @@ class Perks(commands.Cog, name="perk", description="manage your custom perks"):
     async def _pchannel_friend(self, interaction: Interaction):
         user_data = await self.backend.channel.find({'user_id': interaction.user.id, 'guild_id': interaction.guild.id})
         if not user_data:
-            return await interaction.response.send_message("You have no custom channel use /perk privchannel claim to create one", ephemeral=True)
+            return await interaction.response.send_message("You have no custom channel use /privchannel claim to create one", ephemeral=True)
         embed = discord.Embed(title=f"{interaction.user}'s Custom Channel Friends", color=interaction.client.default_color, description="")
-        embed.description += f"**Friends Limit:** {user_data['friend_limit']}\n"
+        embed.description += f"**Friends Limit:** {user_data['share_limit']}\n"
         friends = "".join([f"<@{friend}> `({friend})`\n" for friend in user_data['friend_list']])
         embed.add_field(name="Friends", value=friends if friends else "`No Friends ;(`")
         view = Friends_manage(interaction.user, user_data, "channels")
@@ -542,7 +545,7 @@ class Perks(commands.Cog, name="perk", description="manage your custom perks"):
     async def _preact_claim(self, interaction: Interaction, emoji: str):
         user_data = await self.backend.get_data(self.backend.types.reacts, interaction.guild.id, interaction.user.id)
         if user_data:
-            return await interaction.response.send_message("You already have a custom react use /perk privreact edit to edit it", ephemeral=True)
+            return await interaction.response.send_message("You already have a custom react use /privreact edit to edit it", ephemeral=True)
         
         await interaction.response.send_message(embed=discord.Embed(description="Creating your custom react...", color=interaction.client.default_color))
         config =  await self.backend.get_data(self.backend.types.config, interaction.guild.id, interaction.user.id)
@@ -553,7 +556,7 @@ class Perks(commands.Cog, name="perk", description="manage your custom perks"):
             role = interaction.guild.get_role(int(key))
             if not role: continue
             if role in interaction.user.roles:
-                total_emojis += item['friend_limit']
+                total_emojis += item['share_limit']
                 if item['duration'] == "permanent":total_duraction = "permanent"
                 else:total_duraction += item['duration']
 
@@ -565,7 +568,7 @@ class Perks(commands.Cog, name="perk", description="manage your custom perks"):
         else:
             await interaction.edit_original_response(embed=discord.Embed(description=f"Verifying emoji...", color=interaction.client.default_color))
 
-        user_data = await self.backend.create(self.backend.types.reacts, interaction.user.id, interaction.guild.id, duration=total_duraction, friend_limit=total_emojis)
+        user_data = await self.backend.create(self.backend.types.reacts, interaction.user.id, interaction.guild.id, duration=total_duraction, share_limit=total_emojis)
         msg = await interaction.original_response()
         try:
             await msg.add_reaction(emoji)
@@ -583,7 +586,7 @@ class Perks(commands.Cog, name="perk", description="manage your custom perks"):
     async def _preact_edit(self, interaction: Interaction, action: Literal["add", "remove"], emoji: str):
         user_data = await self.backend.get_data(self.backend.types.reacts, interaction.guild.id, interaction.user.id)
         if not user_data:
-            return await interaction.response.send_message("You have no custom react use /perk privreact claim to create one", ephemeral=True)
+            return await interaction.response.send_message("You have no custom react use /privreact claim to create one", ephemeral=True)
         if action == "add":
             if len(user_data['emojis']) >= user_data['max_emoji']:
                 return await interaction.response.send_message("You have reached the max emoji limit", ephemeral=True)
@@ -623,11 +626,11 @@ class Perks(commands.Cog, name="perk", description="manage your custom perks"):
                 if role in interaction.user.roles:
                     if item['duration'] == "permanent":total_duraction = "permanent"
                     else:total_duraction += item['duration']
-                    total_trigger += item['friend_limit']
+                    total_trigger += item['share_limit']
             
             if total_duraction == 0:
                 return await interaction.response.send_message("You have no active custom highlights", ephemeral=True)
-            user_data = await self.backend.create(self.backend.types.highlights, interaction.user.id, interaction.guild.id, duration=total_duraction, friend_limit=total_trigger)
+            user_data = await self.backend.create(self.backend.types.highlights, interaction.user.id, interaction.guild.id, duration=total_duraction, share_limit=total_trigger)
 
         if len(user_data['triggers']) >= user_data['tigger_limit']: return await interaction.response.send_message("You have reached the maximum amount of triggers", ephemeral=True)      
         if trigger.lower() in user_data['triggers']: return await interaction.response.send_message("You already have that trigger", ephemeral=True)
@@ -667,6 +670,99 @@ class Perks(commands.Cog, name="perk", description="manage your custom perks"):
         await interaction.response.send_message(embed=embed, view=view, ephemeral=True)
         view.message = await interaction.original_response()
     
+    @highlight.command(name="show", description="View your custom highlight profile")
+    async def _highlight_show(self, interaction: Interaction):
+        user_data = await self.backend.get_data(self.backend.types.highlights, interaction.guild.id, interaction.user.id)
+        if not user_data:
+            return await interaction.response.send_message("You have no custom highlight use /highlight tadd to create one", ephemeral=True)
+        
+        embed = discord.Embed(color=interaction.client.default_color,description="")
+        formated_args = await get_formated_embed(["Triggers Limit", "Triggers", "Ignore Users", "Ignore Channels"])
+        embed.description += f"**Triggers Limit:** {user_data['tigger_limit']}\n"
+        embed.description += f"{formated_args['Triggers']}{', '.join(user_data['triggers']) if len(user_data['triggers']) > 0 else 'None'}\n"
+        embed.description += f"{await get_formated_field(guild=interaction.guild, name=formated_args['Ignore Users'], data=user_data['ignore_users'], type='user')}\n"
+        embed.description += f"{await get_formated_field(guild=interaction.guild, name=formated_args['Ignore Channels'], data=user_data['ignore_channel'], type='channel')}"
+
+        await interaction.response.send_message(embed=embed, content=None)
+
+    @privemoji.command(name="show", description="View your custom emoji profile")
+    async def _pemoji(self, interaction: Interaction):
+        user_data = await self.backend.get_data(self.backend.types.emojis, interaction.guild.id, interaction.user.id)
+        if not user_data:
+            return await interaction.response.send_message("You have no custom emoji use /privemoji claim to create one", ephemeral=True)
+        
+        emojis = []
+        for emoji in user_data['emojis']:
+            emoji = interaction.guild.get_emoji(emoji)
+            if emoji: emojis.append(str(emoji))
+
+        embed = discord.Embed(color=interaction.client.default_color,description="")
+        formated_args = await get_formated_embed(["Max Emojis", "Emojis"])
+        embed.description = ""
+        embed.description += f"`{interaction.user.name}`'s Custom Emojis\n\n"
+        embed.description += f"{formated_args['Max Emojis']}{user_data['max_emoji']}\n"
+        embed.description += f"{formated_args['Emojis']}{', '.join(emojis) if len(emojis) > 0 else 'None'}"
+        await interaction.response.send_message(embed=embed, content=None)
+
+    @privemoji.command(name="claim", description="Create a custom emoji")
+    @app_commands.describe(emoji="emoji of your custom emoji", name="name of your custom emoji")
+    async def _pemoji_claim(self, interaction: Interaction, emoji: discord.Attachment, name: app_commands.Range[str, 1, 20]):
+        await interaction.response.send_message(embed=discord.Embed(description="Processing your request...", color=interaction.client.default_color))
+
+        user_profile_info = await self.backend.calulate_profile(self.backend.types.emojis, interaction.guild, interaction.user)
+        if user_profile_info['duration'] == 0:
+            return await interaction.edit_original_response(content=None, embed=discord.Embed(description="You have no active custom emojis", color=interaction.client.default_color))
+
+        already_requested = await self.backend.emoji_request.find({"guild_id": interaction.guild.id, "user_id": interaction.user.id})
+        if already_requested:
+            await interaction.edit_original_response(content=None, embed=discord.Embed(description="You already have a pending request for a custom emoji please wait for the admin to respond", color=interaction.client.default_color))
+            return
+
+        filename = emoji.filename
+        if not emoji.filename.endswith(("jpg", "png","gif")):
+            return await interaction.edit_original_response(content=None, embed=discord.Embed(description="Invalid file type", color=interaction.client.default_color))
+        
+        async with aiohttp.ClientSession() as session:
+            async with session.get(emoji.url) as resp:
+                if resp.status != 200:
+                    return await interaction.edit_original_response(content=None, embed=discord.Embed(description="Failed to download the emoji", color=interaction.client.default_color))
+                emoji = await resp.read()
+                await session.close()
+        
+        config = await self.backend.get_data(self.backend.types.config, interaction.guild.id, interaction.user.id)
+        if not config: return await interaction.edit_original_response(content=None, embed=discord.Embed(description="Server has no custom perks", color=interaction.client.default_color))
+
+        all_emojis = await self.backend.emoji.find_many_by_custom({"guild_id": interaction.guild.id})
+        print(all_emojis)
+        if len(all_emojis) >= config['emojis']['max']:
+            return await interaction.edit_original_response(content=None, embed=discord.Embed(description="Server has reached the max emoji limit", color=interaction.client.default_color))
+        
+        emoji_reqeust_channel = interaction.guild.get_channel(config["emojis"]['request_channel'])
+        if not emoji_reqeust_channel:
+            return await interaction.edit_original_response(content=None, embed=discord.Embed(description="Emoji request channel not found", color=interaction.client.default_color))
+
+        
+        fromated_args = await get_formated_embed(["User", "Name"])
+        embed = discord.Embed(color=interaction.client.default_color, description="")
+        embed.description = ""
+        embed.description += "<:tgk_bid:1114854528018284595> `Emoji Request`\n\n"
+        embed.description += f"{fromated_args['User']}{interaction.user.mention}\n"
+        embed.description += f"{fromated_args['Name']}{name}\n\n"
+        embed.description += f"<:tgk_hint:1206282482744561744> Use below buttons to accept or reject the request"
+
+        file = discord.File(fp=io.BytesIO(emoji), spoiler=False, filename=filename)
+        req_message = await emoji_reqeust_channel.send(content=None, embed=embed, file=file, view=Emoji_Request())
+        
+        await interaction.edit_original_response(content=None, embed=discord.Embed(description="Your request has been sent to the admins", color=interaction.client.default_color))
+
+        emmoji_request_data = {
+            "_id": req_message.id,
+            "user_id": interaction.user.id,
+            "guild_id": interaction.guild.id,
+            "name": name,
+        }
+        await self.backend.emoji_request.insert(emmoji_request_data)
+
     @admin.command(name="premove", description="remove a custom perk from a user")
     @app_commands.describe(member="The member you want to manage", perk="The perk you want to manage")
     async def _premove(self, interaction: Interaction, member: discord.Member, perk: Perk_Type):
@@ -737,7 +833,7 @@ class Perks(commands.Cog, name="perk", description="manage your custom perks"):
             role_embed.description += f"**User:** {user_data.mention}\n"
             role_embed.description += f"**Role:** {role.mention}\n"
             role_embed.description += f"**Duration:** {duration}\n"
-            role_embed.description += f"**Friend Limit:** {role_data['friend_limit']}\n"
+            role_embed.description += f"**Friend Limit:** {role_data['share_limit']}\n"
             role_embed.description += f"**Friends:**" + ", ".join([f"<@{friend}>" for friend in role_data['friend_list']]) if len(role_data['friend_list']) > 0 else "None"
             embeds.append(role_embed)
         if channel:
@@ -749,7 +845,7 @@ class Perks(commands.Cog, name="perk", description="manage your custom perks"):
             channel_embed.description += f"**User:** {user_data.mention}\n"
             channel_embed.description += f"**Channel:** {channel.mention}\n"
             channel_embed.description += f"**Duration:** {duration}\n"
-            channel_embed.description += f"**Friend Limit:** {channel_data['friend_limit']}\n"
+            channel_embed.description += f"**Friend Limit:** {channel_data['share_limit']}\n"
             channel_embed.description += f"**Friends:**" + ", ".join([f"<@{friend}>" for friend in channel_data['friend_list']]) if len(channel_data['friend_list']) > 0 else "None"
             channel_embed.add_field(name="Activiy", value=f"**Rank: **{channel_data['activity']['rank']}\n**Messages:** {channel_data['activity']['messages']}\n")
             embeds.append(channel_embed)
