@@ -413,7 +413,7 @@ class Friends_manage(View):
                         except:
                             pass
                     else:
-                        if len(self.data['friend_list']) >= self.data['friend_limit']:
+                        if len(self.data['friend_list']) >= self.data['share_limit']:
                             break
                         add_friends.append(value)
                         await value.add_roles(role, reason=f"Added to {self.user.name}'s friends")
@@ -444,7 +444,7 @@ class Friends_manage(View):
                         except ValueError:
                             pass
                     else:
-                        if len(self.data['friend_list']) >= self.data['friend_limit']:
+                        if len(self.data['friend_list']) >= self.data['share_limit']:
                             break
                         add_friends.append(value)
                         await channel.set_permissions(value, view_channel=True, reason=f"Added to {self.user.name}'s friends")
@@ -473,7 +473,7 @@ class Friends_manage(View):
                 for member in role.members: 
                     if member.id == self.data['user_id']: continue
                     self.data['friend_list'].append(member.id)
-                    if len(self.data['friend_list']) >= self.data['friend_limit'] + 1:
+                    if len(self.data['friend_list']) >= self.data['share_limit'] + 1:
                         await member.remove_roles(role, reason=f"Removed from {self.user.name}'s friends")
                         removed += f"<@{member.id}> `({member.id})`\n"
                 await interaction.client.Perk.update("roles", self.data)
@@ -489,7 +489,7 @@ class Friends_manage(View):
                     if not isinstance(targate, discord.Member): continue
                     if targate.id == self.data['user_id']: continue
                     self.data['friend_list'].append(targate.id)
-                    if len(self.data['friend_list']) >= self.data['friend_limit'] + 1:
+                    if len(self.data['friend_list']) >= self.data['share_limit'] + 1:
                         await channel.set_permissions(targate, overwrite=None, reason=f"Removed from {self.user.name}'s friends")
                         removed += f"<@{targate.id}> `({targate.id})`\n"
                 await interaction.client.Perk.update("channels", self.data)
