@@ -358,7 +358,7 @@ class Blacklist_cog(commands.GroupCog, name="blacklist"):
             embed.add_field(name=f"Strike {index+1}", value=f"**Reason:** {strike['Strike_reason']}\n**By:** <@{strike['Strike_by']}> ({strike['Strike_by']})\n**At:** <t:{int(strike['Strike_at'].timestamp())}:R>\n**Expire In:** <t:{int(strike['Strike_expire'].timestamp())}:R>", inline=False)
             options.append(discord.SelectOption(
                 label=f"Strike {index+1}",
-                description=f"{strike['Strike_reason']}",
+                description=f"{strike['Strike_reason']}" if len(strike['Strike_reason']) < 100 else f"{strike['Strike_reason'][:95]}...",
                 value=f"{index+1}",
                 emoji="<:tgk_messagePing:1091682102824681553>"
             ))
@@ -387,9 +387,9 @@ class Blacklist_cog(commands.GroupCog, name="blacklist"):
     @app_commands.command(name="viewstrikes", description="View your strikes")
     async def _viewmystrike(self, interaction: discord.Interaction, user: discord.Member=None):
         if user is not None:
-            profiles: [StrikeUser] = await self.backend.strike.find_many_by_custom({"user_id": user.id, "guild_id": interaction.guild_id})   
+            profiles: List[StrikeUser] = await self.backend.strike.find_many_by_custom({"user_id": user.id, "guild_id": interaction.guild_id})   
         else: 
-            profiles: [StrikeUser] = await self.backend.strike.find_many_by_custom({"user_id": interaction.user.id, "guild_id": interaction.guild_id})
+            profiles: List[StrikeUser] = await self.backend.strike.find_many_by_custom({"user_id": interaction.user.id, "guild_id": interaction.guild_id})
         if len(profiles) == 0:
             return await interaction.response.send_message("You don't have any active strikes", ephemeral=True)
         
