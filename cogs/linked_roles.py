@@ -128,6 +128,10 @@ class Linked_Roles(commands.GroupCog, name="linkedroles"):
 					"platform_name": "The Gambler's Kingdom", "platform_username": user.name, "metadata": {}
 				}
 			}
+			if data['metadata'] == {}:
+				data[metadata] = {
+					"platform_name": "The Gambler's Kingdom", "platform_username": user.name, "metadata": {}
+				}
 			data['metadata']['metadata'][link.value] = 1 if value == True else 0
 			await self.bot.auth.update(data)
 			embed = discord.Embed(description=f"User {user.mention} is not linked with OCTANE but metadata has been created for them", color=discord.Color.red())
