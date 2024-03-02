@@ -129,7 +129,7 @@ class Linked_Roles(commands.GroupCog, name="linkedroles"):
 				}
 			}
 			if data['metadata'] == {}:
-				data[metadata] = {
+				data['metadata'] = {
 					"platform_name": "The Gambler's Kingdom", "platform_username": user.name, "metadata": {}
 				}
 			data['metadata']['metadata'][link.value] = 1 if value == True else 0
