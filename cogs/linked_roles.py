@@ -128,14 +128,15 @@ class Linked_Roles(commands.GroupCog, name="linkedroles"):
 					"platform_name": "The Gambler's Kingdom", "platform_username": user.name, "metadata": {}
 				}
 			}
-			if data['metadata'] == {}:
-				data['metadata'] = {
-					"platform_name": "The Gambler's Kingdom", "platform_username": user.name, "metadata": {}
-				}
 			data['metadata']['metadata'][link.value] = 1 if value == True else 0
 			await self.bot.auth.update(data)
 			embed = discord.Embed(description=f"User {user.mention} is not linked with OCTANE but metadata has been created for them", color=discord.Color.red())
 			return await interaction.response.send_message(embed=embed, ephemeral=True)
+		
+		if data['metadata'] == {}:
+			data['metadata'] = {
+				"platform_name": "The Gambler's Kingdom", "platform_username": user.name, "metadata": {}
+			}
 		
 		if data['access_token'] is None:
 			embed = discord.Embed(description=f"User {user.mention} is not linked with OCTANE", color=discord.Color.red())
@@ -145,10 +146,6 @@ class Linked_Roles(commands.GroupCog, name="linkedroles"):
 		if metadata == "Error":
 			embed = discord.Embed(description=f"```py\n{await metadata}\n```", color=discord.Color.red())
 			return await interaction.response.send_message(embed=embed, ephemeral=True)
-		
-		if metadata != data['metadata']:
-			data['metadata'] = metadata
-			await self.bot.auth.upsert(data)
 
 		data['metadata']['metadata'][link.value] = 1 if value == True else 0
 		response = await self.update_metadata(data['access_token'], data['metadata'])
