@@ -32,7 +32,7 @@ async def get_formated_embed(arguments: List[str], custom_lenth: int = None) -> 
 		
 	return output
 
-async def get_formated_field(guild: discord.Guild, name: str, type: Literal["role", "channel", "user", "time"], data: Union[List[int], None, int]) -> str:
+async def get_formated_field(guild: discord.Guild, name: str, type: Literal["role", "channel", "user", "time", "str", "bool", "emoji"], data: Union[List[int], None, int]) -> str:
 	
 	"""
 	This function creates a formated embed field for a role, channel or user.
@@ -103,6 +103,23 @@ async def get_formated_field(guild: discord.Guild, name: str, type: Literal["rol
 				return f"{name}<t:{round(data.timestamp())}:R>(<t:{round(data.timestamp())}:f>)"
 			elif isinstance(data, str) and data.lower() == "permanent":
 				return f"{name}Permanent"
+			else:
+				return f"{name}None"
+		case "str":
+			if isinstance(data, str):
+				return f"{name}{data}"
+			else:
+				return f"{name}None"
+		case "bool":
+			if data is True:
+				return f"{name}<:toggle_on:1123932825956134912>"
+			elif data is False:
+				return f"{name}<:toggle_off:1123932890993020928>"
+			elif data is None:
+				return f"{name}<:caution:1122473257338151003>"
+		case "emoji":
+			if isinstance(data, str):
+				return f"{name}{data}"
 			else:
 				return f"{name}None"
 		case _:
