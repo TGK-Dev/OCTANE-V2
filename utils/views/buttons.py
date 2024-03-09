@@ -54,7 +54,7 @@ class Reload(View):
 	def __init__(self, cog: str,message: discord.Message=None):
 		self.message = message
 		self.cog = cog
-		super().__init__(timeout=120)
+		super().__init__(timeout=540)
 
 	async def interaction_check(self, interaction: discord.Interaction) -> bool:
 		if interaction.user.id in [488614633670967307, 301657045248114690]:

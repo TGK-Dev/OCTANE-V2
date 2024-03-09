@@ -43,7 +43,7 @@ class DMCConverter_Ctx(commands.Converter):
 
 def millify(n):
     n = float(n)
-    millnames = ['',' Thousand',' Million',' Billion',' Trillion']
+    millnames = ['',' K',' Mil',' Bil',' T']
     millidx = max(0,min(len(millnames)-1,
                         int(math.floor(0 if n == 0 else math.log10(abs(n))/3))))
 
