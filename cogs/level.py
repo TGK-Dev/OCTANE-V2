@@ -387,7 +387,7 @@ class Level(commands.GroupCog):
         level: str = df[df['_id'] == member.id]['level'].values[0]
         exp: str = await self.levels.millify(df[df['_id'] == member.id]['xp'].values[0])
         weekly: str = await self.levels.millify(df[df['_id'] == member.id]['weekly'].values[0])
-        card = await self.levels.create_rank_card(member, rank, level, exp, weekly)
+        card = await self.levels.create_rank_card(member, rank+1, level, exp, weekly)
 
         with BytesIO() as image_binary:
             card.save(image_binary, 'PNG')
