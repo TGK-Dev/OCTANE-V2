@@ -821,7 +821,7 @@ class donation(commands.Cog):
                     await log_channel.send(f'Added {beast_role.mention} to {user.mention}(`{user.id}`).\n> **Error:** Unable to send DM to user.', allowed_mentions=discord.AllowedMentions.none())
                 await asyncio.sleep(1)
         
-        image = await self.create_winner_card(gk, "🎊 10K Celeb's LB 🎊", leaderboard)
+        image = await self.create_lb(gk, leaderboard)
         
 
         with BytesIO() as image_binary:
