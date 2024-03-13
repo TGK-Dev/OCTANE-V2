@@ -955,8 +955,6 @@ class donation(commands.Cog):
     
     @app_commands.command(name="celeb-lb", description="Celeb Leaderboard 📈")
     async def _leaderboard(self, interaction: discord.Interaction):
-        if interaction.user.id not in  [488614633670967307,301657045248114690]:
-            return await interaction.response.send_message("Work in progress, try again later!", ephemeral=True)
         await interaction.response.defer(thinking=True, ephemeral=False)
 
         data = await self.bot.donorBank.find_many_by_custom( {"event" : { "$elemMatch": { "name": '10k',"bal":{"$gt":0} }}})
