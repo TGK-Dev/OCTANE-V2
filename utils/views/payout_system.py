@@ -266,7 +266,6 @@ class Payout_claim(discord.ui.View):
         await interaction.edit_original_response(embed=discord.Embed(description="<:octane_yes:1019957051721535618> | Sucessfully claimed payout, you will be paid in 24hrs", color=interaction.client.default_color))
 
         view = Payout_Buttton()
-        view.remove_item(view.children[0])
         msg = await queue_channel.send(embed=queue_embed, view=view)
         pending_data = data
         pending_data['_id'] = msg.id
