@@ -5,12 +5,7 @@ import asyncio
 import re
 
 from discord.ext import commands, tasks
-from copy import deepcopy
-from discord import app_commands
 from utils.db import Document
-from typing import List
-from utils.views.buttons import Confirm
-from utils.checks import is_dev
 
 class Events(commands.Cog):
     def __init__(self, bot):
@@ -101,6 +96,7 @@ class Events(commands.Cog):
     
     @commands.Cog.listener()
     async def on_vote_reminder(self, data):
+        await asyncio.sleep(5)
         if data["reminded"] == True: return
 
         view = discord.ui.View()
