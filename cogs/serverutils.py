@@ -803,7 +803,9 @@ class donation(commands.Cog):
         for index in top_10.index:
             user = gk.get_member(top_10['_id'][index])
             users.append(user)
-            leaderboard.append({'user': user,'name': top_10['name'][index],'donated': top_10['10k'][index]}) 
+            leaderboard.append({'user': user,'name': top_10['name'][index],'donated': top_10['10k'][index]})
+        
+        for index in top_3.index:
             if beast_role not in user.roles:
                 await user.add_roles(beast_role)
                 embed = discord.Embed(
