@@ -34,7 +34,7 @@ class ActivityLeaderboard(commands.GroupCog, name="activity"):
         users = await self.messages.get_all()
         users = sorted(users, key=lambda x: x['messages'], reverse=True)
         embed = discord.Embed(title="Message Leaderboard", color=self.bot.default_color, 
-                              description="",timestamp=datetime.datetime.utcnow().astimezone(pytz.timezone('Asia/Kolkata')))
+                              description="",timestamp=datetime.datetime.now().astimezone(pytz.timezone('Asia/Kolkata')))
         for index, user in enumerate(users[:10]):
             member = lb_channel.guild.get_member(user['_id'])
             if not member: continue
@@ -96,6 +96,28 @@ class ActivityLeaderboard(commands.GroupCog, name="activity"):
         await self.config.update(config)
         self.config_cach = config
         await interaction.response.send_message(f"Set the leaderboard channel to {channel.mention}", ephemeral=True)
+    
+    @app_commands.command(name="reset", description="Reset the message count for a user")
+    async def reset(self, interaction: Interaction, member: discord.Member):
+        user_data = await self.messages.find(member.id)
+        if not user_data:
+            await interaction.response.send_message("This user has no messages", ephemeral=True)
+            return
+        user_data['messages'] = 0
+        await self.messages.update(user_data)
+        await interaction.response.send_message(f"Reset the message count for {member.mention}", ephemeral=True)
+
+    @app_commands.command(name="reset-lb", description="Reset the leaderboard")
+    async def reset_lb(self, interaction: Interaction):
+        users = await self.messages.get_all()
+        await interaction.response.send_message("Resetting the leaderboard", ephemeral=True)
+        data = []
+        for user in users:
+            user['messages'] = 0
+            data.append(user)
+        await self.messages.bulk_update(data)
+        await interaction.edit_original_response(content="Leaderboard reset successfully!")
+
 
 async def setup(bot):
     await bot.add_cog(ActivityLeaderboard(bot), guilds=[discord.Object(785839283847954433)])          
