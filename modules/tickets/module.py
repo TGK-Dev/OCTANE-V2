@@ -1,8 +1,10 @@
 import discord
 from discord.ext import commands
 from discord import app_commands, Interaction
-from .db import TicketDB
-from .view import TicketConfig_View
+from .db import TicketDB, TicketConfig, Panel
+from .view import TicketConfig_View, Panels, TicketControl, Refresh_Trancsript
+
+from typing import List, Dict
 
 class Ticket(commands.GroupCog, name="ticket"):
     def __init__(self, bot):
@@ -10,7 +12,34 @@ class Ticket(commands.GroupCog, name="ticket"):
         self.backend = TicketDB(bot)
         self.bot.tickets = self.backend
 
+    async def PanelAutoComplete(self, interaction: Interaction, current: str) -> List[app_commands.Choice]:
+        config: TicketConfig = self.backend.get_config(interaction.guild_id)
+        if len(config["panels"]) == {}:
+            return [app_commands.Choice(name="No panels found", value="None")]
+        else:
+            panels = [
+                app_commands.Choice(name=panel["name"], value=panel["name"]) for panel in config["panels"].keys()
+                if current.lower() in panel["name"].lower()
+            ]
+            return panels[:24]
     
+    async def RestoreViews(self, guild: discord.Guild):
+        config: TicketConfig = await self.backend.get_config(guild.id)
+        view = Panels(panels=config["panels"], guild_id=guild.id)
+        self.bot.add_view(view)
+    
+    @commands.Cog.listener()
+    async def on_ready(self):
+        config = await self.backend.config.get_all()
+        for guild in config:
+            await self.RestoreViews(self.bot.get_guild(guild["_id"]))
+
+        self.bot.add_view(TicketControl())
+        self.bot.add_view(Refresh_Trancsript())
+
+    
+    panel = app_commands.Group(name="panel", description="Ticket panel commands")
+
     @app_commands.command(name="setup", description="Setup the ticket system")
     @app_commands.default_permissions(administrator=True)
     async def setup(self, interaction: Interaction):
@@ -20,6 +49,52 @@ class Ticket(commands.GroupCog, name="ticket"):
         await interaction.response.send_message(embed=embed, view=view, ephemeral=False)
         view.message = await interaction.original_response()
 
+    @panel.command(name="send", description="Update/send the panel message")
+    @app_commands.default_permissions(administrator=True)
+    async def send(self, interaction: Interaction):
+        await interaction.response.send_message("Please wait while I update the panel message", ephemeral=True)
+        config: TicketConfig = await self.backend.get_config(interaction.guild_id)
+        panels_channels = {config["default_channel"]: []}
+        panels: Dict[str, Panel] = config["panels"]
+
+        for name, panel in panels.items():
+            if panel['channel'] != None:    
+                if panel['channel'] not in panels_channels:
+                    panels_channels[panel['channel']] = []
+                panels_channels[panel['channel']].append(config["panels"][name])
+            else:
+                panels_channels[config["default_channel"]].append(config["panels"][name])
+
+        for channel, panels in panels_channels.items():
+            channel = interaction.guild.get_channel(channel)
+            panel_message = None
+
+            embed = discord.Embed(color=interaction.client.default_color)
+            embed.set_author(name=f"{interaction.guild.name} Ticket System", icon_url=interaction.guild.icon.url)
+            
+            for panel in panels:
+                panel: Panel = panel
+                if panel['panel_message'] != None and panel_message == None:
+                    
+                    try:
+                        panel_message = await channel.fetch_message(panel['panel_message'])
+                    except discord.NotFound:
+                        panel_message = None
+                    
+                embed.add_field(name=panel['name'], value=panel['description'], inline=False)
+
+            view = Panels(panels=panels_channels[channel.id], guild_id=interaction.guild_id)
+            self.bot.add_view(view)
+
+            if panel_message == None and len(panels) > 0:                
+                panel_message = await channel.send(embed=embed, view=view)
+                config["panels"][panel['name']]['panel_message'] = panel_message.id
+
+            elif isinstance(panel_message, discord.Message):
+                await panel_message.edit(embed=embed, view=view)
+
+        await self.backend.update_config(interaction.guild_id, config)
+        await interaction.edit_original_response(content="Panel message updated")
 
 
 async def setup(bot):
