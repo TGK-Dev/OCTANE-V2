@@ -1,13 +1,18 @@
+import datetime
+import io
 import discord
 import traceback
 from discord import Interaction, SelectOption, app_commands
 from discord.ui import View, Button, button, TextInput, Item, Select, select
+import chat_exporter
+import urllib
 from utils.views.selects import Role_select, Select_General, Channel_select
 from utils.views.modal import General_Modal
 from utils.views.buttons import Confirm
 from utils.paginator import Paginator
 from utils.embed import get_formated_embed, get_formated_field
-from .db import TicketConfig, Panel
+from .db import TicketConfig, Panel, Qestion, Ticket
+from typing import Dict, List
 
 class TicketConfig_View(View):
     def __init__(self, user:discord.Member, data: TicketConfig, message: discord.Message=None):
@@ -126,7 +131,7 @@ class TicketConfig_View(View):
                 panel_select = View()
                 panel_select.value = False
                 panel_select.select = Select_General(
-                    interaction=interaction, placeholder="Select the panel you want to edit", options=[SelectOption(label=f"{k}", value=k) for k in self.data['panels'].keys()]
+                    interaction=interaction, placeholder="Select the panel you want to edit", options=[SelectOption(label=f"{k}", value=k, emoji=self.data['panels'][k]['emoji']) for k in self.data['panels'].keys()]
                 )
                 panel_select.add_item(panel_select.select)
 
@@ -183,6 +188,10 @@ class TicketPanel(View):
             self.children[0].emoji = "<:tgk_toggle_on:1215647030974750750>"
         else:
             self.children[0].emoji = "<:tgk_toggle_off:1215647089610981478>"
+        if self.data['name'] != None:
+            self.children[1].disabled = True
+        else:
+            self.children[1].disabled = False
 
     @button(label="Active", style=discord.ButtonStyle.gray, emoji='<:toggle_on:1123932825956134912>')
     async def _active(self, interaction: Interaction, button: Button):
@@ -207,7 +216,7 @@ class TicketPanel(View):
             return
         
         self.data['name'] = modal.name.value
-        
+        button.disabled = True
         await modal.interaction.response.edit_message(embed=await interaction.client.tickets.panel_embed(guild=interaction.guild, data=self.data), view=self)
 
     @button(label="Description", style=discord.ButtonStyle.gray, emoji='<:tgk_entries:1124995375548338176>')
@@ -319,7 +328,7 @@ class Panel_Question(View):
             return
         
         embed = discord.Embed(description="", color=interaction.client.default_color)
-        embed.description += f"{modal.qes.value}\n"
+        embed.description += f"### Q. {modal.qes.value}\n"
         embed.description += f"{modal.ans.value}\n"
 
         view = Confirm(user=interaction.user, timeout=30)
@@ -620,3 +629,261 @@ class Channel_Config(View):
         await interaction.response.edit_message(embed=embed, view=None)
         self.value = True
         self.stop()
+
+# NOTE: Ticket Creation View
+
+
+class Panels(discord.ui.View):
+    def __init__(self, panels: Dict[str, Panel] | List[Panel], guild_id: int):
+        self.panels = panels
+        super().__init__(timeout=None)
+        if isinstance(panels, dict):
+            for panel in self.panels:
+                self.add_item(PanelButton(custom_id=f"{guild_id}:panel:{panels[panel]['name']}", label=panels[panel]['name'], emoji=panels[panel]['emoji']))
+        elif isinstance(panels, list):
+            for panel in self.panels:
+                self.add_item(PanelButton(custom_id=f"{guild_id}:panel:{panel['name']}", label=panel['name'], emoji=panel['emoji']))
+        else:
+            raise TypeError("Invalid type for panels")
+    
+    # async def on_error(self, interaction: Interaction, error: Exception, item: Item):
+    #     try:
+    #         await interaction.response.send_message(embed=discord.Embed(description=f"```py\n{traceback.format_exception(type(error), error, error.__traceback__, 4)}\n```", color=discord.Color.red()), ephemeral=True)
+    #     except :
+    #         await interaction.followup.send(embed=discord.Embed(description=f"```py\n{traceback.format_exception(type(error), error, error.__traceback__, 4)}\n```", color=discord.Color.red()), ephemeral=True)
+
+class TicketQestionDropDown(View):
+    def __init__(self, data: Qestion):
+        self.data = data
+        self.create_ticket = False
+        super().__init__(timeout=120)
+        self.dropdown: Select = self.children[0]
+        self.qestions = [SelectOption(label=f"{value['question']}", value=key) for key, value in self.data.items()]
+        self.qestions.append(SelectOption(label="None of the above", value="none"))
+        self.dropdown.options = self.qestions
+        self.interaction = None
+
+    async def on_timeout(self):
+        self.create_ticket = False
+        self.stop()
+
+    @select(placeholder="Dose the following question apply to you?", min_values=1, max_values=1, options=[None])
+    async def _question(self, interaction: Interaction, select: Select):
+        if select.values[0] != "none":
+            self.create_ticket = False
+            embed = discord.Embed(color=interaction.client.default_color)
+            qestion = self.data[select.values[0]]
+            embed.add_field(name=f"Q. {qestion['question']}", value=f"{qestion['answer']}", inline=False)
+            
+            await interaction.response.edit_message(embed=embed, view=None)
+        else:
+            self.create_ticket = True
+            self.interaction = interaction
+        self.stop()
+
+class PanelButton(discord.ui.Button):
+    def __init__(self, custom_id: str, label: str, emoji: str=None):
+        super().__init__(style=discord.ButtonStyle.gray, label=label, emoji=emoji, custom_id=custom_id)
+
+    async def callback(self, interaction: Interaction):
+        config: TicketConfig = await interaction.client.tickets.get_config(interaction.guild_id)
+        try:
+            panel: Panel = config['panels'][self.custom_id.split(":")[2]]
+        except KeyError:
+            return await interaction.response.send_message("This panel does not exist", ephemeral=True)
+        
+        if panel['active'] is False:
+            self.disabled = True
+            await interaction.response.send_message("This ticket panel is disabled by the administrator", ephemeral=True)
+            await interaction.edit_original_response(view=self.view)
+        
+        if panel['question'] != {}:
+            QestionView = TicketQestionDropDown(data=panel['question'])
+            await interaction.response.send_message(view=QestionView, ephemeral=True, delete_after=10)
+            await QestionView.wait()
+            interaction = QestionView.interaction
+            if QestionView.create_ticket is False:
+                return
+        await interaction.response.send_message(content=f"<a:TGK_loading:1222135771935412287> Please wait while we create {self.custom_id.split(':')[2]}'s ticket", ephemeral=True)
+        
+        if panel['category'] == None:
+            category = interaction.guild.get_channel(config['default_category'])
+        else:
+            category = interaction.guild.get_channel(panel['category'])
+
+        overwrites = {
+            interaction.guild.default_role: discord.PermissionOverwrite(view_channel=False),
+            interaction.guild.me: discord.PermissionOverwrite(view_channel=True),
+            interaction.user: discord.PermissionOverwrite(view_channel=True, send_messages=True, read_message_history=True, attach_files=True, embed_links=True, add_reactions=True)
+        }
+        for role in panel['support_roles']:
+            role = interaction.guild.get_role(role)
+            overwrites[role] = discord.PermissionOverwrite(view_channel=True, send_messages=True, read_message_history=True, attach_files=True, embed_links=True, add_reactions=True)
+
+        TicketChannel = await interaction.guild.create_text_channel(name=f"{panel['nameing_scheme']} {interaction.user.name}", category=category, overwrites=overwrites, topic=f"Ticket created by {interaction.user.name}", reason="Ticket Creation")
+        TicketEmbed = discord.Embed(title=f"{panel['name']} Ticket", description=panel['ticket_message'], color=interaction.client.default_color)
+        TicketEmbed.set_footer(text=f"Ticket ID: {TicketChannel.id}")
+        TicketMessage = await TicketChannel.send(embed=TicketEmbed, content=f"{interaction.user.mention} {interaction.guild.get_role(panel['ping_role']).mention if panel['ping_role'] is not None else ''}", view=TicketControl())
+        await TicketMessage.pin()
+        TicketData: Ticket = {
+            '_id': TicketChannel.id,
+            'user_id': interaction.user.id,
+            'channel_id': TicketChannel.id,
+            'panel': panel['name'],
+            'status': 'open',
+            'added_roles': [],
+            'added_users': [],
+            'anonymous': {
+                'status': False,
+                'thread_id': None,
+            },
+        }
+        await interaction.client.tickets.ticket.insert(TicketData)
+        view = View()
+        view.add_item(discord.ui.Button(label="Jump to Ticket", style=discord.ButtonStyle.link, url=TicketMessage.jump_url))
+        await interaction.edit_original_response(content=f"Ticket created in {TicketChannel.mention}", view=view)
+
+
+class TicketControl(View):
+    def __init__(self):
+        super().__init__(timeout=None)    
+
+    @button(label="Open", style=discord.ButtonStyle.gray, emoji='<:tgk_unlock:1072851439161983028>', custom_id="ticket:open")
+    async def _open(self, interaction: Interaction, button: Button):
+        ticket_data: Ticket = await interaction.client.tickets.ticket.find({'_id': interaction.channel.id})
+        if not ticket_data:
+            return await interaction.response.send_message("This is not a ticket channel", ephemeral=True)
+        if ticket_data['status'] == "open":
+            return await interaction.response.send_message("This ticket is already open", ephemeral=True)
+        
+        embed = discord.Embed(description="<a:loading:998834454292344842> Opening the ticket", color=interaction.client.default_color)
+        await interaction.response.send_message(embed=embed)
+        overwrite = discord.PermissionOverwrite(view_channel=True)
+
+        for role in ticket_data['added_roles']: await interaction.channel.set_permissions(interaction.guild.get_role(role), overwrite=overwrite)
+        for user in ticket_data['added_users']: await interaction.channel.set_permissions(interaction.guild.get_member(user), overwrite=overwrite)
+
+        ticket_owner = interaction.guild.get_member(ticket_data['user_id'])
+        if not ticket_owner:
+            return await interaction.edit_original_response(embed=discord.Embed(description="Unable to find the ticket owner in the server, they might have left the server", color=discord.Color.red()))
+        
+        await interaction.channel.set_permissions(ticket_owner, overwrite=overwrite)
+        await interaction.client.tickets.ticket.update(ticket_data)
+
+        config: TicketConfig = await interaction.client.tickets.get_config(interaction.guild.id)
+        name = f"{config['panels'][ticket_data['panel']]['nameing_scheme']}{ticket_owner.name}" if config['panels'][ticket_data['panel']]['nameing_scheme'] != None else f"{config['nameing_scheme']['unlocked']}{ticket_owner.name}"
+
+        await interaction.channel.edit(name=name)
+        await interaction.edit_original_response(embed=discord.Embed(description=f"Ticket opended by the {interaction.user.mention}", color=interaction.client.default_color))
+
+    @button(label="Close", style=discord.ButtonStyle.gray, emoji='<:tgk_lock:1072851190213259375>', custom_id="ticket:close")
+    async def _close(self, interaction: Interaction, button: Button):
+        ticket_data: Ticket = await interaction.client.tickets.ticket.find({'_id': interaction.channel.id})
+
+        if not ticket_data:
+            return await interaction.response.send_message("This is not a ticket channel", ephemeral=True)
+        if ticket_data['status'] == "closed":
+            return await interaction.response.send_message("This ticket is already closed", ephemeral=True)
+        ticket_data['status'] = "closed"
+
+        embed = discord.Embed(description="<a:loading:998834454292344842> Closing the ticket", color=interaction.client.default_color)
+        await interaction.response.send_message(embed=embed)
+        overwrite = discord.PermissionOverwrite(view_channel=False)
+
+        for role in ticket_data['added_roles']: await interaction.channel.set_permissions(interaction.guild.get_role(role), overwrite=overwrite)
+        for user in ticket_data['added_users']: await interaction.channel.set_permissions(interaction.guild.get_member(user), overwrite=overwrite)
+
+        ticket_owner = interaction.guild.get_member(ticket_data['user_id'])
+        if not ticket_owner:
+            return await interaction.edit_original_response(embed=discord.Embed(description="Unable to find the ticket owner in the server, they might have left the server", color=discord.Color.red()))
+        
+        await interaction.channel.set_permissions(ticket_owner, overwrite=overwrite)
+        await interaction.client.tickets.ticket.update(ticket_data)
+
+        config = await interaction.client.tickets.get_config(interaction.guild.id)
+        name = f"{config['nameing_scheme']['locked']}{ticket_owner.name}"
+        await interaction.channel.edit(name=name)
+        await interaction.edit_original_response(embed=discord.Embed(description=f"Ticket closed by the {interaction.user.mention}", color=interaction.client.default_color))
+
+    @button(label="Delete", style=discord.ButtonStyle.gray, emoji='<:tgk_delete:1113517803203461222>', custom_id="ticket:delete")
+    async def _delete(self, interaction: Interaction, button: Button):
+        ticket_data: Ticket = await interaction.client.tickets.ticket.find({'_id': interaction.channel.id})
+        if not ticket_data:
+            return await interaction.response.send_message("This is not a ticket channel", ephemeral=True)
+        
+        ticket_owner = interaction.guild.get_member(ticket_data['user_id'])
+        if not ticket_owner:
+            ticket_owner = await interaction.client.fetch_user(ticket_data['user_id'])
+
+        timestemp = datetime.datetime.now() + datetime.timedelta(seconds=20)
+        embed = discord.Embed(description=f"Deleting ticket in <t:{round(timestemp.timestamp())}:R>, {interaction.user.mention} use button below to cancel", color=interaction.client.default_color)
+        ConfimView = Confirm(user=interaction.user, timeout=20)
+        ConfimView.children[0].label = "Cancel"
+        ConfimView.remove_item(ConfimView.children[1])
+
+        await interaction.response.send_message(embed=embed, view=ConfimView, ephemeral=False)
+        ConfimView.message = await interaction.original_response()
+        await ConfimView.wait()
+
+        if ConfimView.value is True: return await ConfimView.interaction.response.edit_message(embed=discord.Embed(description="Ticket deletion canceled", color=interaction.client.default_color))
+        await interaction.edit_original_response(embed=discord.Embed(description="<a:TGK_loading:1222135771935412287> Crating a transcript and deleting the ticket", color=interaction.client.default_color))
+
+        Config: TicketConfig = await interaction.client.tickets.get_config(interaction.guild.id)
+        TranscriptChannel = interaction.guild.get_channel(Config['transcript_channel'])
+
+        if Config['transcript_channel'] is None or not isinstance(TranscriptChannel, discord.TextChannel):
+            await interaction.client.tickets.ticket.delete(ticket_data['_id'])
+            await interaction.channel.delete()
+            return
+        
+        TicketMessages = [message async for message in interaction.channel.history(limit=None)]
+        TranscriptFile = await chat_exporter.raw_export(channel=interaction.channel, messages=TicketMessages, tz_info="Asia/Kolkata", guild=interaction.guild, bot=interaction.client, support_dev=False)
+        TranscriptFile = discord.File(io.BytesIO(TranscriptFile.encode()), filename=f"transcript-{ticket_owner.name}-{ticket_data['panel']}.html")
+
+        TranscriptMessage = await TranscriptChannel.send(file=TranscriptFile, content=f"**Channel**: `{interaction.channel.name}`\n**Ticket Owner**: {ticket_owner.mention}\n**Panel**: {ticket_data['panel']}")
+        TranscriptUrl = urllib.parse.quote(TranscriptMessage.attachments[0].url, safe="")
+        linkView =  Refresh_Trancsript()
+        linkView.add_item(discord.ui.Button(label="View Transcript", url=f"https://api.natbot.xyz/transcripts?url={TranscriptUrl}", style=discord.ButtonStyle.url, emoji="<:tgk_link:1105189183523401828>"))
+        await TranscriptMessage.edit(view=linkView)
+
+        await interaction.client.tickets.ticket.delete(ticket_data['_id'])
+        await interaction.channel.delete()
+    
+    @button(label="Annonymous", style=discord.ButtonStyle.gray, emoji='<:tgk_amongUs:1103542462628253726>', custom_id="ticket:anonymous")
+    async def _anonymous(self, interaction: Interaction, button: Button):
+        ticket_data: Ticket = await interaction.client.tickets.ticket.find({'_id': interaction.channel.id})
+        if not ticket_data:
+            return await interaction.response.send_message("This is not a ticket channel", ephemeral=True)
+        
+        if ticket_data['anonymous']['status'] == True:
+            thread = interaction.guild.get_thread(ticket_data['anonymous']['thread_id'])
+            await thread.add_user(interaction.user)
+            await interaction.response.send_message(embed=discord.Embed(description=f"Added you to the tickets private thread", color=interaction.client.default_color), ephemeral=True)
+        else:
+            thread = await interaction.channel.create_thread(name=f"🐱‍👤 Secret Chat", auto_archive_duration=60, type=discord.ChannelType.private_thread)
+            await thread.send("please be advised that this thread is now designated as private and restricted only to moderators and higher-ups. Thank you for your understanding and cooperation in respecting the privacy of this thread.")
+            await thread.add_user(interaction.user)
+            ticket_data['anonymous']['status'] = True
+            ticket_data['anonymous']['thread_id'] = thread.id
+            await interaction.client.tickets.ticket.update(ticket_data)
+            await interaction.response.send_message(embed=discord.Embed(description=f"Created a private thread for the ticket", color=interaction.client.default_color), ephemeral=True)
+
+
+class Refresh_Trancsript(View):
+    def __init__(self):
+        super().__init__(timeout=None)
+
+    @button(label="Refresh", style=discord.ButtonStyle.gray, emoji="<:tgk_refresh:1171330950416842824>", custom_id="transcript:refresh")
+    async def refresh(self, interaction: Interaction, button: Button):
+        if len(interaction.message.attachments) <= 0: 
+            await interaction.response.send_message("No transcript found", ephemeral=True, delete_after=5)
+        
+        attachment = interaction.message.attachments[0]
+        attachment_url = urllib.parse.quote(attachment.url, safe="")
+        transcript_url = f"https://api.natbot.xyz/transcripts?url={attachment_url}"
+        view = Refresh_Trancsript()
+        view.add_item(discord.ui.Button(label="View Transcript", url=transcript_url, style=discord.ButtonStyle.url, emoji="<:tgk_link:1105189183523401828>"))
+        await interaction.response.edit_message(view=view)
+
+
+        
