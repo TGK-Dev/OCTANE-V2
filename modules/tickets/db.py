@@ -19,7 +19,12 @@ class Panel(TypedDict):
     ping_role: int
     ticket_message: str
     panel_message: int
-    
+    nameing_scheme: str
+
+class ChannelNameScheme(TypedDict):
+    locked: str
+    unlocked: str
+
 
 class TicketConfig(TypedDict):
     _id: int
@@ -30,7 +35,7 @@ class TicketConfig(TypedDict):
     transcript_channel: int
     panel_message: int
     panels: Dict[str, Panel]
-
+    nameing_schems: ChannelNameScheme
 
 class Anonymous(TypedDict):
     status: bool
@@ -42,8 +47,8 @@ class Ticket(TypedDict):
     user_id: int
     panel: str
     status: str
-    support_roles: List[int]
-    support_users: List[int]
+    added_roles: List[int]
+    added_users: List[int]
     channel_id: int
     anonymous: Anonymous
 
@@ -53,7 +58,7 @@ class TicketDB:
         self.bot = bot
         self.db = bot.mongo['Tickets']
         self.config = Document(self.db, 'Config', TicketConfig)
-        self.tickets = Document(self.db, 'Tickets', Ticket)
+        self.ticket = Document(self.db, 'Tickets', Ticket)
 
     async def create_config(self, _id:int) -> TicketConfig:
         """
