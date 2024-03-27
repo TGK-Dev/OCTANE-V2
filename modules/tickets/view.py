@@ -73,7 +73,7 @@ class TicketConfig_View(View):
             await interaction.delete_original_response()
             return
         
-        keys = ['default_category', 'default_channel', 'log_channel', 'transcript_channel']
+        keys = ['default_category', 'default_channel', 'log_channel', 'transcript_channel', 'nameing_schems']
         for key in keys:
             if view.data.get(key) is not None:
                 self.data[key] = view.data[key].id
@@ -115,6 +115,7 @@ class TicketConfig_View(View):
                     'ping_role': None,
                     'ticket_message': None,
                     'panel_message': None,
+                    'nameing_scheme': None,
                 }
                 panel_view = TicketPanel(data, self.data, view.select.interaction)
                 embed = await interaction.client.tickets.panel_embed(interaction.guild, data)
@@ -184,12 +185,16 @@ class TicketPanel(View):
         self.value = False
         self.interaction = interaction
         super().__init__(timeout=300)
+
         if self.data['active'] is True:
             self.children[0].emoji = "<:tgk_toggle_on:1215647030974750750>"
         else:
             self.children[0].emoji = "<:tgk_toggle_off:1215647089610981478>"
+
         if self.data['name'] != None:
             self.children[1].disabled = True
+            if self.data['name'].lower() == "partnership":
+                self.children[4].disabled = True
         else:
             self.children[1].disabled = False
 
@@ -217,6 +222,8 @@ class TicketPanel(View):
         
         self.data['name'] = modal.name.value
         button.disabled = True
+        if self.data['name'].lower() == "partnership":
+            self.children[4].disabled = True
         await modal.interaction.response.edit_message(embed=await interaction.client.tickets.panel_embed(guild=interaction.guild, data=self.data), view=self)
 
     @button(label="Description", style=discord.ButtonStyle.gray, emoji='<:tgk_entries:1124995375548338176>')
@@ -272,7 +279,7 @@ class TicketPanel(View):
 
     @button(label="Channels", style=discord.ButtonStyle.gray, emoji='<:tgk_channel:1073908465405268029>')
     async def _channel(self, interaction: Interaction, button: Button):
-        view = Panel_Channel(interaction=interaction, current_channel={'channel': self.data['channel'], 'category': self.data['category']}, name=self.data['name'])
+        view = Panel_Channel(interaction=interaction, current_channel={'channel': self.data['channel'], 'category': self.data['category'], 'nameing_scheme': self.data['nameing_scheme']}, name=self.data['name'])
         embed = await view.update_embed()
         await interaction.response.send_message(embed=embed, view=view, ephemeral=True)
 
@@ -280,6 +287,7 @@ class TicketPanel(View):
         if view.value is True:
             self.data['channel'] = view.data['channel']
             self.data['category'] = view.data['category']
+            self.data['nameing_scheme'] = view.data['nameing_scheme']
             await self.interaction.edit_original_response(embed=await interaction.client.tickets.panel_embed(guild=interaction.guild, data=self.data), view=self)
 
     @button(label="Emoji", style=discord.ButtonStyle.gray, emoji='<:tgk_fishing:1196665275794325504>')
@@ -416,7 +424,8 @@ class Panel_Question(View):
     @button(label="Confirm", style=discord.ButtonStyle.gray, emoji='<:tgk_active:1082676793342951475>')
     async def _confirm(self, interaction: Interaction, button: Button):
         self.value = True
-        await interaction.response.send_message("Updated the panel questions", ephemeral=True, delete_after=5)
+        for chl in self.children: chl.disabled = True
+        await interaction.response.send_message("Updated the panel questions", ephemeral=True, delete_after=10, view=self)
         self.stop()
         
 class Panel_Message(View):
@@ -458,7 +467,7 @@ class Panel_Message(View):
     async def _confirm(self, interaction: Interaction, button: Button):
         self.value = True
         for chl in self.children: chl.disabled = True
-        await interaction.response.edit_message(view=self)
+        await interaction.response.edit_message(view=self, delete_after=10)
         self.stop()
                          
 class Panel_Roles(View):
@@ -499,7 +508,8 @@ class Panel_Roles(View):
     @button(label="Confirm", style=discord.ButtonStyle.gray, emoji='<:tgk_active:1082676793342951475>')
     async def _confirm(self, interaction: Interaction, button: Button):
         self.value = True
-        await interaction.response.edit_message(content="Updated the panel roles", delete_after=5, view=None)
+        for chl in self.children: chl.disabled = True
+        await interaction.response.edit_message(content="Updated the panel roles", delete_after=10, view=self)
         self.stop()
         
 class Description(View):
@@ -542,7 +552,7 @@ class Description(View):
     async def _confirm(self, interaction: Interaction, button: Button):
         self.value = True
         for chl in self.children: chl.disabled = True
-        await interaction.response.edit_message(view=self)
+        await interaction.response.edit_message(view=self, delete_after=10)
         self.stop()
 
 class Panel_Channel(View):
@@ -558,10 +568,11 @@ class Panel_Channel(View):
 
     async def update_embed(self):
         embed = discord.Embed(description="", color=self.interaction.client.default_color)
-        args = await get_formated_embed(["Channel", "Category"])
+        args = await get_formated_embed(["Channel", "Category", "Naming Scheme"])
         embed.description += f"<:tgk_channel:1073908465405268029> `Channel Config`\n\n"
         embed.description += f"{await get_formated_field(guild=self.interaction.guild, name=args['Channel'], type='channel', data=self.data['channel'])}\n"
         embed.description += f"{await get_formated_field(guild=self.interaction.guild, name=args['Category'], type='channel', data=self.data['category'])}\n"        
+        embed.description += f"{await get_formated_field(guild=self.interaction.guild, name=args['Naming Scheme'], type='str', data=self.data['nameing_scheme'])}\n"
         return embed
 
     @select(placeholder="Select the channel you want to use as the panel channel", cls=discord.ui.ChannelSelect, min_values=1, max_values=1, channel_types=[discord.ChannelType.text])
@@ -576,10 +587,27 @@ class Panel_Channel(View):
         self.data['category'] = select.values[0].id
         await interaction.response.edit_message(embed=await self.update_embed(), view=self)
 
+    @button(label="Ticket Nameing Scheme", style=discord.ButtonStyle.gray, emoji='<:tgk_edit:1073902428224757850>')
+    async def _nameing_scheme(self, interaction: Interaction, button: Button):
+        modal = General_Modal(title='Ticket Nameing Scheme', interaction=interaction)
+        modal.name = TextInput(label='Enter the nameing scheme', placeholder=f'Enter the nameing scheme you want to use eg. (⸝⸝🎫。)', min_length=3, max_length=100)
+        if self.data.get('nameing_scheme') is not None: modal.name.default = self.data['nameing_scheme']
+        modal.add_item(modal.name)
+
+        await interaction.response.send_modal(modal)
+        await modal.wait()
+
+        if modal.value is False or modal.value is None:
+            return
+        
+        self.data['nameing_scheme'] = modal.name.value
+        await modal.interaction.response.edit_message(view=self, embed=await self.update_embed())
+
     @button(label="Confirm", style=discord.ButtonStyle.gray, emoji='<:tgk_active:1082676793342951475>')
     async def _confirm(self, interaction: Interaction, button: Button):
         self.value = True
-        await interaction.response.send_message("Updated the panel channel", ephemeral=True, delete_after=5)
+        for btn in self.children: btn.disabled = True
+        await interaction.response.edit_message("Updated the panel channel", delete_after=5)
         self.stop()
 
 class Channel_Config(View):
@@ -617,10 +645,26 @@ class Channel_Config(View):
         self.data['transcript_channel'] = select.values[0]
         await interaction.response.edit_message(view=self)
 
+    @button(label="Ticket Nameing Scheme", style=discord.ButtonStyle.gray, emoji='<:tgk_edit:1073902428224757850>')
+    async def _nameing_scheme(self, interaction: Interaction, button: Button):
+        modal = General_Modal(title='Ticket Nameing Scheme', interaction=interaction)
+        modal.name = TextInput(label='Enter the nameing scheme', placeholder=f'Enter the nameing scheme you want to use eg. (⸝⸝🎫。)', min_length=3, max_length=100)
+        if self.data.get('nameing_scheme') is not None: modal.name.default = self.data['nameing_scheme']
+        modal.add_item(modal.name)
+
+        await interaction.response.send_modal(modal)
+        await modal.wait()
+
+        if modal.value is False or modal.value is None:
+            return
+        
+        self.data['nameing_scheme'] = modal.name.value
+        await modal.interaction.response.edit_message(view=self)        
+
     @button(label="Confirm", style=discord.ButtonStyle.gray, emoji='<:tgk_active:1082676793342951475>')
     async def _confirm(self, interaction: Interaction, button: Button):
         embed = discord.Embed(description="", color=interaction.client.default_color)
-        keys = ['default_category', 'default_channel', 'log_channel', 'transcript_channel']
+        keys = ['default_category', 'default_channel', 'log_channel', 'transcript_channel', 'nameing_schems']
 
         for key in keys:
             if self.data.get(key) is not None:
@@ -692,19 +736,39 @@ class PanelButton(discord.ui.Button):
         except KeyError:
             return await interaction.response.send_message("This panel does not exist", ephemeral=True)
         
+        extra_content = {}
+
         if panel['active'] is False:
             self.disabled = True
             await interaction.response.send_message("This ticket panel is disabled by the administrator", ephemeral=True)
             await interaction.edit_original_response(view=self.view)
-        
-        if panel['question'] != {}:
+
+        if panel['name'].lower() == "partnership":
+            modal = PartnerShipModal(interaction=interaction)
+            await interaction.response.send_modal(modal)
+            await modal.wait()
+
+            if modal.data == {}:
+                return
+            else:
+                await modal.interaction.response.send_message(content=f"<a:TGK_loading:1222135771935412287> Please wait while we create {self.custom_id.split(':')[2]}'s ticket", ephemeral=True)
+                interaction = modal.interaction
+                invite = modal.data['invite'].split("/")[-1]
+                try:
+                    invite = await interaction.client.fetch_invite(invite)
+                except discord.errors.NotFound:
+                    return await modal.interaction.edit_original_response(content="<:tgk_deactivated:1082676877468119110> The invite you provided is invalid, please try again", view=None)
+                extra_content['pinfo'] = ""
+                extra_content['pinfo'] += f"**Server Name:** {invite.guild.name}\n**Server Aproximate Members:** {invite.approximate_member_count}\n**Server ID:** `{invite.guild.id}`\n**Server Invite:** {invite}\n**Partnership Type**: {modal.ptype.value}"
+
+        elif panel['question'] != {}:
             QestionView = TicketQestionDropDown(data=panel['question'])
             await interaction.response.send_message(view=QestionView, ephemeral=True, delete_after=10)
             await QestionView.wait()
             interaction = QestionView.interaction
             if QestionView.create_ticket is False:
                 return
-        await interaction.response.send_message(content=f"<a:TGK_loading:1222135771935412287> Please wait while we create {self.custom_id.split(':')[2]}'s ticket", ephemeral=True)
+            await interaction.response.send_message(content=f"<a:TGK_loading:1222135771935412287> Please wait while we create {self.custom_id.split(':')[2]}'s ticket", ephemeral=True)
         
         if panel['category'] == None:
             category = interaction.guild.get_channel(config['default_category'])
@@ -720,10 +784,17 @@ class PanelButton(discord.ui.Button):
             role = interaction.guild.get_role(role)
             overwrites[role] = discord.PermissionOverwrite(view_channel=True, send_messages=True, read_message_history=True, attach_files=True, embed_links=True, add_reactions=True)
 
-        TicketChannel = await interaction.guild.create_text_channel(name=f"{panel['nameing_scheme']} {interaction.user.name}", category=category, overwrites=overwrites, topic=f"Ticket created by {interaction.user.name}", reason="Ticket Creation")
+        TicketName = f"{panel['nameing_scheme']} {interaction.user.name}" if panel['nameing_scheme'] != None else f"{config['nameing_scheme']['unlocked']} {interaction.user.name}"
+
+        TicketChannel = await interaction.guild.create_text_channel(name=TicketName, category=category, overwrites=overwrites, topic=f"Ticket created by {interaction.user.name}", reason="Ticket Creation")
         TicketEmbed = discord.Embed(title=f"{panel['name']} Ticket", description=panel['ticket_message'], color=interaction.client.default_color)
         TicketEmbed.set_footer(text=f"Ticket ID: {TicketChannel.id}")
         TicketMessage = await TicketChannel.send(embed=TicketEmbed, content=f"{interaction.user.mention} {interaction.guild.get_role(panel['ping_role']).mention if panel['ping_role'] is not None else ''}", view=TicketControl())
+
+        if extra_content != {}:
+            for key, value in extra_content.items():
+                await TicketChannel.send(value)
+
         await TicketMessage.pin()
         TicketData: Ticket = {
             '_id': TicketChannel.id,
@@ -886,4 +957,21 @@ class Refresh_Trancsript(View):
         await interaction.response.edit_message(view=view)
 
 
-        
+class PartnerShipModal(discord.ui.Modal):
+    def __init__(self, interaction: Interaction):
+        self.interaction = interaction
+        self.data = {}
+        super().__init__(timeout=120, title=f"Partnership form for {interaction.guild.name}")
+    
+    server = TextInput(label="Enter the server name", min_length=1, max_length=100, required=True)
+    invite = TextInput(label="Enter the server invite", min_length=1, max_length=100, required=True)
+    ptype = TextInput(label="Enter the partnership type", min_length=1, max_length=100, required=True)
+
+    async def on_submit(self, interaction: Interaction):
+        self.data = {
+            'server': self.server.value,
+            'invite': self.invite.value,
+            'type': self.ptype.value,
+        }
+        self.interaction = interaction
+        self.stop()

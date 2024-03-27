@@ -160,7 +160,7 @@ class TicketDB:
             discord.Embed: The embed
         """
 
-        embed_args = await get_formated_embed(["Name", "Active", "Category", "Channel", "Emoji", "Ticket Message", "Description", "Ping Role", "Support Roles"])
+        embed_args = await get_formated_embed(["Name", "Active", "Category", "Channel", "Emoji", "Ticket Message", "Description", "Ping Role", "Support Roles", "Nameing Scheme"])
         embed = discord.Embed(description="", color=self.bot.default_color)
 
         embed.description = "<:tgk_create:1107262030399930428> `Ticket Panel`\n\n"
@@ -169,6 +169,7 @@ class TicketDB:
         embed.description += f"{await get_formated_field(guild=guild, name=embed_args['Name'], data=data['name'], type='str')}\n"
         embed.description += f"{embed_args['Description']} {'<:tgk_active:1082676793342951475>' if data['description'] != None else '<:tgk_deactivated:1082676877468119110>'}\n"
         embed.description += f"{embed_args['Ticket Message']} {'<:tgk_active:1082676793342951475>' if data['ticket_message'] != None else '<:tgk_deactivated:1082676877468119110>'}\n"
+        embed.description += f"{await get_formated_field(guild=guild, name=embed_args['Nameing Scheme'], data=data['nameing_scheme'], type='str')}\n"
         embed.description += f"{await get_formated_field(guild=guild, name=embed_args['Ping Role'], data=data['ping_role'], type='role')}\n"
         embed.description += f"{await get_formated_field(guild=guild, name=embed_args['Support Roles'], data=data['support_roles'], type='role')}\n"
         embed.description += f"{await get_formated_field(guild=guild, name=embed_args['Category'], data=data['category'], type='channel')}\n"

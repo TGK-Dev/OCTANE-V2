@@ -2,8 +2,8 @@ import discord
 from discord.ext import commands
 from discord import app_commands, Interaction
 from .db import TicketDB, TicketConfig, Panel
+from .db import Ticket as TicketData
 from .view import TicketConfig_View, Panels, TicketControl, Refresh_Trancsript
-
 from typing import List, Dict
 
 class Ticket(commands.GroupCog, name="ticket"):
@@ -37,7 +37,6 @@ class Ticket(commands.GroupCog, name="ticket"):
         self.bot.add_view(TicketControl())
         self.bot.add_view(Refresh_Trancsript())
 
-    
     panel = app_commands.Group(name="panel", description="Ticket panel commands")
 
     @app_commands.command(name="setup", description="Setup the ticket system")
@@ -95,6 +94,49 @@ class Ticket(commands.GroupCog, name="ticket"):
 
         await self.backend.update_config(interaction.guild_id, config)
         await interaction.edit_original_response(content="Panel message updated")
+
+    @commands.hybrid_command(name="add", description="Add a Roles/Users to the ticket")
+    @app_commands.default_permissions(manage_messages=True)
+    @app_commands.describe(target="Role/User to add")
+    async def _add(self, ctx: commands.Context, target: discord.Role | discord.Member):
+        ticket_data: TicketData = await self.backend.ticket.find(ctx.channel.id)
+        if not ticket_data:
+            return await ctx.send("This is not a ticket channel", ephemeral=True)
+        
+        if isinstance(target, discord.Role):
+            if target.id in ticket_data["added_roles"]:
+                return await ctx.send(embed=discord.Embed(description=f"The role {target.mention} already part of the ticket", color=self.bot.default_color), ephemeral=True)
+            ticket_data["added_roles"].append(target.id)
+        elif isinstance(target, discord.Member):
+            if target.id in ticket_data["added_users"]:
+                return await ctx.send(embed=discord.Embed(description=f"The user {target.mention} is already part of the ticket", color=self.bot.default_color), ephemeral=True)
+            ticket_data["added_users"].append(target.id)
+
+        overwrites = discord.PermissionOverwrite(view_channel=True)
+        await ctx.channel.set_permissions(target, overwrite=overwrites)
+        await self.backend.ticket.update(ticket_data)
+        await ctx.send(embed=discord.Embed(description=f"{target.mention} has been added to the ticket", color=self.bot.default_color))
+    
+    @commands.hybrid_command(name="remove", description="Remove a Roles/Users from the ticket")
+    @app_commands.default_permissions(manage_messages=True)
+    @app_commands.describe(target="Role/User to remove")
+    async def _remove(self, ctx: commands.Context, target: discord.Role | discord.Member):
+        ticket_data: TicketData = await self.backend.ticket.find(ctx.channel.id)
+        if not ticket_data:
+            return await ctx.send("This is not a ticket channel", ephemeral=True)
+        
+        try:
+            if isinstance(target, discord.Role):            
+                ticket_data["added_roles"].remove(target.id)
+            elif isinstance(target, discord.Member):
+                ticket_data["added_users"].remove(target.id)
+        except ValueError:
+            pass
+        
+        overwrites = discord.PermissionOverwrite(view_channel=False)
+        await ctx.channel.set_permissions(target, overwrite=overwrites)
+        await self.backend.ticket.update(ticket_data)
+        await ctx.send(embed=discord.Embed(description=f"{target.mention} has been removed from the ticket", color=self.bot.default_color))
 
 
 async def setup(bot):
