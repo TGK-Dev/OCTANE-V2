@@ -73,7 +73,7 @@ class TicketConfig_View(View):
             await interaction.delete_original_response()
             return
         
-        keys = ['default_category', 'default_channel', 'log_channel', 'transcript_channel', 'nameing_schems']
+        keys = ['default_category', 'default_channel', 'log_channel', 'transcript_channel', 'nameing_scheme']
         for key in keys:
             if view.data.get(key) is not None:
                 self.data[key] = view.data[key].id
@@ -607,7 +607,7 @@ class Panel_Channel(View):
     async def _confirm(self, interaction: Interaction, button: Button):
         self.value = True
         for btn in self.children: btn.disabled = True
-        await interaction.response.edit_message("Updated the panel channel", delete_after=5)
+        await interaction.response.edit_message(content="Updated the panel channel", delete_after=5)
         self.stop()
 
 class Channel_Config(View):
@@ -664,7 +664,7 @@ class Channel_Config(View):
     @button(label="Confirm", style=discord.ButtonStyle.gray, emoji='<:tgk_active:1082676793342951475>')
     async def _confirm(self, interaction: Interaction, button: Button):
         embed = discord.Embed(description="", color=interaction.client.default_color)
-        keys = ['default_category', 'default_channel', 'log_channel', 'transcript_channel', 'nameing_schems']
+        keys = ['default_category', 'default_channel', 'log_channel', 'transcript_channel', 'nameing_scheme']
 
         for key in keys:
             if self.data.get(key) is not None:
@@ -768,7 +768,8 @@ class PanelButton(discord.ui.Button):
             interaction = QestionView.interaction
             if QestionView.create_ticket is False:
                 return
-            await interaction.response.send_message(content=f"<a:TGK_loading:1222135771935412287> Please wait while we create {self.custom_id.split(':')[2]}'s ticket", ephemeral=True)
+            
+        await interaction.response.send_message(content=f"<a:TGK_loading:1222135771935412287> Please wait while we create {self.custom_id.split(':')[2]}'s ticket", ephemeral=True)
         
         if panel['category'] == None:
             category = interaction.guild.get_channel(config['default_category'])
@@ -784,7 +785,7 @@ class PanelButton(discord.ui.Button):
             role = interaction.guild.get_role(role)
             overwrites[role] = discord.PermissionOverwrite(view_channel=True, send_messages=True, read_message_history=True, attach_files=True, embed_links=True, add_reactions=True)
 
-        TicketName = f"{panel['nameing_scheme']} {interaction.user.name}" if panel['nameing_scheme'] != None else f"{config['nameing_scheme']['unlocked']} {interaction.user.name}"
+        TicketName = f"{panel['nameing_scheme']}{interaction.user.name}" if panel['nameing_scheme'] != None else f"{config['nameing_scheme']['unlocked']} {interaction.user.name}"
 
         TicketChannel = await interaction.guild.create_text_channel(name=TicketName, category=category, overwrites=overwrites, topic=f"Ticket created by {interaction.user.name}", reason="Ticket Creation")
         TicketEmbed = discord.Embed(title=f"{panel['name']} Ticket", description=panel['ticket_message'], color=interaction.client.default_color)
@@ -826,6 +827,7 @@ class TicketControl(View):
             return await interaction.response.send_message("This is not a ticket channel", ephemeral=True)
         if ticket_data['status'] == "open":
             return await interaction.response.send_message("This ticket is already open", ephemeral=True)
+        ticket_data['status'] = "open"
         
         embed = discord.Embed(description="<a:loading:998834454292344842> Opening the ticket", color=interaction.client.default_color)
         await interaction.response.send_message(embed=embed)

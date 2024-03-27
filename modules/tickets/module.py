@@ -39,15 +39,6 @@ class Ticket(commands.GroupCog, name="ticket"):
 
     panel = app_commands.Group(name="panel", description="Ticket panel commands")
 
-    @app_commands.command(name="setup", description="Setup the ticket system")
-    @app_commands.default_permissions(administrator=True)
-    async def setup(self, interaction: Interaction):
-        embed = await self.backend.get_config_embed(interaction.guild_id)
-        data = await self.backend.get_config(interaction.guild_id)
-        view = TicketConfig_View(user=interaction.user, data=data)
-        await interaction.response.send_message(embed=embed, view=view, ephemeral=False)
-        view.message = await interaction.original_response()
-
     @panel.command(name="send", description="Update/send the panel message")
     @app_commands.default_permissions(administrator=True)
     async def send(self, interaction: Interaction):

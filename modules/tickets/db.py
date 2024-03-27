@@ -74,11 +74,13 @@ class TicketDB:
         data: TicketConfig = {
             '_id': _id,
             'admin_roles': [],
-            'default_category': 0,
-            'log_channel': 0,
-            'transcript_channel': 0,
+            'default_category': None,
+            'log_channel': None,
+            'transcript_channel': None,
+            'default_channel': None,
+            'nameing_schems': None,
             'panel_message': 0,
-            'panels': {}
+            'panels': {},
         }
         await self.config.insert(data)
         return data
