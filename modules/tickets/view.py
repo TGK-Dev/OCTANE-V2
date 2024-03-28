@@ -19,7 +19,7 @@ class TicketConfig_View(View):
         self.user = user
         self.data = data 
         self.message = message
-        super().__init__(timeout=120)
+        super().__init__(timeout=600)
     
     async def interaction_check(self, interaction: Interaction):
         if interaction.user.id == self.user.id:
@@ -176,7 +176,6 @@ class TicketConfig_View(View):
                 del self.data['panels'][panel_select.select.values[0]]
                 await interaction.client.tickets.update_config(_id=self.data['_id'], data=self.data)
                 await panel_select.select.interaction.edit_original_response(embed=await interaction.client.tickets.get_config_embed(data=self.data), view=None)
-
 
 class TicketPanel(View):
     def __init__(self, data: Panel, config: TicketConfig, interaction: Interaction):
@@ -345,7 +344,7 @@ class Panel_Question(View):
 
         await view.wait()
         if view.value is False or view.value is None:
-            return
+            return await view.interaction.response.edit_message(content="Canceled the question", view=None, delete_after=5)
         
         self.data[str(len(self.data.keys()) + 1)] = {'question': modal.qes.value, 'answer': modal.ans.value}
         await view.interaction.response.edit_message(content="Added the question", view=None, delete_after=5)
@@ -387,7 +386,7 @@ class Panel_Question(View):
 
         await view.wait()
         if view.value is False or view.value is None:
-            return
+            return await view.interaction.response.edit_message(content="Canceled the question", view=None, delete_after=5)
         
         self.data[view.select.values[0]] = {'question': modal.qes.value, 'answer': modal.ans.value}
         await view.interaction.response.edit_message(content="Edited the question", view=None, delete_after=5)
@@ -675,7 +674,6 @@ class Channel_Config(View):
         self.stop()
 
 # NOTE: Ticket Creation View
-
 
 class Panels(discord.ui.View):
     def __init__(self, panels: Dict[str, Panel] | List[Panel], guild_id: int):
