@@ -761,7 +761,7 @@ class PanelButton(discord.ui.Button):
 
         elif panel['question'] != {}:
             QestionView = TicketQestionDropDown(data=panel['question'])
-            await interaction.response.send_message(view=QestionView, ephemeral=True, delete_after=10)
+            await interaction.response.send_message(view=QestionView, ephemeral=True, delete_after=600)
             await QestionView.wait()
             interaction = QestionView.interaction
             if QestionView.create_ticket is False:
