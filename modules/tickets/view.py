@@ -896,8 +896,8 @@ class TicketControl(View):
         ConfimView.message = await interaction.original_response()
         await ConfimView.wait()
 
-        if ConfimView.value is True: return await ConfimView.interaction.response.edit_message(embed=discord.Embed(description="Ticket deletion canceled", color=interaction.client.default_color))
-        await interaction.edit_original_response(embed=discord.Embed(description="<a:TGK_loading:1222135771935412287> Crating a transcript and deleting the ticket", color=interaction.client.default_color))
+        if ConfimView.value is True: return await ConfimView.interaction.response.edit_message(embed=discord.Embed(description="Ticket deletion canceled", color=interaction.client.default_color), view=None)
+        await interaction.edit_original_response(embed=discord.Embed(description="<a:TGK_loading:1222135771935412287> Crating a transcript and deleting the ticket", color=interaction.client.default_color), view=None)
 
         Config: TicketConfig = await interaction.client.tickets.get_config(interaction.guild.id)
         TranscriptChannel = interaction.guild.get_channel(Config['transcript_channel'])
