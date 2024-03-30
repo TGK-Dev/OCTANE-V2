@@ -6,7 +6,7 @@ from typing import Literal
 from utils.db import Document
 from utils.views.JoinGateSettings_system import JoinGateSettings_Edit
 from utils.views.payout_system import Payout_Config_Edit
-from utils.views.ticket_system import Config_Edit as Ticket_Config_Edit
+from modules.tickets.view import TicketConfig_View
 from utils.views.staff_system import Staff_config_edit
 from utils.views.level_system import LevelingConfig
 from modules.perks.views import PerkConfig
@@ -158,28 +158,11 @@ class serversettings(commands.Cog):
                     view.message = await interaction.original_response()
             
             case "tickets":                
-                ticket_config = await self.bot.tickets.config.find(interaction.guild.id)
-                if ticket_config is None:
-                    ticket_config = {'_id': interaction.guild.id,'category': None,'channel': None,'logging': None,'panels': {},'last_panel_message_id': None, 'transcript': None}
-                    await self.bot.tickets.config.insert(ticket_config)
-        
-                embed = discord.Embed(title="Ticket Config", color=0x2b2d31, description="")
-                embed.description += f"**Category:**" + (f" <#{ticket_config['category']}>" if ticket_config['category'] is not None else "`None`") + "\n"
-                embed.description += f"**Channel:**" + (f" <#{ticket_config['channel']}>" if ticket_config['channel'] is not None else "`None`") + "\n"
-                embed.description += f"**Logging:**" + (f" <#{ticket_config['logging']}>" if ticket_config['logging'] is not None else "`None`") + "\n"
-                embed.description += f"**Transcript:**" + (f" <#{ticket_config['transcript']}>" if ticket_config['transcript'] is not None else "`None`") + "\n"
-                embed.description += f"**Panel Message:**" + (f" {ticket_config['last_panel_message_id']}" if ticket_config['last_panel_message_id'] is not None else "`None`") + "\n"
-                embed.description += f"**Panels:**" + (f"`{len(ticket_config['panels'])}`" if ticket_config['panels'] is not None else "`0`") + "\n"
-        
-                if option == "Show":
-                    await interaction.response.send_message(embed=embed)
-                elif option == "Edit":
-                    view = Ticket_Config_Edit(interaction.user, ticket_config)
-                    await interaction.response.send_message(embed=embed, view=view)
-                    view.message = await interaction.original_response()
-                    await view.wait()
-                    if view.value:
-                        await self.bot.tickets.config.update(view.data)
+                embed = await interaction.client.tickets.get_config_embed(interaction.guild_id)
+                data = await interaction.client.tickets.get_config(interaction.guild_id)
+                view = TicketConfig_View(user=interaction.user, data=data)
+                await interaction.response.send_message(embed=embed, view=view, ephemeral=False)
+                view.message = await interaction.original_response()
 
             case "leveling":
                 leveling_config = await self.bot.level.get_config(interaction.guild)
