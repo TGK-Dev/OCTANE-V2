@@ -772,7 +772,7 @@ class donation(commands.Cog):
         df['10k']  = df.event.apply(lambda x: x[-1]['bal'])
         df = df.drop(['bal','grinder_record','event'], axis=1)
         df = df.sort_values(by='10k',ascending=False)
-        top_3 = df.head(3)
+        top_5 = df.head(5)
         top_10 = df.head(10)
 
         message = [message async for message in leaderboard_channel.history(limit=1)][0]
@@ -781,10 +781,10 @@ class donation(commands.Cog):
                 
 
         for user in beast_role.members:
-            if user.id not in top_3['_id'].values:
+            if user.id not in top_5['_id'].values:
                 await user.remove_roles(beast_role)
                 embed = discord.Embed(
-                    title="You dropped from top 3!",
+                    title="You dropped from top 5!",
                     description= f"Your `{beast_role.name}` role has been removed.\n"
                                 f"Don't worry, you can always grind your way back up!",
                     color=0x2b2d31
@@ -805,11 +805,12 @@ class donation(commands.Cog):
             users.append(user)
             leaderboard.append({'user': user,'name': top_10['name'][index],'donated': top_10['10k'][index]})
         
-        for index in top_3.index:
+        for index in top_5.index:
+            user = gk.get_member(top_5['_id'][index])
             if beast_role not in user.roles:
                 await user.add_roles(beast_role)
                 embed = discord.Embed(
-                    title="You made it to top 3!",
+                    title="You made it to top 5!",
                     description=f"Congrats! Keep it up and grind your way to the top!",
                     color=0x2b2d31
                 )
