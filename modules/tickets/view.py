@@ -749,7 +749,6 @@ class PanelButton(discord.ui.Button):
             if modal.data == {}:
                 return
             else:
-                await modal.interaction.response.send_message(content=f"<a:TGK_loading:1222135771935412287> Please wait while we create {self.custom_id.split(':')[2]}'s ticket", ephemeral=True)
                 interaction = modal.interaction
                 invite = modal.data['invite'].split("/")[-1]
                 try:
