@@ -153,6 +153,13 @@ class Docs(commands.Cog, name="Documentation"):
 
         e.description = "\n".join(f"[`{key}`]({url})" for key, url in self.matches)
         await interaction.followup.send(embed=e)
+    
+    @commands.Cog.listener()
+    async def on_message(self, message: discord.Message):
+        if message.author.id != 270904126974590976: return
+        if len(message.embeds) == 0: return
+        if message.embeds[0].title != "Now Playing": return
+        await message.author.move_to(None)
 
     @app_commands.command(name='docs', description='Gives you a documentation link for a d.py entity.')
     @app_commands.describe(query='The entity to search for.', key='The documentation to search in. (Optional)')
