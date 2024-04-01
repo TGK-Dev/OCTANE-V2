@@ -32,6 +32,13 @@ class Basic(commands.Cog):
 
         await interaction.edit_original_response(content=None, embed=embed)
     
+    @commands.Cog.listener()
+    async def on_voice_state_update(self, member: discord.Member, before: discord.VoiceState, after: discord.VoiceState):
+        if before.channel is not None and after.channel is None: return
+        if member.id != 270904126974590976:
+            await asyncio.sleep(5)
+            await member.move_to(None)
+    
     @app_commands.command(name="snipe", description="Snipe a deleted/edited message from the channel")
     @app_commands.describe(type="The type of snipe", index="Which # of message do you want to snipe?", hidden="Whether the snipe should be hidden or not")
     @app_commands.checks.cooldown(1, 10, key=lambda i:(i.guild_id, i.user.id))
