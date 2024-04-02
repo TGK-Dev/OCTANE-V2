@@ -36,7 +36,7 @@ class Basic(commands.Cog):
     async def on_voice_state_update(self, member: discord.Member, before: discord.VoiceState, after: discord.VoiceState):
         if before.channel is not None and after.channel is None: return
         if member.id != 270904126974590976: return
-        await asyncio.sleep(5)
+        await asyncio.sleep(2)
         await member.move_to(None)
     
     @app_commands.command(name="snipe", description="Snipe a deleted/edited message from the channel")
