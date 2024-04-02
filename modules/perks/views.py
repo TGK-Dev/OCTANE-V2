@@ -95,30 +95,46 @@ class PerkConfig(View):
     async def custom_category(self, interaction: Interaction, button: Button):
         view = General_Modal(title="Custom Category", interaction=interaction)
         view.name = TextInput(label="Enter the name of the category",min_length=1, max_length=100, required=True)
+        view.top_cat = TextInput(label="Enter the name of the top category",min_length=1, max_length=100, required=True)
+        
         if self.data["custom_category"]["name"]:
             view.name.default = self.data["custom_category"]["name"]
 
+        if self.data["top_channel_category"]["name"]:
+            view.top_cat.default = self.data["top_channel_category"]["name"]
+
         view.add_item(view.name)
+        view.add_item(view.top_cat)
 
         await interaction.response.send_modal(view)
         await view.wait()
+        if not view.value: return
 
-        if view.name.value:
+        if self.data['custom_category']['name'] == None:
+            cat = await interaction.guild.create_category_channel(name=f"{view.name.value} - 1")
+            self.data['custom_category']['last_cat'] = cat.id
+            self.data['custom_category']['cat_list'].append(cat.id)
 
-            if self.data['custom_category']['name'] == None:
-                cat = await interaction.guild.create_category_channel(name=f"{view.name.value} - 1")
-                self.data['custom_category']['last_cat'] = cat.id
-                self.data['custom_category']['cat_list'].append(cat.id)
+        self.data['custom_category']['name'] = view.name.value      
 
-            self.data['custom_category']['name'] = view.name.value      
+        self.data['top_channel_category']['name'] = view.top_cat.value
+
+        await interaction.client.Perk.update("config", self.data)
+        await view.interaction.response.edit_message(embed=await interaction.client.Perk.get_config_embed(interaction.guild, self.data), view=self)
+
+        top_cat = interaction.guild.get_channel(self.data['top_channel_category']['cat_id'])
+        if top_cat:
+            await top_cat.edit(name=view.top_cat.value)
+        else:
+            top_cat = await interaction.guild.create_category_channel(name=view.top_cat.value, position=0)
+            self.data['top_channel_category']['cat_id'] = top_cat.id
             await interaction.client.Perk.update("config", self.data)
-            await view.interaction.response.edit_message(embed=await interaction.client.Perk.get_config_embed(interaction.guild, self.data), view=self)
 
-            for cat in self.data['custom_category']['cat_list']:
-                await asyncio.sleep(0.2)
-                cat = interaction.guild.get_channel(cat)
-                if cat:
-                    await cat.edit(name=f"{self.data['custom_category']['name']} - {self.data['custom_category']['cat_list'].index(cat.id) + 1}")
+        for cat in self.data['custom_category']['cat_list']:
+            await asyncio.sleep(0.2)
+            cat = interaction.guild.get_channel(cat)
+            if cat:
+                await cat.edit(name=f"{self.data['custom_category']['name']} - {self.data['custom_category']['cat_list'].index(cat.id) + 1}")
 
     @button(label="Max Emojis", style=discord.ButtonStyle.gray, emoji="<:tgk_emoji:1073908306713780284>", row=2)
     async def max_emojis(self, interaction: Interaction, button: Button):
@@ -272,7 +288,7 @@ class PerkConfig(View):
 
 
 class Profile_Manage(View):
-    def __init__(self, user: discord.Member, data: Profile=None, message: discord.Message=None, new=False):
+    def __init__(self, user: discord.Member, data: Profile=None, message: discord.Message=None, type:str = None,new=False):
         self.user = user
         self.data = data
         self.message = message
@@ -340,6 +356,8 @@ class Profile_Manage(View):
         self.type = select.values[0]
         select.options = [SelectOption(label=self.type.capitalize(), value=self.type, default=True)]
         select.disabled = True
+        if select.values[0] == "roles":
+            self.add_item(Top_Profile_toggle())
         await interaction.response.edit_message(view=self, embed=await self.get_embed(interaction, self.data))
 
     @button(label="Save", style=discord.ButtonStyle.gray, emoji="<:tgk_save:1210649255501635594>")
@@ -359,6 +377,14 @@ class Profile_Manage(View):
         await asyncio.sleep(1.5)
         await interaction.delete_original_response()
         self.stop()
+
+class Top_Profile_toggle(discord.ui.Button):
+    def __init__(self):
+        super().__init__(style=discord.ButtonStyle.gray, label="Top Profile", emoji="<:level_roles:1123938667212312637>")
+
+    async def callback(self, interaction: Interaction):
+        self.view.data['top_profile'] = not self.view.data['top_profile']
+        await interaction.response.edit_message(view=self.view, embed=await self.view.get_embed(interaction, self.view.data))
 
 class Friends_manage(View):
     def __init__(self, user: discord.Member, data: dict, type: str,message: discord.Message=None):

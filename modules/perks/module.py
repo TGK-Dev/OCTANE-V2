@@ -13,7 +13,7 @@ from .views import Friends_manage, Perk_Ignore, Emoji_Request
 from utils.embed import get_formated_embed, get_formated_field
 from colour import Color
 from utils.checks import Blocked
-from .db import Perk_Type, Perks_DB, Custom_Channel
+from .db import Perk_Type, Perks_DB, Custom_Channel, Profile, Config
 
 time = datetime.time(hour=4, minute=30, tzinfo=datetime.timezone.utc)
 class Perks(commands.Cog, name="perk", description="manage your custom perks"):
@@ -154,6 +154,8 @@ class Perks(commands.Cog, name="perk", description="manage your custom perks"):
 
         for key, item in config['profiles']['channels'].items():
             role = guild.get_role(int(key))
+            item: Profile = item
+
             if not role: 
                 del config['profiles']['channels'][key]
                 await self.backend.update(self.backend.types.config, config)
@@ -191,7 +193,6 @@ class Perks(commands.Cog, name="perk", description="manage your custom perks"):
         for data in react_data:
             self.bot.dispatch("check_profile_reacts", data)
     
-
     @profile_reacts.before_loop
     async def before_profile_reacts(self):
         await self.bot.wait_until_ready()
@@ -941,6 +942,50 @@ class Perks(commands.Cog, name="perk", description="manage your custom perks"):
         await self.backend.bans.delete(ban_data)
         await interaction.response.send_message(f"{member.mention} has been unblocked from using custom perks", ephemeral=True)
 
+    @admin.command(name="sync-top-cat", description="sync top category with all channels")
+    @app_commands.default_permissions(administrator=True)
+    async def _sync_top_cat(self, interaction: Interaction):
+        config: Config = await self.backend.get_data(self.backend.types.config, interaction.guild.id, interaction.user.id)
+        if config == None:
+            await interaction.response.send_message("You need to setup config first", ephemeral=True)
+            return
+        user_roles = [role.id for role in interaction.user.roles]
+        if (set(user_roles) & set(config['admin_roles'])) == set():
+            await interaction.response.send_message("You need to have admin roles to use this command", ephemeral=True)
+            return
+        top_cat = interaction.guild.get_channel(config['top_channel_category']['cat_id'])
+        if not top_cat:
+            await interaction.response.send_message("Top category not found", ephemeral=True)
+            return
+
+        await interaction.response.send_message("Syncing all channels with the top category")
+
+        top_roles = []
+        for profile in config['profiles']['channels'].keys():
+            profile: Profile = config['profiles']['channels'][profile]
+            if profile['top_profile']:
+                role = interaction.guild.get_role(profile['role_id'])
+                if role: top_roles.append(role)
+        
+        for chl in await self.backend.channel.find_many_by_custom({"guild_id": interaction.guild.id}):
+            chl: Custom_Channel
+            channel = interaction.guild.get_channel(chl['channel_id'])
+            owner = interaction.guild.get_member(chl['user_id'])
+            if not channel: 
+                await self.backend.delete(self.backend.types.channels, chl)
+                continue
+            
+            if (set(owner.roles) & set(top_roles)) == set():
+                if channel.category != top_cat:pass
+                else:
+                    await channel.edit(category=interaction.guild.get_channel(chl['activity']['previous_cat']))
+            else:
+                if channel.category == top_cat:pass
+                else:
+                    chl['activity']['previous_cat'] = channel.category.id
+                    await self.backend.update(self.backend.types.channels, chl)
+                    await channel.edit(category=top_cat)
+        await interaction.edit_original_response(content="All channels has been synced with the top category")
 
     @commands.Cog.listener()
     async def on_message(self, message: discord.Message):

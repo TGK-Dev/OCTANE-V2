@@ -62,6 +62,7 @@ class Profile(TypedDict):
     role_id: int
     duration: Union[int, str]
     share_limit: int
+    top_profile: bool
 
 class Emojji_Config(TypedDict):
     max: int
@@ -70,11 +71,15 @@ class Custom_Category(TypedDict):
     name: str
     last_cat: int
     cat_list: list[int]
+class Top_Category(TypedDict):
+    name: str
+    cat_id: int
+
 class Config(TypedDict):
     _id: int
     custom_category: Custom_Category
     custom_roles_position: int
-    top_channel_category: int
+    top_channel_category: Top_Category
     emojis: Emojji_Config
     admin_roles: list[int]
     profiles: dict[str, Profile]
@@ -499,7 +504,7 @@ class Perks_DB:
 
         if not config:
             config: Config = await self.get_data(Perk_Type.config, guild.id, guild.owner_id)
-        formated_args = await get_formated_embed(["Admin Roles", "Custom Roles Position", "Custom Channel Category", "Max Emojis", "Request Channel"])
+        formated_args = await get_formated_embed(["Admin Roles", "Custom Roles Position", "Custom Channel Category", "Top Channel Category","Max Emojis", "Request Channel"])
 
         embed = discord.Embed(description="", color=self.bot.default_color)
         embed.description = ""
@@ -509,6 +514,7 @@ class Perks_DB:
 
         embed.description += f"{await get_formated_field(guild=guild,name=formated_args['Admin Roles'], type='role', data=config['admin_roles'])}\n"
         embed.description += f"{await get_formated_field(guild=guild,name=formated_args['Custom Roles Position'], type='role', data=config['custom_roles_position'])}\n"
+        embed.description += f"{await get_formated_field(guild=guild,name=formated_args['Custom Channel Category'], type='str', data=config['top_channel_category']['name'])}\n"
         embed.description += f"{formated_args['Max Emojis']}{config['emojis']['max']}\n"
         embed.description += f"{await get_formated_field(guild=guild,name=formated_args['Request Channel'], type='channel', data=config['emojis']['request_channel'])}\n"
 
