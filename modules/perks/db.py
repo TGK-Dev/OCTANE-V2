@@ -4,6 +4,12 @@ import enum
 from typing import Union, TypedDict
 from utils.embed import get_formated_embed, get_formated_field
 
+
+class Activity(TypedDict):
+    messages: int
+    last_message: datetime.datetime
+    previous_cat: int
+
 class Custom_Channel(TypedDict):
     user_id: int
     guild_id: int
@@ -12,7 +18,7 @@ class Custom_Channel(TypedDict):
     created_at: Union[int, str]
     share_limit: int
     friend_list: list[int]
-    activity: dict[str, Union[int, str]]
+    activity: Activity
 
 class Custom_Roles(TypedDict):
     user_id: int
@@ -68,6 +74,7 @@ class Config(TypedDict):
     _id: int
     custom_category: Custom_Category
     custom_roles_position: int
+    top_channel_category: int
     emojis: Emojji_Config
     admin_roles: list[int]
     profiles: dict[str, Profile]
