@@ -13,7 +13,7 @@ from .views import Friends_manage, Perk_Ignore, Emoji_Request
 from utils.embed import get_formated_embed, get_formated_field
 from colour import Color
 from utils.checks import Blocked
-from .db import Perk_Type, Perks_DB
+from .db import Perk_Type, Perks_DB, Custom_Channel
 
 time = datetime.time(hour=4, minute=30, tzinfo=datetime.timezone.utc)
 class Perks(commands.Cog, name="perk", description="manage your custom perks"):
@@ -196,6 +196,27 @@ class Perks(commands.Cog, name="perk", description="manage your custom perks"):
     async def before_profile_reacts(self):
         await self.bot.wait_until_ready()
 
+    @tasks.loop(time=time)
+    async def check_channel_activity(self):
+        config = await self.backend.config.get_all()
+        for data in config:
+            guild: discord.Guild = self.bot.get_guild(data['guild_id'])
+            channels: List[Custom_Channel] = await self.backend.channel.find_many_by_custom({'guild_id': data['guild_id']})
+            for channel in channels:
+                if (datetime.datetime.utcnow() - channel["activity"]['last_message']).days() >= 7:
+                    channel_owner = guild.get_member(channel['user_id'])
+                    chanel = guild.get_channel(channel['channel_id'])
+                    try:
+                        await channel_owner.send(embed=discord.Embed(description=f"Your custom channel {chanel.name} in {guild.name} has been deleted because it has been inactive for more than 7 days", color=self.bot.default_color))
+                    except:
+                        pass
+                    await self.backend.delete(self.backend.types.channels, channel)
+                    await chanel.delete()
+
+    @check_channel_activity.before_loop
+    async def before_check_channel_activity(self):
+        await self.bot.wait_until_ready()
+
     @commands.Cog.listener()
     async def on_check_profile_reacts(self, data: dict):
         guild: discord.Guild = self.bot.get_guild(data['guild_id'])
@@ -242,7 +263,6 @@ class Perks(commands.Cog, name="perk", description="manage your custom perks"):
         await self.backend.update(self.backend.types.reacts, data)
         self.backend.cach['react'][data['guild_id']][data['user_id']] = data
 
-
     async def highlight_remove_auto(self, interaction: Interaction, current: str) -> List[app_commands.Choice[str]]:
         user_data = await self.backend.get_data(self.backend.types.highlights, interaction.guild.id, interaction.user.id)
         if user_data == None:
@@ -263,7 +283,7 @@ class Perks(commands.Cog, name="perk", description="manage your custom perks"):
                 triggers_list = [
                     app_commands.Choice(value="none", name="none")
                 ]
-            return triggers_list[:24]
+            return triggers_list[:24]        
         
     privrole = app_commands.Group(name="privrole", description="Manage your custom roles")
     privchannel = app_commands.Group(name="privchannel", description="Manage your custom channels")
@@ -924,18 +944,24 @@ class Perks(commands.Cog, name="perk", description="manage your custom perks"):
 
     @commands.Cog.listener()
     async def on_message(self, message: discord.Message):
-        if message.author.bot: return
+        if message.author.bot:             
+            return
         if message.guild is None: return
         if len(message.mentions) > 0:
             self.bot.dispatch('auto_react', message)
         if message.content is not None or message.content != "":
             self.bot.dispatch('auto_highlight', message)
-        # if message.guild.id in self.backend.cach['channels'].keys():
-        #     if message.channel.id in self.backend.cach['channels'][message.guild.id].keys():
-        #         self.bot.dispatch('check_activity', message, self.backend.cach['channels'][message.guild.id][message.channel.id])
-        if message.interaction is not None:
-            if message.channel.id in self.backend.cach['channels'][message.guild.id].keys():
-                self.bot.dispatch('check_cmd_activity', message, self.backend.cach['channels'][message.guild.id][message.channel.id])
+        
+        custom_channel: Custom_Channel  = await self.backend.channel.find({"channel_id": message.channel.id, "guild_id": message.guild.id})
+        if not custom_channel: return
+        if message.author.id == custom_channel['user_id']: return
+        if custom_channel['activity']['last_message'] is not None:
+            if not datetime.datetime.utcnow() > custom_channel['activity']['last_message'] + datetime.timedelta(seconds=8):
+                return
+        custom_channel['activity']['messages'] += 1
+        custom_channel['activity']['last_message'] = datetime.datetime.utcnow()
+        await self.backend.update(self.backend.types.channels, custom_channel)
+        return
 
     @commands.Cog.listener()
     async def on_auto_highlight(self, message: discord.Message):
