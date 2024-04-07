@@ -2,7 +2,7 @@ import discord
 from discord import app_commands
 from discord.ext import commands
 from .db import GuildConfig, Backend
-from typing import List
+from typing import List, Literal
 
 @app_commands.guild_only()
 @app_commands.default_permissions(administrator=True)
@@ -55,7 +55,7 @@ class Security(commands.GroupCog):
 
 
     @commands.Cog.listener()
-    async def on_channel_create(self, user: discord.Member | discord.User, guild: discord.Guild, channenl: discord.TextChannel | discord.VoiceChannel | discord.CategoryChannel | discord.ForumChannel):
+    async def on_channel_create(self, user: discord.Member | discord.User, guild: discord.Guild, channel: discord.TextChannel | discord.VoiceChannel | discord.CategoryChannel | discord.ForumChannel):
         if user.id in self.backend.config['owners']: return
         if user.id == self.bot.user.id: return
         
@@ -65,7 +65,9 @@ class Security(commands.GroupCog):
 
         if not (set(userRoles) & set(self.backend.config['channel']['whitelistRoles'])): return
 
-        await self.backend.punish()
+        await self.backend.punish(guild=guild, user=user, Moderator=guild.me, 
+            punishment=self.backend.config['channel']['Punismhment']['create'], target=channel)
+        await channel.delete(reason="Channel Created by Unauthorized User")
     
     @app_commands.command(name="setup", description="Setup the Security Module")
     async def _setup(self, interaction: discord.Interaction):
@@ -113,13 +115,14 @@ class Security(commands.GroupCog):
 
             if not quarantineRole:
                 quarantineRole = await interaction.guild.create_role(name="Quarantine", reason="Setting up the Security Module")
-                await quarantineRole.role.edit(position=interaction.guild.me.top_role.position - 1)
+                await quarantineRole.edit(position=interaction.guild.me.top_role.position - 1)
+
             config['quarantineRole'] = quarantineRole.id
+            await self.backend.dbconfig.upsert(config)
             for channel in interaction.guild.channels:
                 await channel.set_permissions(quarantineRole, view_channel=False, send_messages=False, read_message_history=False, connect=False, speak=False, reason="Setting up the Security Module")
 
-        await interaction.response.send_message("The Security Module has been setup.", ephemeral=True)
-
+        await interaction.edit_original_response(content="The Security Module has been setup.")
 
 async def setup(bot):
     await bot.add_cog(Security(bot))
