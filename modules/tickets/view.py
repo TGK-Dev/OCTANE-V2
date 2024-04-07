@@ -65,7 +65,8 @@ class TicketConfig_View(View):
 
     @button(label="Channels", style=discord.ButtonStyle.gray, emoji='<:tgk_channel:1073908465405268029>')
     async def _channel_select(self, interaction: Interaction, button: Button):
-        view = Channel_Config()
+        naming_scheme = {"locked": self.data['nameing_schems']['locked'], "unlocked": self.data['nameing_schems']['unlocked']}
+        view = Channel_Config(name_scheme=naming_scheme)
         await interaction.response.send_message(view=view, ephemeral=True)
 
         await view.wait()
@@ -75,6 +76,10 @@ class TicketConfig_View(View):
         
         keys = ['default_category', 'default_channel', 'log_channel', 'transcript_channel', 'nameing_scheme']
         for key in keys:
+            if key == 'nameing_scheme':
+                self.data['nameing_schems']['locked'] = view.data['nameing_scheme']['locked']
+                self.data['nameing_schems']['unlocked'] = view.data['nameing_scheme']['unlocked']
+                continue
             if view.data.get(key) is not None:
                 self.data[key] = view.data[key].id
 
@@ -610,7 +615,7 @@ class Panel_Channel(View):
         self.stop()
 
 class Channel_Config(View):
-    def __init__(self):
+    def __init__(self, name_scheme: dict):
         super().__init__(timeout=120)
         self.value = False
         self.data = {
@@ -618,7 +623,13 @@ class Channel_Config(View):
             'default_channel': None,
             'log_channel': None,
             'transcript_channel': None,
+            'nameing_scheme': {
+                'unlocked': None,
+                'locked': None,
+            }
         }
+        self.data['nameing_scheme']['unlocked'] = name_scheme.get('unlocked')
+        self.data['nameing_scheme']['locked'] = name_scheme.get('locked')
     
     @select(placeholder="Select Default Ticket Category", cls=discord.ui.ChannelSelect, min_values=1, max_values=1, channel_types=[discord.ChannelType.category])
     async def _default_category(self, interaction: Interaction, select: Select):
@@ -647,9 +658,14 @@ class Channel_Config(View):
     @button(label="Ticket Nameing Scheme", style=discord.ButtonStyle.gray, emoji='<:tgk_edit:1073902428224757850>')
     async def _nameing_scheme(self, interaction: Interaction, button: Button):
         modal = General_Modal(title='Ticket Nameing Scheme', interaction=interaction)
-        modal.name = TextInput(label='Enter the nameing scheme', placeholder=f'Enter the nameing scheme you want to use eg. (⸝⸝🎫。)', min_length=3, max_length=100)
-        if self.data.get('nameing_scheme') is not None: modal.name.default = self.data['nameing_scheme']
-        modal.add_item(modal.name)
+        modal.open = TextInput(label='Enter the open ticket scheme', placeholder=f'Enter the nameing scheme you want to use eg. (⸝⸝🎫。)', min_length=3, max_length=100)
+        modal.close  = TextInput(label='Enter the close ticket scheme', placeholder=f'Enter the nameing scheme you want to use eg. (⸝⸝🎫。)', min_length=3, max_length=100)
+        
+        modal.open.default = self.data['nameing_scheme']['unlocked'] if self.data['nameing_scheme'].get('unlocked') is not None else ""
+        modal.close.default = self.data['nameing_scheme']['locked'] if self.data['nameing_scheme'].get('locked') is not None else ""
+
+        modal.add_item(modal.open)
+        modal.add_item(modal.close)
 
         await interaction.response.send_modal(modal)
         await modal.wait()
@@ -657,17 +673,21 @@ class Channel_Config(View):
         if modal.value is False or modal.value is None:
             return
         
-        self.data['nameing_scheme'] = modal.name.value
+        self.data['nameing_scheme']['unlocked'] = modal.open.value
+        self.data['nameing_scheme']['locked'] = modal.close.value
+
         await modal.interaction.response.edit_message(view=self)        
 
     @button(label="Confirm", style=discord.ButtonStyle.gray, emoji='<:tgk_active:1082676793342951475>')
     async def _confirm(self, interaction: Interaction, button: Button):
         embed = discord.Embed(description="", color=interaction.client.default_color)
-        keys = ['default_category', 'default_channel', 'log_channel', 'transcript_channel', 'nameing_scheme']
+        embed_args = await get_formated_embed(['Default Category', 'Default Channel', 'Log Channel', 'Transcript Channel', 'Nameing Scheme'])
 
-        for key in keys:
-            if self.data.get(key) is not None:
-                embed.description += f"{key.replace('_', ' ').title()}: {self.data[key].mention}\n"
+        embed.description += f"{await get_formated_field(guild=interaction.guild, name=embed_args['Default Category'], type='channel', data=self.data['default_category'])}\n"
+        embed.description += f"{await get_formated_field(guild=interaction.guild, name=embed_args['Default Channel'], type='channel', data=self.data['default_channel'])}\n"
+        embed.description += f"{await get_formated_field(guild=interaction.guild, name=embed_args['Log Channel'], type='channel', data=self.data['log_channel'])}\n"
+        embed.description += f"{await get_formated_field(guild=interaction.guild, name=embed_args['Transcript Channel'], type='channel', data=self.data['transcript_channel'])}\n"
+        embed.description += f"{embed_args['Nameing Scheme']} Locked:`{self.data['nameing_scheme']['locked']}` Unlocked: `{self.data['nameing_scheme']['unlocked']}\n"
 
         await interaction.response.edit_message(embed=embed, view=None)
         self.value = True
@@ -688,11 +708,11 @@ class Panels(discord.ui.View):
         else:
             raise TypeError("Invalid type for panels")
     
-    # async def on_error(self, interaction: Interaction, error: Exception, item: Item):
-    #     try:
-    #         await interaction.response.send_message(embed=discord.Embed(description=f"```py\n{traceback.format_exception(type(error), error, error.__traceback__, 4)}\n```", color=discord.Color.red()), ephemeral=True)
-    #     except :
-    #         await interaction.followup.send(embed=discord.Embed(description=f"```py\n{traceback.format_exception(type(error), error, error.__traceback__, 4)}\n```", color=discord.Color.red()), ephemeral=True)
+    async def on_error(self, interaction: Interaction, error: Exception, item: Item):
+        try:
+            await interaction.response.send_message(embed=discord.Embed(description=f"```py\n{traceback.format_exception(type(error), error, error.__traceback__, 4)}\n```", color=discord.Color.red()), ephemeral=True)
+        except :
+            await interaction.followup.send(embed=discord.Embed(description=f"```py\n{traceback.format_exception(type(error), error, error.__traceback__, 4)}\n```", color=discord.Color.red()), ephemeral=True)
 
 class TicketQestionDropDown(View):
     def __init__(self, data: Qestion):

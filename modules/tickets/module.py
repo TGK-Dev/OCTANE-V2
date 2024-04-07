@@ -49,7 +49,7 @@ class Ticket(commands.GroupCog, name="ticket"):
 
         for name, panel in panels.items():
             if panel['channel'] != None:    
-                if panel['channel'] not in panels_channels:
+                if panel['channel'] not in panels_channels.keys():
                     panels_channels[panel['channel']] = []
                 panels_channels[panel['channel']].append(config["panels"][name])
             else:

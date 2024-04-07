@@ -6,7 +6,10 @@ from utils.embed import get_formated_embed, get_formated_field
 class Qestion(TypedDict):
     question: str
     answer: str
-
+    
+class ChannelNameScheme(TypedDict):
+    locked: str
+    unlocked: str
 class Panel(TypedDict):
     name: str
     description: str
@@ -21,11 +24,6 @@ class Panel(TypedDict):
     panel_message: int
     nameing_scheme: str
 
-class ChannelNameScheme(TypedDict):
-    locked: str
-    unlocked: str
-
-
 class TicketConfig(TypedDict):
     _id: int
     admin_roles: List[int]
@@ -35,7 +33,7 @@ class TicketConfig(TypedDict):
     transcript_channel: int
     panel_message: int
     panels: Dict[str, Panel]
-    nameing_schems: ChannelNameScheme
+    nameing_scheme: ChannelNameScheme
 
 class Anonymous(TypedDict):
     status: bool
