@@ -121,6 +121,15 @@ class Blacklist_cog(commands.GroupCog, name="blacklist"):
     @unblacklist.before_loop
     async def before_unblacklist(self):
         await self.bot.wait_until_ready()
+    
+    @commands.Cog.listener()
+    async def on_member_update(self, before: discord.Member, after: discord.Member):
+        if after.guild.id != 785839283847954433:
+            return
+        bl_role = after.guild.get_role(1034072149247397938)
+        ac_role = after.guild.get_role(1121782006628503683)
+        if bl_role in after.roles:
+            await after.remove_roles(ac_role, reason="Blacklist")
 
     @commands.Cog.listener()
     async def on_blacklist_remove(self, blacklist:dict):
