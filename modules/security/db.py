@@ -11,6 +11,16 @@ class PunishmentType(Enum):
     TIMEOUT = 3
     Quarantine = 4
 
+class ActionType(Enum):
+    CREATE = 1
+    DELETE = 2
+    EDIT = 3
+
+class ActionOn(Enum):
+    CHANNEL = 1
+    ROLE = 2
+    WEBHOOK = 3
+
 class Quarantine(TypedDict):
     _id: int
     user_id: int

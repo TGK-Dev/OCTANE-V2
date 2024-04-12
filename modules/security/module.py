@@ -1,8 +1,10 @@
 import discord
 from discord import app_commands
 from discord.ext import commands
-from .db import GuildConfig, Backend
+from .db import GuildConfig, Backend, ActionType, PunishmentType, ActionOn
 from typing import List, Literal
+
+from utils.views.selects import Mention_select
 
 @app_commands.guild_only()
 @app_commands.default_permissions(administrator=True)
@@ -123,6 +125,54 @@ class Security(commands.GroupCog):
                 await channel.set_permissions(quarantineRole, view_channel=False, send_messages=False, read_message_history=False, connect=False, speak=False, reason="Setting up the Security Module")
 
         await interaction.edit_original_response(content="The Security Module has been setup.")
+
+    @app_commands.command(name="whitelist", description="Whitelist a User or Role")
+    async def _whitelist(self, interaction: discord.Interaction, action: ActionType, on: ActionOn):
+        view = discord.ui.View()
+        view.value = None
+        view.select = Mention_select(placeholder="Select Users or Roles Which you want to add/remove from Whitelist", min_values=1, max_values=10)
+        view.add_item(view.select)
+
+        await interaction.response.send_message(view=view, ephemeral=True)
+
+        await view.wait()
+
+        if view.value is None or view.value is False: await interaction.delete_original_response()
+
+        await view.select.interaction.response.edit_message(content="Processing...", view=None)
+
+        config: GuildConfig = self.backend.config
+
+        values = view.select.values
+        updates = {
+            'roles': {'add': [], 'remove': []},
+            'users': {'add': [], 'remove': []}
+        }
+        for value in values:
+            if isinstance(value, discord.Role):
+                if value.id in config[on.name.lower()]['whitelistRoles']:
+                    updates['roles']['remove'].append(value.id)
+                    config[on.name.lower()]['whitelistRoles'].remove(value.id)
+                else:
+                    updates['roles']['add'].append(value.id)
+                    config[on.name.lower()]['whitelistRoles'].append(value.id)
+            elif isinstance(value, discord.Member):
+                if value.id in config[on.name.lower()]['whitelistUsers']:
+                    updates['users']['remove'].append(value.id)
+                    config[on.name.lower()]['whitelistUsers'].remove(value.id)
+                else:
+                    updates['users']['add'].append(value.id)
+                    config[on.name.lower()]['whitelistUsers'].append(value.id)
+        
+        await self.backend.dbconfig.upsert(config)
+
+        embed = discord.Embed(description="Whitelist Updated\n\n", color=self.bot.default_color)
+        embed.description += f"Roles:\n> Added: {', '.join([f'<@&{role}>' for role in updates['roles']['add']])}\n> Removed: {', '.join([f'<@&{role}>' for role in updates['roles']['remove']])}\n\n"
+        embed.description += f"Users:\n> Added: {', '.join([f'<@{user}>' for user in updates['users']['add']])}\n> Removed: {', '.join([f'<@{user}>' for user in updates['users']['remove']])}"
+
+        await view.select.interaction.edit_original_response(embed=embed)
+
+
 
 async def setup(bot):
     await bot.add_cog(Security(bot))
