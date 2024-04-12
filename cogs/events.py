@@ -119,6 +119,9 @@ class Events(commands.Cog):
     async def on_message(self, message: discord.Message):
         if not message.guild or message.guild.id != 785839283847954433: return
 
+        if message.webhook_id in [1216992114961940530]:
+            await message.delete(delay=5)
+
         if message.channel.id == 1079670945171640360:
             self.bot.dispatch("dank_price_update", message)
 
