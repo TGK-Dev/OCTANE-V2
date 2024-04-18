@@ -4,6 +4,10 @@ import enum
 from typing import Union, TypedDict
 from utils.embed import get_formated_embed, get_formated_field
 
+class Freeze(TypedDict):
+    friends: bool
+    share_limit: bool
+    delete: bool
 
 class Activity(TypedDict):
     messages: int
@@ -19,6 +23,7 @@ class Custom_Channel(TypedDict):
     share_limit: int
     friend_list: list[int]
     activity: Activity
+    freeze: Freeze
 
 class Custom_Roles(TypedDict):
     user_id: int
@@ -28,6 +33,7 @@ class Custom_Roles(TypedDict):
     created_at: Union[int, str]
     share_limit: int
     friend_list: list[int]
+    freeze: Freeze
 
 class Custom_React(TypedDict):
     guild_id: int
@@ -295,7 +301,7 @@ class Perks_DB:
                 return perk_data
             
             case Perk_Type.channels | "channels":
-                perk_data: Custom_Channel = {'user_id': user_id,'guild_id': guild_id,'channel_id':None,'duration': duration,'created_at': None,'share_limit': share_limit,'friend_list': [], 'activity': {'messages': 0, 'rank': None, 'previous_rank': 0, 'cooldown': None}}
+                perk_data: Custom_Channel = {'user_id': user_id,'guild_id': guild_id,'channel_id':None,'duration': duration,'created_at': None,'share_limit': share_limit,'friend_list': [], 'activity': {'messages': 0, 'rank': None, 'previous_rank': 0, 'cooldown': None, 'last_message': None}}
                 await self.channel.insert(perk_data)
                 return perk_data
             

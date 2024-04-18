@@ -13,7 +13,7 @@ from .views import Friends_manage, Perk_Ignore, Emoji_Request
 from utils.embed import get_formated_embed, get_formated_field
 from colour import Color
 from utils.checks import Blocked
-from .db import Perk_Type, Perks_DB, Custom_Channel, Profile, Config
+from .db import Perk_Type, Perks_DB, Custom_Channel, Profile, Config, Custom_Roles
 
 time = datetime.time(hour=4, minute=30, tzinfo=datetime.timezone.utc)
 class Perks(commands.Cog, name="perk", description="manage your custom perks"):
@@ -62,7 +62,7 @@ class Perks(commands.Cog, name="perk", description="manage your custom perks"):
         await self.bot.wait_until_ready()
 
     @commands.Cog.listener()
-    async def on_check_profile_roles(self, data: dict):
+    async def on_check_profile_roles(self, data: Custom_Roles):
         guild: discord.Guild = self.bot.get_guild(data['guild_id'])
         if not guild: return
         crole: discord.Role = guild.get_role(data['role_id'])
@@ -99,12 +99,13 @@ class Perks(commands.Cog, name="perk", description="manage your custom perks"):
         if total_share_limit == 0:
             total_share_limit = 3
 
-        data['share_limit'] = total_share_limit
-        data['duration'] = total_duraction
+        if data['freeze']['share_limit'] is not True:
+            data['share_limit'] = total_share_limit
+            data['duration'] = total_duraction
 
         await self.backend.update(self.backend.types.roles, data)
 
-        if total_duraction == 0:
+        if total_duraction == 0 and data['freeze']["delete"] is not True:
             channel = guild.get_channel(1190668526361518120)
             if channel:
                 await channel.send(f"**User**: {user.mention} is going to lose his custom role `{crole.name}`", allowed_mentions=discord.AllowedMentions.none())
@@ -132,7 +133,7 @@ class Perks(commands.Cog, name="perk", description="manage your custom perks"):
         await self.bot.wait_until_ready()
 
     @commands.Cog.listener()
-    async def on_check_profile_channels(self, data: dict):
+    async def on_check_profile_channels(self, data: Custom_Channel):
         guild: discord.Guild = self.bot.get_guild(data['guild_id'])
         config = await self.backend.get_data(self.backend.types.config, guild.id, data['user_id'])
         if not guild: return
@@ -166,15 +167,14 @@ class Perks(commands.Cog, name="perk", description="manage your custom perks"):
                 if total_share_limit < 30: total_share_limit += item['share_limit']
                 elif total_share_limit >= 30: total_share_limit = 30
 
-        if total_share_limit == 0:
-            total_share_limit = 3
+        if data['freeze']['share_limit'] is not True:
+            data['share_limit'] = total_share_limit
 
-        data['share_limit'] = total_share_limit
         data['duration'] = total_duraction
 
         await self.backend.update(self.backend.types.channels, data)
 
-        if total_duraction == 0:
+        if total_duraction == 0 and data['freeze']["delete"] is not True:
             channel = guild.get_channel(1186937287183958056)
             if channel:
                 await channel.send(f"**User**: {user.mention} is going to lose his custom channel `{channel.name}`")
@@ -942,6 +942,37 @@ class Perks(commands.Cog, name="perk", description="manage your custom perks"):
         await self.backend.bans.delete(ban_data)
         await interaction.response.send_message(f"{member.mention} has been unblocked from using custom perks", ephemeral=True)
 
+    @admin.command(name="freez", description="Freez a custom perk's share limit/deletion")
+    @app_commands.default_permissions(administrator=True)
+    @app_commands.describe(member="The member you want to freez", perk="The perk you want to freez", type='which attribute you want to freez', value="The value you want to set")
+    async def _freez(self, interaction: Interaction, member: discord.Member, perk: Literal["roles", "channel"], type: Literal["share", "delete"], value: bool):
+        config = await self.backend.get_data(self.backend.types.config, interaction.guild.id, interaction.user.id)
+        if config == None:
+            await interaction.response.send_message("You need to setup config first", ephemeral=True)
+            return
+        user_roles = [role.id for role in interaction.user.roles]
+        if (set(user_roles) & set(config['admin_roles'])) == set():
+            await interaction.response.send_message("You need to have admin roles to use this command", ephemeral=True)
+            return
+        match perk:
+            case "roles":
+                perk_data: Custom_Roles = await self.backend.get_data(self.backend.types.roles, interaction.guild.id, member.id)
+            case "channel":
+                perk_data: Custom_Channel = await self.backend.get_data(self.backend.types.channels, interaction.guild.id, member.id)
+            case _:
+                await interaction.response.send_message("Invalid perk", ephemeral=True)
+
+        if not perk_data:
+            await interaction.response.send_message("This user doesn't have this perk", ephemeral=True)
+            return
+        if type == "share":
+            perk_data['freeze']['share_limit'] = value
+        if type == "delete":
+            perk_data['freeze']['delete'] = value
+        await self.backend.update(perk, perk_data)
+        await interaction.response.send_message(f"Successfully updated {member.mention}'s {perk} {type} freeze to {value}", ephemeral=True)
+
+
     @admin.command(name="sync-top-cat", description="sync top category with all channels")
     @app_commands.default_permissions(administrator=True)
     async def _sync_top_cat(self, interaction: Interaction):
@@ -1000,6 +1031,8 @@ class Perks(commands.Cog, name="perk", description="manage your custom perks"):
         custom_channel: Custom_Channel  = await self.backend.channel.find({"channel_id": message.channel.id, "guild_id": message.guild.id})
         if not custom_channel: return
         if message.author.id == custom_channel['user_id']: return
+        if 'last_message' not in custom_channel['activity'].keys():
+            custom_channel['activity']['last_message'] = None
         if custom_channel['activity']['last_message'] is not None:
             if not datetime.datetime.utcnow() > custom_channel['activity']['last_message'] + datetime.timedelta(seconds=8):
                 return
