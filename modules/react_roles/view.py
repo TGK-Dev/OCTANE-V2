@@ -172,6 +172,7 @@ class RoleMenu_Panel(View):
                 SelectOption(label=str(ReactRoleMenuType.ADD_ONLY), value=ReactRoleMenuType.ADD_ONLY.value),
                 SelectOption(label=str(ReactRoleMenuType.REMOVE_ONLY), value=ReactRoleMenuType.REMOVE_ONLY.value),
                 SelectOption(label=str(ReactRoleMenuType.ADD_AND_REMOVE), value=ReactRoleMenuType.ADD_AND_REMOVE.value),
+                SelectOption(label=str(ReactRoleMenuType.UNIQUE), value=ReactRoleMenuType.UNIQUE.value),
             ],
             max_values=1,
             min_values=1,
@@ -349,6 +350,19 @@ class RoleMenu_Button(Button):
                     await interaction.response.send_message(embed=discord.Embed(description=f"Added {role.mention}", color=interaction.client.default_color), ephemeral=True)
                 return
             
+            case ReactRoleMenuType.UNIQUE.value:
+                roles: list[discord.Role] =  [interaction.guild.get_role(int(role)) for role in menu['roles'].keys()]
+                await interaction.response.send_message(content="<a:TGK_loading:1222135771935412287> Please wait...", ephemeral=True)
+                added_roles = ""
+                removed_roles = ""
+                for arole in roles:
+                    if arole in interaction.user.roles: await interaction.user.remove_roles(arole); removed_roles += f"{arole.mention}, "
+                await interaction.user.add_roles(role)
+                added_roles += f"{role.mention}, "
+                embed = discord.Embed(color=interaction.client.default_color)
+                embed.description = f"Added Role(s): {added_roles}\nRemoved Role(s): {removed_roles}"
+                await interaction.edit_original_response(embed=embed, content=None)                
+            
             case _:
                 await interaction.response.send_message(embed=discord.Embed(description=f"Invalid menu type", color=discord.Color.red()), ephemeral=True)
                 return
@@ -414,6 +428,22 @@ class RoleMenu_Select(Select):
                 embed.add_field(name="Removed Role(s)", value=removed_roles, inline=False)
                 await interaction.followup.send(embed=embed, ephemeral=True)
                 return
+            
+            case ReactRoleMenuType.UNIQUE.value:
+                roles: list[discord.Role] =  [interaction.guild.get_role(int(role)) for role in menu['roles'].keys()]
+                await interaction.response.send_message(content="<a:TGK_loading:1222135771935412287> Please wait...", ephemeral=True)
+                added_roles = ""
+                removed_roles = ""
+                for arole in roles:
+                    if arole in interaction.user.roles: await interaction.user.remove_roles(arole); removed_roles += f"{arole.mention}, "
+                for role in _roles:
+                    await interaction.user.add_roles(role)
+                    added_roles += f"{role.mention}, "
+                embed = discord.Embed(color=interaction.client.default_color)
+                embed.description = f"Added Role(s): {added_roles}\nRemoved Role(s): {removed_roles}"
+                await interaction.edit_original_response(embed=embed, content=None)
+                return
+
             case _:
                 await interaction.response.send_message(embed=discord.Embed(description=f"Invalid menu type", color=discord.Color.red()), ephemeral=True)
                 return

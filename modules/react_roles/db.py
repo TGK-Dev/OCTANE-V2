@@ -18,6 +18,7 @@ class ReactRoleMenuType(Enum):
     REMOVE_ONLY = 1
     ADD_AND_REMOVE = 2
     DEFAULT = 3
+    UNIQUE = 4
 
     def __str__(self):
         """
