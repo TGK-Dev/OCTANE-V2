@@ -29,16 +29,7 @@ class ReactRoleMenuType(Enum):
         Returns: str
             The converted type
         """
-        if self == self.ADD_ONLY:
-            return "Add Only"
-        elif self == self.REMOVE_ONLY:
-            return "Remove Only"
-        elif self == self.ADD_AND_REMOVE:
-            return "Add and Remove"
-        elif self == self.DEFAULT:
-            return "Default"
-        else:
-            raise ValueError(f"Invalid type {self}")
+        return self.name.replace("_", " ").capitalize()
     
     @classmethod
     def from_str(cls, type: str):
@@ -145,7 +136,13 @@ class Backend:
         else:
             config: RoleMenu = await self.fetch_config(guild_id)
             if config is None:
-                config = RoleMenu(_id=guild_id,guild_id=guild_id, enabled=False, max_profiles=5, roles={})
+                config: RoleMenu = {
+                    '_id': guild_id,
+                    'guild_id': guild_id,
+                    'enabled': False,
+                    'max_profiles': 5,
+                    'roles': {}
+                }
                 await self.Profile.insert(config)
             self.Cach[guild_id] = config
         return config
