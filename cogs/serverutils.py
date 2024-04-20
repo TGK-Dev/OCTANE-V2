@@ -970,6 +970,8 @@ class donation(commands.Cog):
         leaderboard = []
         for index in top_10.index:
             user = interaction.guild.get_member(top_10['_id'][index])
+            if not isinstance(user, discord.Member):
+                user = await interaction.client.fetch_user(top_10['_id'][index])
             leaderboard.append({'user': user,'name': top_10['name'][index],'donated': top_10['10k'][index]}) 
         
         # image = await self.create_winner_card(interaction.guild, "🎊 10K Celeb's LB 🎊", leaderboard)
