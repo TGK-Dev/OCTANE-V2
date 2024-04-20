@@ -889,8 +889,8 @@ class donation(commands.Cog):
 
     #     return template
  
-    async def round_pfp(self, pfp: discord.Member | discord.Guild, size: tuple = (124, 124)):
-        if isinstance(pfp, discord.Member):
+    async def round_pfp(self, pfp: discord.Member | discord.Guild | discord.User, size: tuple = (124, 124)):
+        if isinstance(pfp, discord.Member) or isinstance(pfp, discord.User):
             if pfp.avatar is None:
                 pfp = pfp.default_avatar.with_format("png")
             else:
