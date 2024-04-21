@@ -802,6 +802,8 @@ class donation(commands.Cog):
         users = []
         for index in top_10.index:
             user = gk.get_member(top_10['_id'][index])
+            if not isinstance(user, discord.Member):
+                user = await self.bot.fetch_user(top_10['_id'][index])
             users.append(user)
             leaderboard.append({'user': user,'name': top_10['name'][index],'donated': top_10['10k'][index]})
         
