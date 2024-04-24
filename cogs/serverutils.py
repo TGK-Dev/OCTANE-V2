@@ -809,6 +809,7 @@ class donation(commands.Cog):
         
         for index in top_5.index:
             user = gk.get_member(top_5['_id'][index])
+            if not isinstance(user, discord.Member): continue
             if beast_role not in user.roles:
                 await user.add_roles(beast_role)
                 embed = discord.Embed(
