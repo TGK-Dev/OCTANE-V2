@@ -941,6 +941,7 @@ class TicketControl(View):
     
     @button(label="Annonymous", style=discord.ButtonStyle.gray, emoji='<:tgk_amongUs:1103542462628253726>', custom_id="ticket:anonymous")
     async def _anonymous(self, interaction: Interaction, button: Button):
+        if not interaction.user.guild_permissions.ban_members: return await interaction.response.send_message("You need to have `Ban Members` permission to use this button", ephemeral=True)
         ticket_data: Ticket = await interaction.client.tickets.ticket.find({'_id': interaction.channel.id})
         if not ticket_data:
             return await interaction.response.send_message("This is not a ticket channel", ephemeral=True)
