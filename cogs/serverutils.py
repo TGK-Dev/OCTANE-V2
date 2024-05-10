@@ -625,11 +625,9 @@ class donation(commands.Cog):
         self.bot = bot
         self.db2 = bot.aceDb["TGK"]
         self.bot.donorBank = Document(self.db2, "donorBank")
-        self.grinder_reminder.start()
         self.celeb_lb.start()
 
     def cog_unload(self):
-        self.grinder_reminder.cancel()
         self.celeb_lb.cancel()
 
     # for grinders reminder
