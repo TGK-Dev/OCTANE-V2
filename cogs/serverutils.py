@@ -633,128 +633,128 @@ class donation(commands.Cog):
         self.celeb_lb.cancel()
 
     # for grinders reminder
-    @tasks.loop(time=time)
-    async def grinder_reminder(self):
+    # @tasks.loop(time=time)
+    # async def grinder_reminder(self):
 
-        gk: discord.Guild = self.bot.get_guild(785839283847954433)
-        grinder = gk.get_role(836228842397106176)
-        trial = gk.get_role(932149422719107102)
-        mythic = gk.get_role(835866409992716289)
-        legendary = gk.get_role(806804472700600400)
+    #     gk: discord.Guild = self.bot.get_guild(785839283847954433)
+    #     grinder = gk.get_role(836228842397106176)
+    #     trial = gk.get_role(932149422719107102)
+    #     mythic = gk.get_role(835866409992716289)
+    #     legendary = gk.get_role(806804472700600400)
 
-        grinder_channel = self.bot.get_channel(851663580620521472)
-        log_channel = self.bot.get_channel(1119998681924509747)
+    #     grinder_channel = self.bot.get_channel(851663580620521472)
+    #     log_channel = self.bot.get_channel(1119998681924509747)
 
-        members = grinder.members
-        members.extend(trial.members)
+    #     members = grinder.members
+    #     members.extend(trial.members)
 
-        records = await self.bot.donorBank.find_many_by_custom( {"grinder_record" : {"$exists":"true"}})
-        data = {}
-        for record in records:
-            data[str(record['_id'])] = record['grinder_record']
+    #     records = await self.bot.donorBank.find_many_by_custom( {"grinder_record" : {"$exists":"true"}})
+    #     data = {}
+    #     for record in records:
+    #         data[str(record['_id'])] = record['grinder_record']
 
-        # get current time
-        date = datetime.date.today()
-        current_time = datetime.datetime(date.year, date.month, date.day) + datetime.timedelta(days=0)
+    #     # get current time
+    #     date = datetime.date.today()
+    #     current_time = datetime.datetime(date.year, date.month, date.day) + datetime.timedelta(days=0)
 
-        for member in members:
-            record = data[str(member.id)]
-            if record['time'] == current_time:
-                time_diff = 0
-            else:
-                time_diff = int(str(record['time'] - current_time).split(" ")[0])
+    #     for member in members:
+    #         record = data[str(member.id)]
+    #         if record['time'] == current_time:
+    #             time_diff = 0
+    #         else:
+    #             time_diff = int(str(record['time'] - current_time).split(" ")[0])
 
-            content = ''
-            if time_diff <= 0:
-                message_for_pending = ""
-                if time_diff < -1:
-                    message_for_pending += f"> **Pending from:** {-time_diff} days!\n\n"
-                elif time_diff == -1:
-                    message_for_pending += f"> **Pending from:** {-time_diff} day!\n\n"
-                elif time_diff == 0:
-                    message_for_pending += f"> **Donation is due today!\n\n"
-                else:
-                    message_for_pending += f"> **Due in:** {time_diff} days!\n\n"
-                payment_pending = discord.Embed(
-                    title=f"<a:TGK_Pandaswag:830525027341565982>  __TGK's Grinders Team__  <a:TGK_Pandaswag:830525027341565982>\n\n",
-                    description=f" <:tgk_redarrow:1005361235715424296> Your grinder donations are pending for **{-time_diff+1} days**. \n"
-                                f" <:tgk_redarrow:1005361235715424296> Please send `⏣ {(int(-time_diff+1)*record['amount_per_grind']):,}` in <#851663580620521472> today. \n"
-                                f" <:tgk_redarrow:1005361235715424296> Inform staff if you have any trouble with donations.  \n",
-                    colour=discord.Color.random(),
-                    timestamp=datetime.datetime.now()
-                )
-                payment_pending.set_footer(text=f"Developed by utki007 & Jay",
-                                           icon_url=gk.icon.url)
-                try:
-                    await member.send(content=f"Hello {member.name}! I have a message for you:", embed=payment_pending)
-                except:
-                    await grinder_channel.send(content=f"Hello {member.mention}! I have a message for you:", embed=payment_pending)
+    #         content = ''
+    #         if time_diff <= 0:
+    #             message_for_pending = ""
+    #             if time_diff < -1:
+    #                 message_for_pending += f"> **Pending from:** {-time_diff} days!\n\n"
+    #             elif time_diff == -1:
+    #                 message_for_pending += f"> **Pending from:** {-time_diff} day!\n\n"
+    #             elif time_diff == 0:
+    #                 message_for_pending += f"> **Donation is due today!\n\n"
+    #             else:
+    #                 message_for_pending += f"> **Due in:** {time_diff} days!\n\n"
+    #             payment_pending = discord.Embed(
+    #                 title=f"<a:TGK_Pandaswag:830525027341565982>  __TGK's Grinders Team__  <a:TGK_Pandaswag:830525027341565982>\n\n",
+    #                 description=f" <:tgk_redarrow:1005361235715424296> Your grinder donations are pending for **{-time_diff+1} days**. \n"
+    #                             f" <:tgk_redarrow:1005361235715424296> Please send `⏣ {(int(-time_diff+1)*record['amount_per_grind']):,}` in <#851663580620521472> today. \n"
+    #                             f" <:tgk_redarrow:1005361235715424296> Inform staff if you have any trouble with donations.  \n",
+    #                 colour=discord.Color.random(),
+    #                 timestamp=datetime.datetime.now()
+    #             )
+    #             payment_pending.set_footer(text=f"Developed by utki007 & Jay",
+    #                                        icon_url=gk.icon.url)
+    #             try:
+    #                 await member.send(content=f"Hello {member.name}! I have a message for you:", embed=payment_pending)
+    #             except:
+    #                 await grinder_channel.send(content=f"Hello {member.mention}! I have a message for you:", embed=payment_pending)
                 
-                # await log_channel.send(content=f"Sent {member.mention} the following message:", embed=payment_pending, allowed_mentions=discord.AllowedMentions(users=False, everyone=False,roles=False))
+    #             # await log_channel.send(content=f"Sent {member.mention} the following message:", embed=payment_pending, allowed_mentions=discord.AllowedMentions(users=False, everyone=False,roles=False))
                 
-                try:
-                    pending_from = -time_diff + 1
-                    msg = ''
-                    flag = 0
-                    if pending_from >= 3 and pending_from < 6:
-                        if grinder in member.roles:
-                            await member.remove_roles(grinder)
-                            msg += f"- **Removed:** {grinder.mention}\n"
-                            flag = 1
-                        if trial not in member.roles:
-                            await member.add_roles(trial)
-                            msg += f"- **Added:** {trial.mention}\n"
-                            flag = 1
-                        if flag == 1:
-                            title = f'Demoted {member.name}!'
-                        else:
-                            continue
-                    elif pending_from >= 6:
-                        if grinder in member.roles:
-                            await member.remove_roles(grinder)
-                            msg += f"- **Removed:** {grinder.mention}\n"
-                            flag = 1
-                        if trial in member.roles:
-                            await member.remove_roles(trial)
-                            msg += f"- **Removed:** {trial.mention}\n"
-                            flag = 1
-                        if mythic in member.roles:
-                            await member.remove_roles(mythic)
-                            msg += f"- **Removed:** {mythic.mention}\n"
-                            flag = 1
-                        if legendary in member.roles:
-                            await member.remove_roles(legendary)
-                            msg += f"- **Removed:** {legendary.mention}\n"
-                            flag = 1
-                        if flag == 1:
-                            title = f'Kicked {member.name}!'
-                        else:
-                            continue
-                    else:
-                        continue
-                except:
-                    msg = f"- **Error:** Unable to remove roles for {member.mention}\n"
+    #             try:
+    #                 pending_from = -time_diff + 1
+    #                 msg = ''
+    #                 flag = 0
+    #                 if pending_from >= 3 and pending_from < 6:
+    #                     if grinder in member.roles:
+    #                         await member.remove_roles(grinder)
+    #                         msg += f"- **Removed:** {grinder.mention}\n"
+    #                         flag = 1
+    #                     if trial not in member.roles:
+    #                         await member.add_roles(trial)
+    #                         msg += f"- **Added:** {trial.mention}\n"
+    #                         flag = 1
+    #                     if flag == 1:
+    #                         title = f'Demoted {member.name}!'
+    #                     else:
+    #                         continue
+    #                 elif pending_from >= 6:
+    #                     if grinder in member.roles:
+    #                         await member.remove_roles(grinder)
+    #                         msg += f"- **Removed:** {grinder.mention}\n"
+    #                         flag = 1
+    #                     if trial in member.roles:
+    #                         await member.remove_roles(trial)
+    #                         msg += f"- **Removed:** {trial.mention}\n"
+    #                         flag = 1
+    #                     if mythic in member.roles:
+    #                         await member.remove_roles(mythic)
+    #                         msg += f"- **Removed:** {mythic.mention}\n"
+    #                         flag = 1
+    #                     if legendary in member.roles:
+    #                         await member.remove_roles(legendary)
+    #                         msg += f"- **Removed:** {legendary.mention}\n"
+    #                         flag = 1
+    #                     if flag == 1:
+    #                         title = f'Kicked {member.name}!'
+    #                     else:
+    #                         continue
+    #                 else:
+    #                     continue
+    #             except:
+    #                 msg = f"- **Error:** Unable to remove roles for {member.mention}\n"
                 
-                try:
-                    payment_pending.title = title
-                    payment_pending.description = msg
-                    payment_pending.set_thumbnail(url=member.avatar.url)
-                    # payment_pending.set_author(name=member.name, icon_url=member.avatar.url)
-                    payment_pending.set_footer(text=f'ID: {member.id}')	
-                    await log_channel.send(embed=payment_pending)	
-                except:
-                    pass						
+    #             try:
+    #                 payment_pending.title = title
+    #                 payment_pending.description = msg
+    #                 payment_pending.set_thumbnail(url=member.avatar.url)
+    #                 # payment_pending.set_author(name=member.name, icon_url=member.avatar.url)
+    #                 payment_pending.set_footer(text=f'ID: {member.id}')	
+    #                 await log_channel.send(embed=payment_pending)	
+    #             except:
+    #                 pass						
 
-                await asyncio.sleep(0.5)
+    #             await asyncio.sleep(0.5)
     
-    @grinder_reminder.error
-    async def grinder_reminder_error(self, error):
-        chal = self.bot.get_channel(999555462674522202)
-        await chal.send(f"<@488614633670967307> <@301657045248114690> ,Error in grinder reminder: {error}")
+    # @grinder_reminder.error
+    # async def grinder_reminder_error(self, error):
+    #     chal = self.bot.get_channel(999555462674522202)
+    #     await chal.send(f"<@488614633670967307> <@301657045248114690> ,Error in grinder reminder: {error}")
 
-    @grinder_reminder.before_loop
-    async def before_grinder_reminder(self):
-        await self.bot.wait_until_ready()
+    # @grinder_reminder.before_loop
+    # async def before_grinder_reminder(self):
+    #     await self.bot.wait_until_ready()
     
     @tasks.loop(time=time)
     async def celeb_lb(self):

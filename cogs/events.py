@@ -150,18 +150,6 @@ class Events(commands.Cog):
                 link_view.add_item(discord.ui.Button(label="Go to Payout Message", url=command_message.jump_url))
                 log_channel = self.bot.get_channel(1076586539368333342)
                 await log_channel.send(embed=log_embed, view=link_view)
-            elif embed.description.startswith('Successfully donated!') and message.channel.id in [851663580620521472, 812711254790897714, 1210094990315753472, 1116295238584111155, 1086323496788963328]:
-                command_message = await message.channel.fetch_message(message.reference.message_id)
-                if command_message.interaction is None: return
-                if command_message.interaction.name != "serverevents donate": return
-
-                embed = command_message.embeds[0].to_dict()
-                donor = command_message.interaction.user
-                prize = re.findall(r"\*\*(.*?)\*\*", embed['description'])[0]
-                emojis = list(set(re.findall(":\w*:\d*", prize)))
-                for emoji in emojis :prize = prize.replace(emoji,"",100); prize = prize.replace("<>","",100);prize = prize.replace("<a>","",100);prize = prize.replace("  "," ",100)
-
-                await command_message.reply(f'{donor.mention} successfully donated **{prize}** to the server pool!', allowed_mentions=discord.AllowedMentions.none())
 
         elif message.author.id == 813077581749288990 and message.channel.id == 1204476683286224896:
             if len(message.embeds) == 0: return
