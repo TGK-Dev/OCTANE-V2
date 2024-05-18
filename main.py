@@ -32,8 +32,8 @@ class Botbase(commands.Bot):
         self.start_time = datetime.datetime.now()
         self.sync = sync
         self.secret = os.environ.get("SECRET")
-        self.connection_url = 'mongodb+srv://admin:CulbAPXV4u04I1j1@tgkcluster.aqyqazu.mongodb.net/?retryWrites=true&w=majority'
-        self.connection_url2 = 'mongodb+srv://utki009:Utkarsh2697@cluster0.5wndm.mongodb.net/TGK?retryWrites=true&w=majority'
+        self.connection_url = os.environ.get("MONGO")
+        self.connection_url2 = os.environ.get("ACE_DB")
         self.restart = False
         self.tree.interaction_check = self.interaction_check
         self.mongo = AsyncIOMotorClient(self.connection_url)
@@ -68,7 +68,7 @@ class Botbase(commands.Bot):
                 await self.load_extension(f"cogs.{file[:-3]}")
         
         for folder in os.listdir("./modules"):
-            if folder == "__pycache__" or folder == "Security":
+            if folder == "__pycache__" or folder in ["Security", "Channels"]:
                 continue
             for file in os.listdir(f"./modules/{folder}"):
                 if file == "module.py":
