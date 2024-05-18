@@ -166,12 +166,7 @@ class Afk(commands.GroupCog):
         if not user_data:
             await interaction.response.send_message(f"`{member.display_name}` is not afk.", ephemeral=True)
             return
-        user_data['afk'] = False
-        user_data['reason'] = None
-        user_data['afk_at'] = None
-        user_data['last_nick'] = None
-        user_data['pings'] = []
-        await self.bot.afk.update(user_data)
+        await self.bot.afk.delete_by_id(member.id)
 
         await interaction.response.send_message(f"`{member.display_name}` is no longer afk.", ephemeral=True)
     
