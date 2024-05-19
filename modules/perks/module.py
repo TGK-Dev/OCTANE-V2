@@ -1,3 +1,4 @@
+import asyncio
 import io
 import aiohttp
 import random
@@ -24,6 +25,7 @@ class Perks(commands.Cog, name="perk", description="manage your custom perks"):
         self.profile_roles.start()
         self.profile_reacts.start()
         self.profile_channels.start()
+        self.check_channel_activity.start()
         self.bot.Perk = self.backend
     
     def cog_unload(self):
@@ -199,16 +201,23 @@ class Perks(commands.Cog, name="perk", description="manage your custom perks"):
 
     @tasks.loop(time=time)
     async def check_channel_activity(self):
+        # print("Checking channel activity")
         config = await self.backend.config.get_all()
         for data in config:
-            guild: discord.Guild = self.bot.get_guild(data['guild_id'])
-            channels: List[Custom_Channel] = await self.backend.channel.find_many_by_custom({'guild_id': data['guild_id']})
+            guild: discord.Guild = self.bot.get_guild(data['_id'])
+            if not guild: continue
+            channels: List[Custom_Channel] = await self.backend.channel.find_many_by_custom({'guild_id': guild.id})
             for channel in channels:
-                if (datetime.datetime.utcnow() - channel["activity"]['last_message']).days() >= 7:
+                await asyncio.sleep(1)
+                # make an if state to check if 7 days has passed since the last message
+                if datetime.datetime.utcnow() - channel['activity']['last_message'] >= datetime.timedelta(days=7): 
                     channel_owner = guild.get_member(channel['user_id'])
                     chanel = guild.get_channel(channel['channel_id'])
+                    log_channel = guild.get_channel(1190668526361518120)
+                    # await log_channel.send(f"**User**: {channel['user_id']} is going to lose his custom channel {chanel.mention} because it has been inactive for more than 7 days", allowed_mentions=discord.AllowedMentions.none())
                     try:
                         await channel_owner.send(embed=discord.Embed(description=f"Your custom channel {chanel.name} in {guild.name} has been deleted because it has been inactive for more than 7 days", color=self.bot.default_color))
+
                     except:
                         pass
                     await self.backend.delete(self.backend.types.channels, channel)
@@ -1020,8 +1029,6 @@ class Perks(commands.Cog, name="perk", description="manage your custom perks"):
 
     @commands.Cog.listener()
     async def on_message(self, message: discord.Message):
-        if message.author.bot:             
-            return
         if message.guild is None: return
         if len(message.mentions) > 0:
             self.bot.dispatch('auto_react', message)
@@ -1030,7 +1037,9 @@ class Perks(commands.Cog, name="perk", description="manage your custom perks"):
         
         custom_channel: Custom_Channel  = await self.backend.channel.find({"channel_id": message.channel.id, "guild_id": message.guild.id})
         if not custom_channel: return
-        if message.author.id == custom_channel['user_id']: return
+        if message.author.id != custom_channel['user_id']: 
+            if message.interaction.user.id != custom_channel['user_id']:
+                return
         if 'last_message' not in custom_channel['activity'].keys():
             custom_channel['activity']['last_message'] = None
         if custom_channel['activity']['last_message'] is not None:
