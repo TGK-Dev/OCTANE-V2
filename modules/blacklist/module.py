@@ -184,6 +184,7 @@ class Blacklist_cog(commands.GroupCog, name="blacklist"):
         user_data = await self.backend.get_blacklist(user, profile_data)
         if user_data is not None:
             return await interaction.response.send_message(f"{user.mention} is already blacklisted in profile `{profile}`", ephemeral=True)
+        
         user_data: Blacklist = {
             "user_id": user.id,
             "guild_id": interaction.guild_id,
@@ -252,7 +253,17 @@ class Blacklist_cog(commands.GroupCog, name="blacklist"):
             profile:Profile = config['profiles'][blacklist['profile']]
             embed = discord.Embed(title=f"Blacklist of {user}", color=self.bot.default_color, description="")
             embed.description += f"**Profile:** {profile['_id']}\n"
-            embed.description += f"**Reason:** {blacklist['Blacklist_reason']}\n"
+            
+            if isinstance(blacklist['Blacklist_reason'], str):
+                embed.description += f"**Reason:** {blacklist['Blacklist_reason']}\n"
+            elif isinstance(blacklist['Blacklist_reason'], list):
+                _str = ""
+                for reason in enumerate(blacklist['Blacklist_reason']):
+                    _str += f"{reason[0]+1}. {reason[1]}\n"
+                embed.add_field(name="Reasons", value=_str)
+            else:
+                embed.description += f"**Reason:** {blacklist['Blacklist_reason']}\n"
+
             embed.description += f"**Duration:** {format_timespan(blacklist['Blacklist_duration'])}\n"
             embed.description += f"**End:** <t:{int(blacklist['Blacklist_end'].timestamp())}:R>\n"
             embed.description += f"**By:** <@{blacklist['Blacklist_by']}> ({blacklist['Blacklist_by']})\n"
@@ -297,13 +308,14 @@ class Blacklist_cog(commands.GroupCog, name="blacklist"):
         
         if len(strike['strikes']) >= profile_data['strike_limit']:
             await interaction.edit_original_response(content=f"{user.mention} has reached strike limit in profile `{profile}` applying blacklist...")
+            bl_reasons = [strike['Strike_reason'] for strike in strike['strikes']]
             user_blacklist: Blacklist = {
                 "user_id": user.id,
                 "guild_id": interaction.guild_id,
                 "profile": profile_data["_id"],
                 "Blacklist_at": datetime.datetime.utcnow(),
                 "Blacklist_by": interaction.user.id,
-                "Blacklist_reason": "Reached strike limit",
+                "Blacklist_reason": bl_reasons,
                 "Blacklist_duration": profile_data["strike_expire"],
                 "Blacklist_end": datetime.datetime.utcnow() + datetime.timedelta(seconds=profile_data["strike_expire"])
             }
@@ -317,7 +329,14 @@ class Blacklist_cog(commands.GroupCog, name="blacklist"):
 
             try:
                 embed = discord.Embed(title=f"You have been blacklisted in profile {profile}", description=f"", color=self.bot.default_color)
-                embed.description += f"**Reason:** Reached strike limit\n"
+                if isinstance(user_blacklist['Blacklist_reason'], str):
+                    embed.description += f"**Reason:** Reached strike limit\n"
+                elif isinstance(user_blacklist['Blacklist_reason'], list):
+                    embed.description += f"**Reasons:**\n"
+                    for reason in enumerate(user_blacklist['Blacklist_reason']):
+                        embed.description += f"{reason[0]+1}. {reason[1]}\n"
+                else:
+                    embed.description += f"**Reason:** {user_blacklist['Blacklist_reason']}\n"
                 await user.send(embed=embed)
             except:
                 pass
@@ -327,7 +346,15 @@ class Blacklist_cog(commands.GroupCog, name="blacklist"):
                 embed = discord.Embed(title="Blacklist", description=f"", color=discord.Color.red())
                 embed.description += f"**User:** {user.mention} ({user.id})\n"
                 embed.description += f"**Profile:** {profile}\n"
-                embed.description += f"**Reason:** Reached strike limit\n"
+                if isinstance(user_blacklist['Blacklist_reason'], str):
+                    embed.description += f"**Reason:** Reached strike limit\n"
+                elif isinstance(user_blacklist['Blacklist_reason'], list):
+                    str_ = ""
+                    for reason in enumerate(user_blacklist['Blacklist_reason']):
+                        str_ += f"{reason[0]+1}. {reason[1]}\n"
+                    embed.add_field(name="Reasons", value=str_)
+                else:
+                    embed.description += f"**Reason:** {user_blacklist['Blacklist_reason']}\n"
                 embed.description += f"**Duration:** {format_timespan(profile_data['strike_expire'])}\n"
                 embed.description += f"**End:** <t:{int((datetime.datetime.now() + datetime.timedelta(seconds=profile_data['strike_expire'])).timestamp())}:R>\n"
                 embed.description += f"**By:** {interaction.user.mention} ({interaction.user.id})\n"
