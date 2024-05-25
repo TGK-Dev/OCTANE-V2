@@ -337,11 +337,6 @@ class Logging(commands.Cog):
         embed.set_author(name=message.author, icon_url=message.author.avatar.url if message.author.avatar else message.author.default_avatar)
         embed.set_footer(text=f"Author ID: {message.author.id} | Message ID: {message.id}")
         embed.timestamp = datetime.datetime.utcnow()
-        
-        if message.author.bot:
-            if message.interaction:
-                embed.description += f"\n**Command:** {message.interaction.name}"
-                embed.description += f"\n**Command User:** {message.interaction.user.mention}"
 
         embeds.append(embed)
         if len(message.embeds) > 0:
@@ -378,8 +373,8 @@ class Logging(commands.Cog):
         
         if before.author.bot:
             if before.interaction:
-                embed.description += f"\n**Command:** {before.interaction.name}"
-                embed.description += f"\n**Command User:** {before.interaction.user.mention}"
+                embed.description += f"\n**Command:** {before._interaction.name}"
+                embed.description += f"\n**Command User:** {before._interaction.user.mention}"
 
         embeds.append(embed)
         if len(before.embeds) > 0:

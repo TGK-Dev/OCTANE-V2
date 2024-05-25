@@ -44,7 +44,7 @@ class UserCommands(commands.Cog):
         else:
             return choices[:24]
 
-    notepad = app_commands.Group(name="notepad", description="Notepad commands", allowed_installs=app_commands.AppInstallationType(guild=False, user=True))
+    notepad = app_commands.Group(name="notepad", description="Notepad commands", allowed_installs=app_commands.AppInstallationType(guild=False, user=True), allowed_contexts=app_commands.AppCommandContext(dm_channel=True, guild=True, private_channel=True))
 
     @notepad.command(name="create", description="Create a new notepad")
     @app_commands.describe(topic="Notepad", content="Create a new notepad")
@@ -110,6 +110,7 @@ class UserCommands(commands.Cog):
     @app_commands.command(name="dank_calculator", description="Calculate the dankest meme")
     @app_commands.describe(item="The item you want to calculate", quantity="The quantity of the item you want to calculate")
     @app_commands.allowed_contexts(guilds=True, private_channels=True, dms=True)
+    @app_commands.allowed_installs(guilds=True, users=True)
     @app_commands.autocomplete(item=item_autocomplete)
     async def dank_calculator(self, interaction: Interaction, item: str, quantity: int):
         item_data = await self.bot.dank_items.find(item)

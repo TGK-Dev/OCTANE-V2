@@ -207,7 +207,7 @@ class Level(commands.GroupCog):
     @commands.Cog.listener()
     async def on_message(self, message):
         if message.author.bot:
-            if message.interaction:
+            if message._interaction:
                 self.bot.dispatch("slash_command", message)
             return
         if message.guild is None:
@@ -268,8 +268,8 @@ class Level(commands.GroupCog):
         config = await self.levels.get_config(message.guild)
         if config['enabled'] == False: return
 
-        if not message.interaction: return
-        user = message.interaction.user
+        if not message._interaction: return
+        user = message._interaction.user
         data = await self.levels.get_member_level(user)
         if data['last_updated'] is None or data['last_updated'] + datetime.timedelta(seconds=8) < datetime.datetime.utcnow():
             pass
