@@ -36,15 +36,17 @@ class Dank_Events(commands.GroupCog, name="dank"):
     item = app_commands.Group(name="item", description="Some commands related to items")
 
     @commands.Cog.listener()
-    async def on_message(self, message):
+    async def on_message(self, message: discord.Message):
         if message.guild is None: return
 
         if message.channel.id == 1079670945171640360:
             return self.bot.dispatch("dank_price_update", message)
 
-        if message.interaction is not None:
-            if message.interaction.name == "item" and message.channel.id in [785860772470849536, 792246185238069249, 1080918630956548176, 1130057933468745849, 999555462674522202, 785860772470849536]:
-                return self.bot.dispatch("dank_price_update_from_cmd", message)
+        if message.author.id == 270904126974590976 and message.channel.id in [785860772470849536, 792246185238069249, 1080918630956548176, 1130057933468745849, 999555462674522202, 785860772470849536]:
+            view  = discord.ui.View().from_message(message)
+            view.children[0].label = 'Market View'
+            view.stop()
+            self.bot.dispatch("dank_price_update_from_cmd", message)
 
     
     @commands.Cog.listener()

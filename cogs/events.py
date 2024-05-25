@@ -187,7 +187,12 @@ class Events(commands.Cog):
                 view = discord.ui.View()
                 view.add_item(discord.ui.Button(label="Vote for TGK", emoji="<a:tgk_icon:1002504426172448828>",url="https://disurl.me/server/785839283847954433/vote"))
                 await message.channel.send("If you like our server, make sure to vote for us!", view=view)
-                
+
+    @commands.Cog.listener()
+    async def on_guild_join(self, guild: discord.Guild):
+        if guild.owner_id not in self.bot.owner_ids:
+            await guild.leave()
+
     @commands.Cog.listener()
     async def on_command_error(self, ctx, error):
         if isinstance(error, commands.CommandNotFound):
