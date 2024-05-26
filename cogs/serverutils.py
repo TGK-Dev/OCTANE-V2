@@ -19,10 +19,10 @@ from io import BytesIO
 from PIL import Image, ImageDraw, ImageFont, ImageChops
 
 auto_payout = {
-    1040975933772931172: {'prize': 1, 'event': 'Daily Rumble', 'item': 'Pepe Trophy'}, #pepet
-    1042408506181025842: {'prize': 100000000, 'event': 'Weekly Rumble', 'item': None}, #100m 
-    1110476759062827008: {'prize': 6900000, 'event': '69-Players Rumble', 'item': None},
-    1049233574622146560: {'prize': 4000000, 'event': '40-Players Rumble', 'item': None},    
+    1040975933772931172: {'prize': 2, 'event': 'Daily Rumble', 'item': 'Pepe Trophy'}, #pepet
+    1042408506181025842: {'prize': 250000000, 'event': 'Weekly Rumble', 'item': None}, #100m 
+    1110476759062827008: {'prize': 10000000, 'event': '100-Players Rumble', 'item': None},
+    1049233574622146560: {'prize': 6900000, 'event': 'half-day Rumble', 'item': None},    
 }		
 
 class Payout(commands.GroupCog, name="payout", description="Payout commands"):
