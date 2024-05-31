@@ -624,270 +624,96 @@ class donation(commands.Cog):
         self.bot = bot
         self.db2 = bot.aceDb["TGK"]
         self.bot.donorBank = Document(self.db2, "donorBank")
-        self.celeb_lb.start()
+    
+# # Dont delete
+    #     self.celeb_lb.start()
 
-    def cog_unload(self):
-        self.celeb_lb.cancel()
+    # def cog_unload(self):
+    #     self.celeb_lb.cancel()
 
-    # for grinders reminder
     # @tasks.loop(time=time)
-    # async def grinder_reminder(self):
+    # async def celeb_lb(self):
+    #     gk = self.bot.get_guild(785839283847954433)
+    #     leaderboard_channel = gk.get_channel(1209873854369898506)
+    #     log_channel = gk.get_channel(1074276583940034581)
+    #     beast_role = gk.get_role(821052747268358184)
+    #     members = beast_role.members
 
-    #     gk: discord.Guild = self.bot.get_guild(785839283847954433)
-    #     grinder = gk.get_role(836228842397106176)
-    #     trial = gk.get_role(932149422719107102)
-    #     mythic = gk.get_role(835866409992716289)
-    #     legendary = gk.get_role(806804472700600400)
+    #     if leaderboard_channel is None: 
+    #         return
 
-    #     grinder_channel = self.bot.get_channel(851663580620521472)
-    #     log_channel = self.bot.get_channel(1119998681924509747)
+    #     data = await self.bot.donorBank.find_many_by_custom( {"event" : { "$elemMatch": { "name": '10k',"bal":{"$gt":0} }}})
+    #     df = pd.DataFrame(data)
+    #     df['10k']  = df.event.apply(lambda x: x[-1]['bal'])
+    #     df = df.drop(['bal','grinder_record','event'], axis=1)
+    #     df = df.sort_values(by='10k',ascending=False)
+    #     top_5 = df.head(5)
+    #     top_10 = df.head(10)
 
-    #     members = grinder.members
-    #     members.extend(trial.members)
+    #     message = [message async for message in leaderboard_channel.history(limit=1)][0]
+    #     view = discord.ui.View()
+    #     view.add_item(discord.ui.Button(label="Check Leaderboard", style=discord.ButtonStyle.url, url=message.jump_url, emoji="<:tgk_link:1105189183523401828>"))
+                
 
-    #     records = await self.bot.donorBank.find_many_by_custom( {"grinder_record" : {"$exists":"true"}})
-    #     data = {}
-    #     for record in records:
-    #         data[str(record['_id'])] = record['grinder_record']
-
-    #     # get current time
-    #     date = datetime.date.today()
-    #     current_time = datetime.datetime(date.year, date.month, date.day) + datetime.timedelta(days=0)
-
-    #     for member in members:
-    #         record = data[str(member.id)]
-    #         if record['time'] == current_time:
-    #             time_diff = 0
-    #         else:
-    #             time_diff = int(str(record['time'] - current_time).split(" ")[0])
-
-    #         content = ''
-    #         if time_diff <= 0:
-    #             message_for_pending = ""
-    #             if time_diff < -1:
-    #                 message_for_pending += f"> **Pending from:** {-time_diff} days!\n\n"
-    #             elif time_diff == -1:
-    #                 message_for_pending += f"> **Pending from:** {-time_diff} day!\n\n"
-    #             elif time_diff == 0:
-    #                 message_for_pending += f"> **Donation is due today!\n\n"
-    #             else:
-    #                 message_for_pending += f"> **Due in:** {time_diff} days!\n\n"
-    #             payment_pending = discord.Embed(
-    #                 title=f"<a:TGK_Pandaswag:830525027341565982>  __TGK's Grinders Team__  <a:TGK_Pandaswag:830525027341565982>\n\n",
-    #                 description=f" <:tgk_redarrow:1005361235715424296> Your grinder donations are pending for **{-time_diff+1} days**. \n"
-    #                             f" <:tgk_redarrow:1005361235715424296> Please send `⏣ {(int(-time_diff+1)*record['amount_per_grind']):,}` in <#851663580620521472> today. \n"
-    #                             f" <:tgk_redarrow:1005361235715424296> Inform staff if you have any trouble with donations.  \n",
-    #                 colour=discord.Color.random(),
-    #                 timestamp=datetime.datetime.now()
+    #     for user in beast_role.members:
+    #         if user.id not in top_5['_id'].values:
+    #             await user.remove_roles(beast_role)
+    #             embed = discord.Embed(
+    #                 title="You dropped from top 5!",
+    #                 description= f"Your `{beast_role.name}` role has been removed.\n"
+    #                             f"Don't worry, you can always grind your way back up!",
+    #                 color=0x2b2d31
     #             )
-    #             payment_pending.set_footer(text=f"Developed by utki007 & Jay",
-    #                                        icon_url=gk.icon.url)
+    #             embed.set_thumbnail(url="https://cdn.discordapp.com/emojis/830548561329782815.gif?v=1")
+    #             embed.set_footer(text=f"{gk.name}", icon_url=gk.icon.url)
     #             try:
-    #                 await member.send(content=f"Hello {member.name}! I have a message for you:", embed=payment_pending)
+    #                 await user.send(embed=embed, view=view)
+    #                 await log_channel.send(f'Removed {beast_role.mention} from {user.mention}(`{user.id}`).', allowed_mentions=discord.AllowedMentions.none())
     #             except:
-    #                 await grinder_channel.send(content=f"Hello {member.mention}! I have a message for you:", embed=payment_pending)
-                
-    #             # await log_channel.send(content=f"Sent {member.mention} the following message:", embed=payment_pending, allowed_mentions=discord.AllowedMentions(users=False, everyone=False,roles=False))
-                
-    #             try:
-    #                 pending_from = -time_diff + 1
-    #                 msg = ''
-    #                 flag = 0
-    #                 if pending_from >= 3 and pending_from < 6:
-    #                     if grinder in member.roles:
-    #                         await member.remove_roles(grinder)
-    #                         msg += f"- **Removed:** {grinder.mention}\n"
-    #                         flag = 1
-    #                     if trial not in member.roles:
-    #                         await member.add_roles(trial)
-    #                         msg += f"- **Added:** {trial.mention}\n"
-    #                         flag = 1
-    #                     if flag == 1:
-    #                         title = f'Demoted {member.name}!'
-    #                     else:
-    #                         continue
-    #                 elif pending_from >= 6:
-    #                     if grinder in member.roles:
-    #                         await member.remove_roles(grinder)
-    #                         msg += f"- **Removed:** {grinder.mention}\n"
-    #                         flag = 1
-    #                     if trial in member.roles:
-    #                         await member.remove_roles(trial)
-    #                         msg += f"- **Removed:** {trial.mention}\n"
-    #                         flag = 1
-    #                     if mythic in member.roles:
-    #                         await member.remove_roles(mythic)
-    #                         msg += f"- **Removed:** {mythic.mention}\n"
-    #                         flag = 1
-    #                     if legendary in member.roles:
-    #                         await member.remove_roles(legendary)
-    #                         msg += f"- **Removed:** {legendary.mention}\n"
-    #                         flag = 1
-    #                     if flag == 1:
-    #                         title = f'Kicked {member.name}!'
-    #                     else:
-    #                         continue
-    #                 else:
-    #                     continue
-    #             except:
-    #                 msg = f"- **Error:** Unable to remove roles for {member.mention}\n"
-                
-    #             try:
-    #                 payment_pending.title = title
-    #                 payment_pending.description = msg
-    #                 payment_pending.set_thumbnail(url=member.avatar.url)
-    #                 # payment_pending.set_author(name=member.name, icon_url=member.avatar.url)
-    #                 payment_pending.set_footer(text=f'ID: {member.id}')	
-    #                 await log_channel.send(embed=payment_pending)	
-    #             except:
-    #                 pass						
+    #                 await log_channel.send(f'Removed {beast_role.mention} from {user.mention}(`{user.id}`).\n> **Error:** Unable to send DM to user.', allowed_mentions=discord.AllowedMentions.none())
+    #             await asyncio.sleep(1)
 
-    #             await asyncio.sleep(0.5)
-    
-    # @grinder_reminder.error
-    # async def grinder_reminder_error(self, error):
-    #     chal = self.bot.get_channel(999555462674522202)
-    #     await chal.send(f"<@488614633670967307> <@301657045248114690> ,Error in grinder reminder: {error}")
+    #     leaderboard = []
+    #     users = []
+    #     for index in top_10.index:
+    #         user = gk.get_member(top_10['_id'][index])
+    #         if not isinstance(user, discord.Member):
+    #             user = await self.bot.fetch_user(top_10['_id'][index])
+    #         users.append(user)
+    #         leaderboard.append({'user': user,'name': top_10['name'][index],'donated': top_10['10k'][index]})
+        
+    #     for index in top_5.index:
+    #         user = gk.get_member(top_5['_id'][index])
+    #         if not isinstance(user, discord.Member): continue
+    #         if beast_role not in user.roles:
+    #             await user.add_roles(beast_role)
+    #             embed = discord.Embed(
+    #                 title="You made it to top 5!",
+    #                 description=f"Congrats! Keep it up and grind your way to the top!",
+    #                 color=0x2b2d31
+    #             )
+    #             embed.add_field(name="You received:", value=f"`{beast_role.name}` role", inline=False)
+    #             embed.set_thumbnail(url="https://cdn.discordapp.com/emojis/830519601384128523.gif?v=1")
+    #             embed.set_footer(text=f"{gk.name}", icon_url=gk.icon.url)
+    #             try:
+    #                 await user.send(embed=embed, view=view)
+    #                 await log_channel.send(f'Added {beast_role.mention} to {user.mention}(`{user.id}`).', allowed_mentions=discord.AllowedMentions.none())
+    #             except:
+    #                 await log_channel.send(f'Added {beast_role.mention} to {user.mention}(`{user.id}`).\n> **Error:** Unable to send DM to user.', allowed_mentions=discord.AllowedMentions.none())
+    #             await asyncio.sleep(1)
+        
+    #     image = await self.create_lb(gk, leaderboard)
+        
 
-    # @grinder_reminder.before_loop
-    # async def before_grinder_reminder(self):
+    #     with BytesIO() as image_binary:
+    #         image.save(image_binary, 'PNG')
+    #         image_binary.seek(0)
+    #         await leaderboard_channel.send(file=discord.File(fp=image_binary, filename=f'{gk.name}_celeb_lb_card.png'))
+    #         image_binary.close()
+        
+    # @celeb_lb.before_loop
+    # async def before_celeb_lb(self):
     #     await self.bot.wait_until_ready()
-    
-    @tasks.loop(time=time)
-    async def celeb_lb(self):
-        gk = self.bot.get_guild(785839283847954433)
-        leaderboard_channel = gk.get_channel(1209873854369898506)
-        log_channel = gk.get_channel(1074276583940034581)
-        beast_role = gk.get_role(821052747268358184)
-        members = beast_role.members
-
-        if leaderboard_channel is None: 
-            return
-
-        data = await self.bot.donorBank.find_many_by_custom( {"event" : { "$elemMatch": { "name": '10k',"bal":{"$gt":0} }}})
-        df = pd.DataFrame(data)
-        df['10k']  = df.event.apply(lambda x: x[-1]['bal'])
-        df = df.drop(['bal','grinder_record','event'], axis=1)
-        df = df.sort_values(by='10k',ascending=False)
-        top_5 = df.head(5)
-        top_10 = df.head(10)
-
-        message = [message async for message in leaderboard_channel.history(limit=1)][0]
-        view = discord.ui.View()
-        view.add_item(discord.ui.Button(label="Check Leaderboard", style=discord.ButtonStyle.url, url=message.jump_url, emoji="<:tgk_link:1105189183523401828>"))
-                
-
-        for user in beast_role.members:
-            if user.id not in top_5['_id'].values:
-                await user.remove_roles(beast_role)
-                embed = discord.Embed(
-                    title="You dropped from top 5!",
-                    description= f"Your `{beast_role.name}` role has been removed.\n"
-                                f"Don't worry, you can always grind your way back up!",
-                    color=0x2b2d31
-                )
-                embed.set_thumbnail(url="https://cdn.discordapp.com/emojis/830548561329782815.gif?v=1")
-                embed.set_footer(text=f"{gk.name}", icon_url=gk.icon.url)
-                try:
-                    await user.send(embed=embed, view=view)
-                    await log_channel.send(f'Removed {beast_role.mention} from {user.mention}(`{user.id}`).', allowed_mentions=discord.AllowedMentions.none())
-                except:
-                    await log_channel.send(f'Removed {beast_role.mention} from {user.mention}(`{user.id}`).\n> **Error:** Unable to send DM to user.', allowed_mentions=discord.AllowedMentions.none())
-                await asyncio.sleep(1)
-
-        leaderboard = []
-        users = []
-        for index in top_10.index:
-            user = gk.get_member(top_10['_id'][index])
-            if not isinstance(user, discord.Member):
-                user = await self.bot.fetch_user(top_10['_id'][index])
-            users.append(user)
-            leaderboard.append({'user': user,'name': top_10['name'][index],'donated': top_10['10k'][index]})
-        
-        for index in top_5.index:
-            user = gk.get_member(top_5['_id'][index])
-            if not isinstance(user, discord.Member): continue
-            if beast_role not in user.roles:
-                await user.add_roles(beast_role)
-                embed = discord.Embed(
-                    title="You made it to top 5!",
-                    description=f"Congrats! Keep it up and grind your way to the top!",
-                    color=0x2b2d31
-                )
-                embed.add_field(name="You received:", value=f"`{beast_role.name}` role", inline=False)
-                embed.set_thumbnail(url="https://cdn.discordapp.com/emojis/830519601384128523.gif?v=1")
-                embed.set_footer(text=f"{gk.name}", icon_url=gk.icon.url)
-                try:
-                    await user.send(embed=embed, view=view)
-                    await log_channel.send(f'Added {beast_role.mention} to {user.mention}(`{user.id}`).', allowed_mentions=discord.AllowedMentions.none())
-                except:
-                    await log_channel.send(f'Added {beast_role.mention} to {user.mention}(`{user.id}`).\n> **Error:** Unable to send DM to user.', allowed_mentions=discord.AllowedMentions.none())
-                await asyncio.sleep(1)
-        
-        image = await self.create_lb(gk, leaderboard)
-        
-
-        with BytesIO() as image_binary:
-            image.save(image_binary, 'PNG')
-            image_binary.seek(0)
-            await leaderboard_channel.send(file=discord.File(fp=image_binary, filename=f'{gk.name}_celeb_lb_card.png'))
-            image_binary.close()
-        
-    @celeb_lb.before_loop
-    async def before_celeb_lb(self):
-        await self.bot.wait_until_ready()
-    
-    # async def round_pfp(self, pfp: discord.User | discord.Guild | discord.User):
-    #     if isinstance(pfp, discord.Member) or isinstance(pfp, discord.User):
-    #         if pfp.avatar is None:
-    #             pfp = pfp.default_avatar.with_format('png')
-    #         else:
-    #             pfp = pfp.avatar.with_format('png')
-    #     else:
-    #             pfp = pfp.icon.with_format('png')
-
-    #     pfp = BytesIO(await pfp.read())
-    #     pfp = Image.open(pfp)
-    #     pfp = pfp.resize((95, 95), Image.Resampling.LANCZOS).convert('RGBA')
-
-    #     bigzise = (pfp.size[0] * 3, pfp.size[1] * 3)
-    #     mask = Image.new('L', bigzise, 0)
-    #     draw = ImageDraw.Draw(mask)
-    #     draw.ellipse((0, 0) + bigzise, fill=255)
-    #     mask = mask.resize(pfp.size, Image.Resampling.LANCZOS)
-    #     mask = ImageChops.darker(mask, pfp.split()[-1])
-    #     pfp.putalpha(mask)
-
-    #     return pfp
-
-    # async def create_winner_card(self, guild: discord.Guild, event_name:str, data: list):
-    #     template = Image.open('./assets/leaderboard_template.png')
-    #     guild_icon = await self.round_pfp(guild)
-    #     template.paste(guild_icon, (15, 8), guild_icon)
-
-    #     draw = ImageDraw.Draw(template)
-    #     font = ImageFont.truetype('./assets/fonts/DejaVuSans.ttf', 24)
-    #     winner_name_font = ImageFont.truetype('./assets/fonts/Symbola.ttf', 28)
-    #     winner_exp_font = ImageFont.truetype('./assets/fonts/DejaVuSans.ttf', 20)
-
-    #     winne_postions = {
-    #         #postions of the winners, pfp and name and donation
-    #         0: {'icon': (58, 150), 'name': (176, 165), 'donated': (176, 202)},
-    #         1: {'icon': (58, 265), 'name': (176, 273), 'donated': (176, 309)},
-    #         2: {'icon': (58, 380), 'name': (176, 392), 'donated': (176, 428)}}
-
-    #     draw.text((135, 28), f"{event_name}", font=winner_name_font, fill="#9A9BD5") #guild name 
-    #     draw.text((135, 61), f"Gambler's Kingdom", font=font, fill="#9A9BD5") #event name
-
-    #     for i in data[:3]:
-    #         user = i['user']
-    #         index = data.index(i)
-    #         user_icon = await self.round_pfp(user)
-    #         template.paste(user_icon, winne_postions[index]['icon'], user_icon)
-    #         draw.text(winne_postions[index]['name'], f"👑 | {i['name']}", font=winner_name_font, fill="#9A9BD5")
-    #         draw.text(winne_postions[index]['donated'], f"⏣ {i['donated']:,}", font=winner_exp_font, fill="#A8A8C8")
-
-    #     return template
  
     async def round_pfp(self, pfp: discord.Member | discord.Guild | discord.User, size: tuple = (124, 124)):
         if isinstance(pfp, discord.Member) or isinstance(pfp, discord.User):
