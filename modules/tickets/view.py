@@ -11,7 +11,7 @@ from utils.views.modal import General_Modal
 from utils.views.buttons import Confirm
 from utils.paginator import Paginator
 from utils.embed import get_formated_embed, get_formated_field
-from .db import TicketConfig, Panel, Qestion, Ticket
+from .db import TicketConfig, Panel, Qestion, Ticket, Qestion
 from typing import Dict, List
 
 class TicketConfig_View(View):
@@ -256,8 +256,13 @@ class TicketPanel(View):
 
     @button(label="Questions", style=discord.ButtonStyle.gray, emoji='<:tgk_entries:1124995375548338176>')
     async def _questions(self, interaction: Interaction, button: Button):
+        embed = discord.Embed(description="<:tgk_description:1215649279360897125>  `Panel Questions`\n\n", color=interaction.client.default_color)
+        j = 1
+        for question in self.data['question'].values():
+            embed.description += f"**{j}. {question['question']}**\n"; j += 1
+        
         view = Panel_Question(data=self.data['question'], interaction=interaction)
-        await interaction.response.send_message(view=view, ephemeral=True)
+        await interaction.response.send_message(view=view, ephemeral=True, embed=embed)
 
         await view.wait()
         if view.value is False or view.value is None:
@@ -317,7 +322,7 @@ class TicketPanel(View):
         self.stop()
 
 class Panel_Question(View):
-    def __init__(self, data: dict, interaction: Interaction):
+    def __init__(self, data: Dict[str, Qestion], interaction: Interaction):
         self.data = data
         self.interaction = interaction
         self.value = False
@@ -325,6 +330,18 @@ class Panel_Question(View):
 
     async def on_timeout(self):
         await self.interaction.delete_original_response()
+    
+    async def on_error(self, interaction: Interaction[discord.Client], error: Exception) -> None:
+        try:
+            await interaction.response.send_message(embed=discord.Embed(description=f"```py\n{traceback.format_exception(type(error), error, error.__traceback__, 4)}\n```", color=discord.Color.red()), ephemeral=True)
+        except :
+            await interaction.followup.send(embed=discord.Embed(description=f"```py\n{traceback.format_exception(type(error), error, error.__traceback__, 4)}\n```", color=discord.Color.red()), ephemeral=True)
+    
+    async def update_embed(self):
+        embed = discord.Embed(description="", color=self.interaction.client.default_color); j = 0
+        embed.description += f"<:tgk_description:1215649279360897125>  `Panel Questions`\n\n"
+        for qestion in self.data.values():
+            embed.description += f"**{j}. {qestion['question']}**\n"; j += 1
 
     @button(label="Add Question", style=discord.ButtonStyle.gray, emoji='<:tgk_message_add:1073908702958059550>')
     async def _add(self, interaction: Interaction, button: Button):
@@ -927,7 +944,9 @@ class TicketControl(View):
             return
         
         TicketMessages = [message async for message in interaction.channel.history(limit=None)]
-        TranscriptFile = await chat_exporter.raw_export(channel=interaction.channel, messages=TicketMessages, tz_info="Asia/Kolkata", guild=interaction.guild, bot=interaction.client, support_dev=False)
+        TranscriptFile = await chat_exporter.raw_export(channel=interaction.channel, messages=TicketMessages, 
+                        tz_info="Asia/Kolkata", guild=interaction.guild, bot=interaction.client, support_dev=False,
+                        attachment_handler=interaction.client.tickets.AttachmentHandler)
         TranscriptFile = discord.File(io.BytesIO(TranscriptFile.encode()), filename=f"transcript-{ticket_owner.name}-{ticket_data['panel']}.html")
 
         TranscriptMessage = await TranscriptChannel.send(file=TranscriptFile, content=f"**Channel**: `{interaction.channel.name}`\n**Ticket Owner**: {ticket_owner.mention}\n**Panel**: {ticket_data['panel']}")
@@ -975,7 +994,6 @@ class Refresh_Trancsript(View):
         view = Refresh_Trancsript()
         view.add_item(discord.ui.Button(label="View Transcript", url=transcript_url, style=discord.ButtonStyle.url, emoji="<:tgk_link:1105189183523401828>"))
         await interaction.response.edit_message(view=view)
-
 
 class PartnerShipModal(discord.ui.Modal):
     def __init__(self, interaction: Interaction):

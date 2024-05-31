@@ -2,6 +2,7 @@ import discord
 from typing import TypedDict, List, Dict, Union
 from utils.db import Document
 from utils.embed import get_formated_embed, get_formated_field
+from chat_exporter import AttachmentToDiscordChannelHandler
 
 class Qestion(TypedDict):
     question: str
@@ -39,7 +40,6 @@ class Anonymous(TypedDict):
     status: bool
     thread_id: int
 
-
 class Ticket(TypedDict):
     _id: int
     user_id: int
@@ -54,6 +54,7 @@ class Ticket(TypedDict):
 class TicketDB:
     def __init__(self, bot):
         self.bot = bot
+        self.AttachmentHandler = None
         self.db = bot.mongo['Tickets']
         self.config = Document(self.db, 'Config', TicketConfig)
         self.ticket = Document(self.db, 'Tickets', Ticket)

@@ -5,9 +5,10 @@ from .db import TicketDB, TicketConfig, Panel
 from .db import Ticket as TicketData
 from .view import TicketConfig_View, Panels, TicketControl, Refresh_Trancsript
 from typing import List, Dict
+from chat_exporter import AttachmentToDiscordChannelHandler
 
 class Ticket(commands.GroupCog, name="ticket"):
-    def __init__(self, bot):
+    def __init__(self, bot: commands.bot):
         self.bot = bot
         self.backend = TicketDB(bot)
         self.bot.tickets = self.backend
@@ -30,6 +31,8 @@ class Ticket(commands.GroupCog, name="ticket"):
     
     @commands.Cog.listener()
     async def on_ready(self):
+        log = await self.bot.fetch_channel(1246067626783014992)
+        self.backend.AttachmentHandler = AttachmentToDiscordChannelHandler(channel=log)
         config = await self.backend.config.get_all()
         for guild in config:
             await self.RestoreViews(self.bot.get_guild(guild["_id"]))
