@@ -8,7 +8,7 @@ motor==3.1.1
 python-dotenv
 psutil
 Pillow==10.0.1
-chat_exporter @ git+https://github.com/Jay24004/DiscordChatExporterPy
+chat_exporter_tgk_fork @ git+https://github.com/Jay24004/DiscordChatExporterPy
 unidecode
 stringcase
 colour==0.1.5
