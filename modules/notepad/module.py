@@ -53,7 +53,7 @@ class UserCommands(commands.Cog):
         if not user_data:
             user_data = {'_id': interaction.user.id, 'user_id': interaction.user.id, 'notes': {}}
             await self.notepad.insert(user_data)
-        user_data['notes']['topic'] = {'topic': topic, 'content': content}
+        user_data['notes'][topic] = {'topic': topic, 'content': content}
         await self.notepad.update(interaction.user.id, user_data)
         await interaction.response.send_message(f"Successfully created a new notepad with topic {topic}", ephemeral=True)
 
