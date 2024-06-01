@@ -47,15 +47,24 @@ class UserCommands(commands.Cog):
     notepad = app_commands.Group(name="notepad", description="Notepad commands", allowed_installs=app_commands.AppInstallationType(guild=False, user=True), allowed_contexts=app_commands.AppCommandContext(dm_channel=True, guild=True, private_channel=True))
 
     @notepad.command(name="create", description="Create a new notepad")
-    @app_commands.describe(topic="Notepad", content="Create a new notepad")
-    async def create_notepad(self, interaction: Interaction, topic: str, content: str):
+    @app_commands.describe(topic="Notepad")
+    async def create_notepad(self, interaction: Interaction, topic: app_commands.Range[str, 1, 100]):
         user_data = await self.notepad.find(interaction.user.id)
         if not user_data:
             user_data = {'_id': interaction.user.id, 'user_id': interaction.user.id, 'notes': {}}
             await self.notepad.insert(user_data)
-        user_data['notes'][topic] = {'topic': topic, 'content': content}
+        
+        modal = General_Modal(title="Creating a new notepad", interaction=interaction)
+        modal.content = discord.ui.TextInput(label="Content", required=True, style=discord.TextStyle.paragraph, max_length=2000)
+        modal.add_item(modal.content)
+
+        await interaction.response.send_modal(modal)
+        await modal.wait()
+        if modal.value is not True: return
+        user_data['notes'][topic] = {"topic": topic, "content": modal.content.value}
+
         await self.notepad.update(interaction.user.id, user_data)
-        await interaction.response.send_message(f"Successfully created a new notepad with topic {topic}", ephemeral=True)
+        await modal.interaction.response.send_message(f"Succesfully created notepad with topic {topic}", ephemeral=True)
 
     @notepad.command(name="view", description="View your notepad")
     async def view_notepad(self, interaction: Interaction):
@@ -95,7 +104,7 @@ class UserCommands(commands.Cog):
         note = user_data['notes'][topic]
 
         view = General_Modal(title=f"Editing notepad with topic {topic}", interaction=interaction)
-        view.content = discord.ui.TextInput(label="New content", default=note['content'], required=True)
+        view.content = discord.ui.TextInput(label="New content", default=note['content'], required=True, style=discord.TextStyle.paragraph, max_length=2000)
         view.add_item(view.content)
 
         await interaction.response.send_modal(view)
@@ -119,6 +128,8 @@ class UserCommands(commands.Cog):
             return
         total = item_data['price'] * quantity
         await interaction.response.send_message(f"The total value of `{quantity}x` **{item}** is ⏣ `{total:,}`", ephemeral=True)
+
+    
 
 async def setup(bot):
     await bot.add_cog(UserCommands(bot))

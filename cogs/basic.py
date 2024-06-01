@@ -372,7 +372,7 @@ class Logging(commands.Cog):
         embed.timestamp = datetime.datetime.utcnow()
         
         if before.author.bot:
-            if before.interaction:
+            if before._interaction:
                 embed.description += f"\n**Command:** {before._interaction.name}"
                 embed.description += f"\n**Command User:** {before._interaction.user.mention}"
 
