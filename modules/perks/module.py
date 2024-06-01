@@ -981,6 +981,53 @@ class Perks(commands.Cog, name="perk", description="manage your custom perks"):
         await self.backend.update(perk, perk_data)
         await interaction.response.send_message(f"Successfully updated {member.mention}'s {perk} {type} freeze to {value}", ephemeral=True)
 
+    @admin.command(name="delete", description="Delete a custom perk")
+    @app_commands.default_permissions(administrator=True)
+    @app_commands.describe(member="The member you want to delete the perk from", perk="The perk you want to delete")
+    async def _delete(self, interaction: Interaction, member: discord.Member, perk: Perk_Type):
+        config: Config = await self.backend.get_data(self.backend.types.config, interaction.guild.id, interaction.user.id)
+        if config == None:
+            await interaction.response.send_message("You need to setup config first", ephemeral=True)
+            return
+        
+        user_roles = [role.id for role in interaction.user.roles]
+        if (set(user_roles) & set(config['admin_roles'])) == set():
+            await interaction.response.send_message("You need to have admin roles to use this command", ephemeral=True)
+            return
+        
+        perk_data = await self.backend.get_data(perk, interaction.guild.id, member.id)
+        if not perk_data:
+            await interaction.response.send_message("This user doesn't have this perk", ephemeral=True)
+            return
+        
+        await interaction.response.defer(thinking=True)
+
+        if isinstance(perk_data, Perk_Type.roles):
+            role = interaction.guild.get_role(perk_data['role_id'])
+            if role: await role.delete(reason=f"Perk Removed By {interaction.user.name}")
+        if isinstance(perk_data, ):
+            channel = interaction.guild.get_channel(perk_data['channel_id'])
+            if channel: await channel.delete(reason=f"Perk Removed By {interaction.user.name}")
+        if isinstance(perk_data, Perk_Type.reacts):
+            try: del self.backend.cach['react'][interaction.guild.id][member.id]
+            except: pass
+            try: self.backend.cach['react'][interaction.guild.id].pop(member.id)
+            except:pass
+        if isinstance(perk_data, Perk_Type.highlights):
+            try: del self.backend.cach['highlight'][interaction.guild.id][member.id]
+            except: pass
+            try: self.backend.cach['highlight'][interaction.guild.id].pop(member.id)
+            except:pass
+        if isinstance(perk_data, Perk_Type.emojis):
+            for emoji in perk_data['emojis']:
+                emoji = interaction.guild.get_emoji(emoji)
+                if emoji: await emoji.delete(reason=f"Perk Removed By {interaction.user.name}")
+            
+        await self.backend.delete(perk, perk_data)
+
+        await interaction.followup.send(f"Successfully removed {perk.name} from {member.mention}", ephemeral=False)
+
+
 
     @admin.command(name="sync-top-cat", description="sync top category with all channels")
     @app_commands.default_permissions(administrator=True)
