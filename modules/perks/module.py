@@ -1029,6 +1029,7 @@ class Perks(commands.Cog, name="perk", description="manage your custom perks"):
 
     @commands.Cog.listener()
     async def on_message(self, message: discord.Message):
+        if message.author.bot and message._interaction is None: return
         if message.guild is None: return
         if len(message.mentions) > 0:
             self.bot.dispatch('auto_react', message)
@@ -1038,7 +1039,7 @@ class Perks(commands.Cog, name="perk", description="manage your custom perks"):
         custom_channel: Custom_Channel  = await self.backend.channel.find({"channel_id": message.channel.id, "guild_id": message.guild.id})
         if not custom_channel: return
         if message.author.id != custom_channel['user_id']: 
-            if message.interaction.user.id != custom_channel['user_id']:
+            if message._interaction.user.id != custom_channel['user_id']:
                 return
         if 'last_message' not in custom_channel['activity'].keys():
             custom_channel['activity']['last_message'] = None
