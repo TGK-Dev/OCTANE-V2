@@ -61,11 +61,11 @@ class serversettings(commands.Cog):
         app_commands.Choice(name="Auctions", value="auctions"),
         app_commands.Choice(name="Blacklist", value="blacklist"),
         app_commands.Choice(name="Event Request System", value="events"),
-        app_commands.Choice(name="Giveaways", value="giveaways"),
+        #app_commands.Choice(name="Giveaways", value="giveaways"),
         app_commands.Choice(name="Join Verification", value="join_gate"),
         app_commands.Choice(name="Leveling System", value="leveling"),
         app_commands.Choice(name="Perks System", value="perks"),
-        app_commands.Choice(name="Payout System", value="payout"),
+        #app_commands.Choice(name="Payout System", value="payout"),
         app_commands.Choice(name="Staff Managment", value="staff"),
         app_commands.Choice(name="Tickets System", value="tickets"),        
     ]
