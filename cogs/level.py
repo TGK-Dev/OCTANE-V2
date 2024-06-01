@@ -1069,6 +1069,6 @@ class Level(commands.GroupCog):
 #             return
 
 
-# async def setup(bot):
-#     await bot.add_cog(Level(bot))
+async def setup(bot):
+    await bot.add_cog(Level(bot))
 #     await bot.add_cog(Giveaways(bot))
