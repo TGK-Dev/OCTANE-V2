@@ -206,148 +206,148 @@ class Payout(commands.GroupCog, name="payout", description="Payout commands"):
         else:
             await self.create_payout(auto_payout_data['event'], winner, self.bot.user, auto_payout_data['prize'], message)
 
-    @app_commands.command(name="set", description="configur the payout system settings")
-    @app_commands.describe(event="event name", message_id="winner message id", winners="winner of the event", quantity='A constant number like "123" or a shorthand like "5m"', item="what item did they win?")
-    @app_commands.autocomplete(event=event_auto_complete)
-    @app_commands.autocomplete(item=item_autocomplete)
-    async def payout_set(self, interaction: discord.Interaction, event: str, message_id: str, winners: app_commands.Transform[discord.Member, MultipleMember], quantity: app_commands.Transform[int, DMCConverter], item: str=None):
-        data = await self.bot.payout_config.find(interaction.guild.id)
-        if data is None: return await interaction.response.send_message("Payout system is not configured yet!", ephemeral=True)
-        user_roles = [role.id for role in interaction.user.roles]
-        if (set(user_roles) & set(data['event_manager_roles'])):
-            pass
-        else:
-            return await interaction.response.send_message("You are not allowed to use this command!", ephemeral=True)
+    # @app_commands.command(name="set", description="configur the payout system settings")
+    # @app_commands.describe(event="event name", message_id="winner message id", winners="winner of the event", quantity='A constant number like "123" or a shorthand like "5m"', item="what item did they win?")
+    # @app_commands.autocomplete(event=event_auto_complete)
+    # @app_commands.autocomplete(item=item_autocomplete)
+    # async def payout_set(self, interaction: discord.Interaction, event: str, message_id: str, winners: app_commands.Transform[discord.Member, MultipleMember], quantity: app_commands.Transform[int, DMCConverter], item: str=None):
+    #     data = await self.bot.payout_config.find(interaction.guild.id)
+    #     if data is None: return await interaction.response.send_message("Payout system is not configured yet!", ephemeral=True)
+    #     user_roles = [role.id for role in interaction.user.roles]
+    #     if (set(user_roles) & set(data['event_manager_roles'])):
+    #         pass
+    #     else:
+    #         return await interaction.response.send_message("You are not allowed to use this command!", ephemeral=True)
         
-        claim_time_seconds = data['default_claim_time'] if data['default_claim_time'] is not None else 86400
-        try:
-            event_message = await interaction.channel.fetch_message(message_id)
-        except discord.NotFound:
-            return await interaction.response.send_message("Error: Message not found! Please make sure you have the correct message id and in the same channel as this command.", ephemeral=True)
+    #     claim_time_seconds = data['default_claim_time'] if data['default_claim_time'] is not None else 86400
+    #     try:
+    #         event_message = await interaction.channel.fetch_message(message_id)
+    #     except discord.NotFound:
+    #         return await interaction.response.send_message("Error: Message not found! Please make sure you have the correct message id and in the same channel as this command.", ephemeral=True)
         
-        claim_channel = interaction.guild.get_channel(data['pending_channel'])
-        if claim_channel is None:
-            return await interaction.response.send_message("Error: Claim channel not found! Please make sure your configured claim channel is still valid.", ephemeral=True)
+    #     claim_channel = interaction.guild.get_channel(data['pending_channel'])
+    #     if claim_channel is None:
+    #         return await interaction.response.send_message("Error: Claim channel not found! Please make sure your configured claim channel is still valid.", ephemeral=True)
     
-        claim_time_timestamp = int(round((datetime.datetime.now() + datetime.timedelta(seconds=claim_time_seconds)).timestamp()))
+    #     claim_time_timestamp = int(round((datetime.datetime.now() + datetime.timedelta(seconds=claim_time_seconds)).timestamp()))
 
-        confrim_embed = discord.Embed(title="Payout confirmation", description="", color=interaction.client.default_color)
-        confrim_embed.description += f"**Event:** {event}\n"
-        confrim_embed.description += f"**Winners:** {', '.join([winner.mention for winner in winners])}\n"
-        if item:
-            item_data = await interaction.client.dank_items.find(item)
-            if not item_data:
-                return await interaction.response.send_message("Error: Item not found! Please make sure you have the correct item name.", ephemeral=True)
-            confrim_embed.description += f"**Prize:** {quantity} x {item}\n"
-        else:
-            confrim_embed.description += f"**Prize: ⏣ {quantity:,} Each**\n"
-            item_data = None
-        confrim_embed.description += f"**Message** {event_message.jump_url}\n"
-        confrim_embed.description += f"**Claim Time:** {humanfriendly.format_timespan(claim_time_seconds)}\n"
-        confrim_embed.add_field(name="Warning", value=f"**By clicking on the button below, you confirm that all information is correct and you will be responsible for any incorrect information provided.**")
+    #     confrim_embed = discord.Embed(title="Payout confirmation", description="", color=interaction.client.default_color)
+    #     confrim_embed.description += f"**Event:** {event}\n"
+    #     confrim_embed.description += f"**Winners:** {', '.join([winner.mention for winner in winners])}\n"
+    #     if item:
+    #         item_data = await interaction.client.dank_items.find(item)
+    #         if not item_data:
+    #             return await interaction.response.send_message("Error: Item not found! Please make sure you have the correct item name.", ephemeral=True)
+    #         confrim_embed.description += f"**Prize:** {quantity} x {item}\n"
+    #     else:
+    #         confrim_embed.description += f"**Prize: ⏣ {quantity:,} Each**\n"
+    #         item_data = None
+    #     confrim_embed.description += f"**Message** {event_message.jump_url}\n"
+    #     confrim_embed.description += f"**Claim Time:** {humanfriendly.format_timespan(claim_time_seconds)}\n"
+    #     confrim_embed.add_field(name="Warning", value=f"**By clicking on the button below, you confirm that all information is correct and you will be responsible for any incorrect information provided.**")
 
-        view = Confirm(interaction.user, 60)
-        view.children[0].label = "Confirm"
-        view.children[0].style = discord.ButtonStyle.green
-        view.children[1].label = "Cancel"
-        view.children[1].style = discord.ButtonStyle.red
+    #     view = Confirm(interaction.user, 60)
+    #     view.children[0].label = "Confirm"
+    #     view.children[0].style = discord.ButtonStyle.green
+    #     view.children[1].label = "Cancel"
+    #     view.children[1].style = discord.ButtonStyle.red
         
-        await interaction.response.send_message(embed=confrim_embed, view=view, ephemeral=True)
-        view.message = await interaction.original_response()
+    #     await interaction.response.send_message(embed=confrim_embed, view=view, ephemeral=True)
+    #     view.message = await interaction.original_response()
 
-        await view.wait()
+    #     await view.wait()
 
-        loading_embed = discord.Embed(description=f"<a:loading:998834454292344842> | Setting up the payout for total of `{len(winners)}` winners!")
-        loading_embed.set_footer(text="This might take a while depending on the number of winners.")
+    #     loading_embed = discord.Embed(description=f"<a:loading:998834454292344842> | Setting up the payout for total of `{len(winners)}` winners!")
+    #     loading_embed.set_footer(text="This might take a while depending on the number of winners.")
 
-        if view.value is None or view.value is False:
-            return await interaction.delete_original_response()
-        else:
-            await view.interaction.response.edit_message(view=None, embed=loading_embed)
+    #     if view.value is None or view.value is False:
+    #         return await interaction.delete_original_response()
+    #     else:
+    #         await view.interaction.response.edit_message(view=None, embed=loading_embed)
         
-        for winner in winners:
-            queue_data = await self.bot.payout_queue.find({'winner_message_id': event_message.id, 'winner': winner.id})
-            pending_data = await self.bot.payout_queue.find({'winner_message_id': event_message.id, 'winner': winner.id})
+    #     for winner in winners:
+    #         queue_data = await self.bot.payout_queue.find({'winner_message_id': event_message.id, 'winner': winner.id})
+    #         pending_data = await self.bot.payout_queue.find({'winner_message_id': event_message.id, 'winner': winner.id})
 
-            if queue_data != None or pending_data != None:
-                loading_embed.description += f"\n<:dynoError:1000351802702692442> | Failed to queue payout for {winner.mention} `({winner.global_name})` due to possible duplicate entry."
-                await interaction.edit_original_response(embed=loading_embed)
-                continue
-            embed = await self.create_pending_embed(event, winner, quantity, event_message.channel, event_message, claim_time_timestamp, interaction.user, item_data)
-            msg = await claim_channel.send(embed=embed, view=Payout_claim(), content=f"{winner.mention} Your prize has been queued for payout. Please claim it within <t:{claim_time_timestamp}:R> or it will rerolled.")
+    #         if queue_data != None or pending_data != None:
+    #             loading_embed.description += f"\n<:dynoError:1000351802702692442> | Failed to queue payout for {winner.mention} `({winner.global_name})` due to possible duplicate entry."
+    #             await interaction.edit_original_response(embed=loading_embed)
+    #             continue
+    #         embed = await self.create_pending_embed(event, winner, quantity, event_message.channel, event_message, claim_time_timestamp, interaction.user, item_data)
+    #         msg = await claim_channel.send(embed=embed, view=Payout_claim(), content=f"{winner.mention} Your prize has been queued for payout. Please claim it within <t:{claim_time_timestamp}:R> or it will rerolled.")
 
-            queue_data = {
-                '_id': msg.id,
-                'channel': event_message.channel.id,
-                'guild': event_message.guild.id,
-                'winner': winner.id,
-                'prize': quantity,
-                'item': item if item else None,
-                'event': event,
-                'claimed': False,
-                'set_by': interaction.user.id,
-                'winner_message_id': event_message.id,
-                'queued_at': datetime.datetime.now(), 
-                'claim_time': claim_time_seconds}
+    #         queue_data = {
+    #             '_id': msg.id,
+    #             'channel': event_message.channel.id,
+    #             'guild': event_message.guild.id,
+    #             'winner': winner.id,
+    #             'prize': quantity,
+    #             'item': item if item else None,
+    #             'event': event,
+    #             'claimed': False,
+    #             'set_by': interaction.user.id,
+    #             'winner_message_id': event_message.id,
+    #             'queued_at': datetime.datetime.now(), 
+    #             'claim_time': claim_time_seconds}
 
-            if winners.index(winner) == 0:
-                link_view = discord.ui.View()
-                link_view.add_item(discord.ui.Button(label="Queued Payouts", url=msg.jump_url, style=discord.ButtonStyle.link))
-                await interaction.edit_original_response(view=link_view)
+    #         if winners.index(winner) == 0:
+    #             link_view = discord.ui.View()
+    #             link_view.add_item(discord.ui.Button(label="Queued Payouts", url=msg.jump_url, style=discord.ButtonStyle.link))
+    #             await interaction.edit_original_response(view=link_view)
             
-            try:
-                await interaction.client.payout_queue.insert(queue_data)
-                loading_embed.description += f"\n<:octane_yes:1019957051721535618> | Payout Successfully queued for {winner.mention} `({winner.global_name})`"
-            except Exception as e:
-                loading_embed.description += f"\n<:dynoError:1000351802702692442> | Failed to queue payout for {winner.mention} `({winner.global_name})`"
+    #         try:
+    #             await interaction.client.payout_queue.insert(queue_data)
+    #             loading_embed.description += f"\n<:octane_yes:1019957051721535618> | Payout Successfully queued for {winner.mention} `({winner.global_name})`"
+    #         except Exception as e:
+    #             loading_embed.description += f"\n<:dynoError:1000351802702692442> | Failed to queue payout for {winner.mention} `({winner.global_name})`"
 
-            await interaction.edit_original_response(embed=loading_embed)
-            self.bot.dispatch("payout_queue", interaction.user, event, event_message, msg, winner, quantity)
-            await asyncio.sleep(0.75)
+    #         await interaction.edit_original_response(embed=loading_embed)
+    #         self.bot.dispatch("payout_queue", interaction.user, event, event_message, msg, winner, quantity)
+    #         await asyncio.sleep(0.75)
 
-        await asyncio.sleep(2)
+    #     await asyncio.sleep(2)
 
-        done_embed = discord.Embed(description=f"**Successfully queued payout for `{len(winners)}` winners!**", color=interaction.client.default_color)
-        done_embed.set_footer(text="You can view the queued payouts by clicking on the button below.")
-        await event_message.add_reaction("<a:loading:998834454292344842>")
-        await interaction.edit_original_response(embed=done_embed)
+    #     done_embed = discord.Embed(description=f"**Successfully queued payout for `{len(winners)}` winners!**", color=interaction.client.default_color)
+    #     done_embed.set_footer(text="You can view the queued payouts by clicking on the button below.")
+    #     await event_message.add_reaction("<a:loading:998834454292344842>")
+    #     await interaction.edit_original_response(embed=done_embed)
     
-    @app_commands.command(name="search", description="Search for a payout queue entry.")
-    @app_commands.describe(
-        message="The message ID of the event message.",
-    )
-    async def search(self, interaction: discord.Interaction, message: str):
-        config = await self.bot.payout_config.find(interaction.guild.id)
-        if config == None:
-            return await interaction.response.send_message("You need to setup the bot first!", ephemeral=True)
-        user_roles = [role.id for role in interaction.user.roles]
-        if (set(user_roles) & set(config['event_manager_roles'])):
-            pass
-        else:
-            return await interaction.response.send_message("You are not allowed to use this command!", ephemeral=True)
-        data = await interaction.client.payout_queue.find_many_by_custom({'winner_message_id': int(message)})
-        embed = discord.Embed(title="Claim Payout Search", color=interaction.client.default_color, description="")
-        queue_channel = interaction.guild.get_channel(config['pending_channel'])
-        if len(data) == 0:
-            embed.description += "\n\n**No pending payouts found for that message!**"
-        else:
-            i = 1
-            for entey in data:
-                embed.description += f"\n**{i}.** https://discord.com/channels/{interaction.guild.id}/{queue_channel.id}/{entey['_id']}"
-                i += 1
+    # @app_commands.command(name="search", description="Search for a payout queue entry.")
+    # @app_commands.describe(
+    #     message="The message ID of the event message.",
+    # )
+    # async def search(self, interaction: discord.Interaction, message: str):
+    #     config = await self.bot.payout_config.find(interaction.guild.id)
+    #     if config == None:
+    #         return await interaction.response.send_message("You need to setup the bot first!", ephemeral=True)
+    #     user_roles = [role.id for role in interaction.user.roles]
+    #     if (set(user_roles) & set(config['event_manager_roles'])):
+    #         pass
+    #     else:
+    #         return await interaction.response.send_message("You are not allowed to use this command!", ephemeral=True)
+    #     data = await interaction.client.payout_queue.find_many_by_custom({'winner_message_id': int(message)})
+    #     embed = discord.Embed(title="Claim Payout Search", color=interaction.client.default_color, description="")
+    #     queue_channel = interaction.guild.get_channel(config['pending_channel'])
+    #     if len(data) == 0:
+    #         embed.description += "\n\n**No pending payouts found for that message!**"
+    #     else:
+    #         i = 1
+    #         for entey in data:
+    #             embed.description += f"\n**{i}.** https://discord.com/channels/{interaction.guild.id}/{queue_channel.id}/{entey['_id']}"
+    #             i += 1
         
-        data = await interaction.client.payout_pending.find_many_by_custom({'winner_message_id': int(message)})
-        pending_embed = discord.Embed(title="Pending Payout Search", color=interaction.client.default_color, description="")
-        pendIn_channel = interaction.guild.get_channel(config['queue_channel'])
-        if len(data) == 0:
-            pending_embed.description += "\n\n**No pending payouts found for that message!**"
-        else:
-            i = 0
-            for entey in data:
-                pending_embed.description += f"\n**{i}.** https://discord.com/channels/{interaction.guild.id}/{pendIn_channel.id}/{entey['_id']}"
-                i += 1
-        await interaction.response.send_message(embed=embed, ephemeral=True)
-        await interaction.followup.send(embed=pending_embed, ephemeral=True)
+    #     data = await interaction.client.payout_pending.find_many_by_custom({'winner_message_id': int(message)})
+    #     pending_embed = discord.Embed(title="Pending Payout Search", color=interaction.client.default_color, description="")
+    #     pendIn_channel = interaction.guild.get_channel(config['queue_channel'])
+    #     if len(data) == 0:
+    #         pending_embed.description += "\n\n**No pending payouts found for that message!**"
+    #     else:
+    #         i = 0
+    #         for entey in data:
+    #             pending_embed.description += f"\n**{i}.** https://discord.com/channels/{interaction.guild.id}/{pendIn_channel.id}/{entey['_id']}"
+    #             i += 1
+    #     await interaction.response.send_message(embed=embed, ephemeral=True)
+    #     await interaction.followup.send(embed=pending_embed, ephemeral=True)
 
     @commands.Cog.listener()
     async def on_payout_queue(self, host: discord.Member,event: str, win_message: discord.Message, queue_message: discord.Message, winner: discord.Member, prize: str, item: str = None):
