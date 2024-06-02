@@ -42,7 +42,7 @@ class Dank_Events(commands.GroupCog, name="dank"):
         if message.channel.id == 1079670945171640360:
             return self.bot.dispatch("dank_price_update", message)
 
-        if message.author.id == 270904126974590976:
+        if message.author.id == 270904126974590976 and message._interaction is not None and message._interaction.name == "item":
             view  = discord.ui.View().from_message(message)
             if len(view.children) == 0: return
             view.children[0].label = 'Market View'
@@ -52,10 +52,12 @@ class Dank_Events(commands.GroupCog, name="dank"):
     
     @commands.Cog.listener()
     async def on_dank_price_update_from_cmd(self, message: discord.Message):
+        if message.author.id != 270904126974590976: return
         if len(message.embeds) == 0: return
 
         embed = message.embeds[0]
         item = embed.title
+        if len(embed.fields) == 0: return
         price = int(message.embeds[0].fields[0].value.split("\n")[0].split(" ")[-1].replace(",", ""))
 
         data = await self.bot.dank_items.find(item)
