@@ -53,7 +53,7 @@ class Perks(commands.Cog, name="perk", description="manage your custom perks"):
     async def before_refresh_cache(self):
         await self.bot.wait_until_ready()
 
-    @tasks.loop(time=time)
+    @tasks.loop(hours=6)
     async def profile_roles(self):
         role_data = await self.backend.roles.get_all()
         for data in role_data:
@@ -124,7 +124,7 @@ class Perks(commands.Cog, name="perk", description="manage your custom perks"):
             return
     
 
-    @tasks.loop(time=time)
+    @tasks.loop(hours=6)
     async def profile_channels(self):
         channel_data = await self.backend.channel.get_all()
         for data in channel_data:
@@ -189,7 +189,7 @@ class Perks(commands.Cog, name="perk", description="manage your custom perks"):
             await channel.delete()
         return
     
-    @tasks.loop(time=time)
+    @tasks.loop(hours=6)
     async def profile_reacts(self):
         react_data = await self.backend.react.get_all()
         for data in react_data:
@@ -199,9 +199,8 @@ class Perks(commands.Cog, name="perk", description="manage your custom perks"):
     async def before_profile_reacts(self):
         await self.bot.wait_until_ready()
 
-    @tasks.loop(time=time)
+    @tasks.loop(hours=6)
     async def check_channel_activity(self):
-        # print("Checking channel activity")
         config = await self.backend.config.get_all()
         for data in config:
             guild: discord.Guild = self.bot.get_guild(data['_id'])
@@ -209,15 +208,19 @@ class Perks(commands.Cog, name="perk", description="manage your custom perks"):
             channels: List[Custom_Channel] = await self.backend.channel.find_many_by_custom({'guild_id': guild.id})
             for channel in channels:
                 await asyncio.sleep(1)
+                if channel['activity'] is None or channel['activity']['last_message'] is None: 
+                    chl = guild.get_channel(channel['channel_id'])
+                    channel['activity'] = {'messages': 0, 'last_message': datetime.datetime.utcnow(), 'previous_cat': chl.category.id}
+                    await self.backend.update(self.backend.types.channels, channel)
+                    continue
                 # make an if state to check if 7 days has passed since the last message
                 if datetime.datetime.utcnow() - channel['activity']['last_message'] >= datetime.timedelta(days=7): 
                     channel_owner = guild.get_member(channel['user_id'])
                     chanel = guild.get_channel(channel['channel_id'])
                     log_channel = guild.get_channel(1190668526361518120)
-                    # await log_channel.send(f"**User**: {channel['user_id']} is going to lose his custom channel {chanel.mention} because it has been inactive for more than 7 days", allowed_mentions=discord.AllowedMentions.none())
+                    await log_channel.send(f"**User**: {channel['user_id']} is going to lose his custom channel {chanel.mention} because it has been inactive for more than 7 days", allowed_mentions=discord.AllowedMentions.none())
                     try:
                         await channel_owner.send(embed=discord.Embed(description=f"Your custom channel {chanel.name} in {guild.name} has been deleted because it has been inactive for more than 7 days", color=self.bot.default_color))
-
                     except:
                         pass
                     await self.backend.delete(self.backend.types.channels, channel)
@@ -930,7 +933,6 @@ class Perks(commands.Cog, name="perk", description="manage your custom perks"):
         
         await interaction.followup.send(f"All existing perks of {member.mention} has been cleared successfully", ephemeral=True)
 
-    
     @admin.command(name="unblock", description="unblock a user from using custom perks")
     @app_commands.default_permissions(administrator=True)
     @app_commands.describe(member="The member you want to unblock")
@@ -1027,8 +1029,6 @@ class Perks(commands.Cog, name="perk", description="manage your custom perks"):
 
         await interaction.followup.send(f"Successfully removed {perk.name} from {member.mention}", ephemeral=False)
 
-
-
     @admin.command(name="sync-top-cat", description="sync top category with all channels")
     @app_commands.default_permissions(administrator=True)
     async def _sync_top_cat(self, interaction: Interaction):
@@ -1086,7 +1086,7 @@ class Perks(commands.Cog, name="perk", description="manage your custom perks"):
         custom_channel: Custom_Channel  = await self.backend.channel.find({"channel_id": message.channel.id, "guild_id": message.guild.id})
         if not custom_channel: return
         if message.author.id != custom_channel['user_id']: 
-            if message._interaction.user.id != custom_channel['user_id']:
+            if message._interaction is not None and message._interaction.user.id != custom_channel['user_id']:
                 return
         if 'last_message' not in custom_channel['activity'].keys():
             custom_channel['activity']['last_message'] = None
