@@ -338,7 +338,7 @@ class Basic(commands.Cog):
     async def _cook(self, ctx: commands.Context, frist: str, second: str):
         if (
             not ctx.author.guild_permissions.administrator
-            and ctx.channel.id != 785848096809549856
+            and ctx.channel.id != 785849567518130176
         ):
             return await ctx.reply(
                 "You can't use this command here use it in <#785849567518130176>",
