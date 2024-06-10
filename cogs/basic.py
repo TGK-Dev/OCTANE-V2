@@ -5,6 +5,7 @@ import asyncio
 import datetime
 import psutil
 import unicodedata
+import random
 from typing import Literal
 from utils.db import Document
 from utils.paginator import Paginator
@@ -335,7 +336,9 @@ class Basic(commands.Cog):
             await interaction.response.send_message(embed=embed)
 
     @commands.command(name="cook", description="cook new emoji", aliases=["c"])
-    async def _cook(self, ctx: commands.Context, frist: str, second: str):
+    async def _cook(
+        self, ctx: commands.Context, frist: str, second: str, third: str = None
+    ):
         if (
             not ctx.author.guild_permissions.administrator
             and ctx.channel.id != 785849567518130176
@@ -351,7 +354,14 @@ class Basic(commands.Cog):
             c = "\\`" if c == "`" else c
             return f"{digit}"
 
-        url = f"https://emojik.vercel.app/s/{to_string(frist)}_{to_string(second)}?size=200"
+        domains = [
+            "emk.vercel.app",
+            "emjk.vercel.app",
+            "emojk.vercel.app",
+            "emojik.vercel.app",
+            "emoji-kitchen.vercel.app",
+        ]
+        url = f"https://{random.choice(domains)}/s/{to_string(frist)}_{to_string(second)}?size=200"
 
         embed = discord.Embed(color=self.bot.default_color)
         embed.set_image(url=url)
