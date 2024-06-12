@@ -5,6 +5,7 @@ from typing import List, Dict, Optional, Union, Any, TypeVar, Type
 from motor.motor_asyncio import AsyncIOMotorDatabase, AsyncIOMotorCollection
 from pymongo.results import DeleteResult
 from pymongo.operations import UpdateOne
+
 T = TypeVar("T")
 
 
@@ -203,7 +204,7 @@ class Document:
         data: List[Dict]
             The data to update with
         """
-        bulk_operations = [UpdateOne({'_id': d['_id']}, {'$set': d}) for d in data]
+        bulk_operations = [UpdateOne({"_id": d["_id"]}, {"$set": d}) for d in data]
         await self._document.bulk_write(bulk_operations)
 
     @return_converted

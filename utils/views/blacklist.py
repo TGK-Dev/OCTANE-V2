@@ -1,30 +1,44 @@
 import discord
 import datetime
 from discord import Interaction, SelectOption
-from discord.ui import View, Button, button, TextInput, Item, RoleSelect
+from discord.ui import View, Button, button, RoleSelect
 from .selects import Role_select, Select_General, Channel_select
 from .buttons import Confirm
 from .modal import General_Modal
 
+
 class Blacklist_Config(View):
-    def __init__(self, member: discord.Member, data: dict, message: discord.Message=None):
+    def __init__(
+        self, member: discord.Member, data: dict, message: discord.Message = None
+    ):
         self.member = member
         self.data = data
         self.message = message
         super().__init__(timeout=120)
-    
+
     async def update_message(self, interaction: Interaction, blacklist_data: dict):
-        embed = discord.Embed(title=f"{interaction.guild.name} Blacklist Config", color=interaction.client.default_color, description="")
+        embed = discord.Embed(
+            title=f"{interaction.guild.name} Blacklist Config",
+            color=interaction.client.default_color,
+            description="",
+        )
         embed.description += f"**Mod Roles:** {', '.join([f'<@&{role}>' for role in blacklist_data['mod_roles']]) if blacklist_data['mod_roles'] else '`None`'}\n"
         embed.description += f"**Logging Channel:** {interaction.guild.get_channel(blacklist_data['log_channel']).mention if blacklist_data['log_channel'] else '`None`'}\n"
-        embed.description += f"**Profiles:** {', '.join([f'`{position.capitalize()}`' for position in blacklist_data['profiles'].keys()]) if blacklist_data['profiles'] else '`None`'}\n"        
+        embed.description += f"**Profiles:** {', '.join([f'`{position.capitalize()}`' for position in blacklist_data['profiles'].keys()]) if blacklist_data['profiles'] else '`None`'}\n"
         await self.message.edit(embed=embed, view=self)
-    
-    @button(label="Mod Roles", style=discord.ButtonStyle.gray, custom_id="mod_roles", emoji="<:tgk_staff_manager:1073588769560744078>")
+
+    @button(
+        label="Mod Roles",
+        style=discord.ButtonStyle.gray,
+        custom_id="mod_roles",
+        emoji="<:tgk_staff_manager:1073588769560744078>",
+    )
     async def mod_roles(self, interaction: Interaction, button: Button):
         view = View()
         view.value = None
-        view.select = Role_select("Select Role you want to add or remove", min_values=1, max_values=10)
+        view.select = Role_select(
+            "Select Role you want to add or remove", min_values=1, max_values=10
+        )
         view.add_item(view.select)
 
         await interaction.response.send_message(view=view, ephemeral=True)
@@ -39,18 +53,32 @@ class Blacklist_Config(View):
                 else:
                     add_roles += f"{role.mention}, "
                     self.data["mod_roles"].append(role.id)
-            await interaction.client.blacklist.update_config(interaction.guild_id, self.data)
-            await view.select.interaction.response.edit_message(content=f"Added: {add_roles}\nRemoved: {remove_roles}", view=None)
+            await interaction.client.blacklist.update_config(
+                interaction.guild_id, self.data
+            )
+            await view.select.interaction.response.edit_message(
+                content=f"Added: {add_roles}\nRemoved: {remove_roles}", view=None
+            )
         else:
             await interaction.delete_original_message()
-        
+
         await self.update_message(interaction, self.data)
-    
-    @button(label="Logging Channel", style=discord.ButtonStyle.gray, custom_id="log_channel", emoji="<:tgk_channel:1073908465405268029>")
+
+    @button(
+        label="Logging Channel",
+        style=discord.ButtonStyle.gray,
+        custom_id="log_channel",
+        emoji="<:tgk_channel:1073908465405268029>",
+    )
     async def log_channel(self, interaction: Interaction, button: Button):
         view = View()
         view.value = None
-        view.select = Channel_select("Select Channel you want to set as logging channel", max_values=1, min_values=1, channel_types=[discord.ChannelType.text])
+        view.select = Channel_select(
+            "Select Channel you want to set as logging channel",
+            max_values=1,
+            min_values=1,
+            channel_types=[discord.ChannelType.text],
+        )
         view.add_item(view.select)
 
         await interaction.response.send_message(view=view, ephemeral=True)
@@ -58,23 +86,45 @@ class Blacklist_Config(View):
         if view.value:
             if view.select.values[0].id == self.data["log_channel"]:
                 self.data["log_channel"] = None
-                await interaction.client.blacklist.update_config(interaction.guild_id, self.data)
-                await view.select.interaction.response.edit_message(content=f"Removed {view.select.values[0].mention} as logging channel", view=None)
+                await interaction.client.blacklist.update_config(
+                    interaction.guild_id, self.data
+                )
+                await view.select.interaction.response.edit_message(
+                    content=f"Removed {view.select.values[0].mention} as logging channel",
+                    view=None,
+                )
                 await self.update_message(interaction, self.data)
                 return
             self.data["log_channel"] = view.select.values[0].id
-            await interaction.client.blacklist.update_config(interaction.guild_id, self.data)
-            await view.select.interaction.response.edit_message(content=f"Set {view.select.values[0].mention} as logging channel", view=None)
+            await interaction.client.blacklist.update_config(
+                interaction.guild_id, self.data
+            )
+            await view.select.interaction.response.edit_message(
+                content=f"Set {view.select.values[0].mention} as logging channel",
+                view=None,
+            )
             await self.update_message(interaction, self.data)
         else:
             await interaction.delete_original_message()
-    
-    @button(label="Profiles", style=discord.ButtonStyle.gray, custom_id="profiles", emoji="<:tgk_staff_post:1074264610015826030>")
+
+    @button(
+        label="Profiles",
+        style=discord.ButtonStyle.gray,
+        custom_id="profiles",
+        emoji="<:tgk_staff_post:1074264610015826030>",
+    )
     async def profiles(self, interaction: Interaction, button: Button):
         view = View()
         view.value = False
-        options = [SelectOption(label="Add Profile", value="add"), SelectOption(label="Remove Profile", value="remove")]
-        view.select = Select_General(placeholder="Please select action you want to perform", options=options, max_values=1)
+        options = [
+            SelectOption(label="Add Profile", value="add"),
+            SelectOption(label="Remove Profile", value="remove"),
+        ]
+        view.select = Select_General(
+            placeholder="Please select action you want to perform",
+            options=options,
+            max_values=1,
+        )
         view.add_item(view.select)
         await interaction.response.send_message(view=view, ephemeral=True)
         await view.wait()
@@ -82,8 +132,17 @@ class Blacklist_Config(View):
         if view.value:
             match view.select.values[0]:
                 case "add":
-                    modal = General_Modal(title="New Profile Creating form", interaction=view.select.interaction)
-                    modal.question = discord.ui.TextInput(label="Profile Name", placeholder="Please enter profile name", min_length=3, max_length=20, style=discord.TextStyle.short)
+                    modal = General_Modal(
+                        title="New Profile Creating form",
+                        interaction=view.select.interaction,
+                    )
+                    modal.question = discord.ui.TextInput(
+                        label="Profile Name",
+                        placeholder="Please enter profile name",
+                        min_length=3,
+                        max_length=20,
+                        style=discord.TextStyle.short,
+                    )
                     modal.add_item(modal.question)
                     await view.select.interaction.response.send_modal(modal)
 
@@ -95,25 +154,35 @@ class Blacklist_Config(View):
                         await view.wait()
                         profile_data = view.data
                         profile_data["_id"] = modal.question.value
-                        embed = discord.Embed(description="", color=modal.interaction.client.default_color)
-                        embed.description += f"**Profile Name:** {profile_data['_id']}\n"
+                        embed = discord.Embed(
+                            description="", color=modal.interaction.client.default_color
+                        )
+                        embed.description += (
+                            f"**Profile Name:** {profile_data['_id']}\n"
+                        )
                         embed.description += f"**Create By:** {modal.interaction.guild.get_member(profile_data['create_by']).mention if modal.interaction.guild.get_member(profile_data['create_by']) else '`Unknown`'}\n"
                         embed.description += f"**Create At:** {profile_data['create_at'].strftime('%d %B %Y, %H:%M:%S')}\n"
                         embed.description += f"**Roles Add:** {', '.join([modal.interaction.guild.get_role(role).mention for role in profile_data['role_add']]) if profile_data['role_add'] else '`None`'}\n"
                         embed.description += f"**Roles Remove:** {', '.join([modal.interaction.guild.get_role(role).mention for role in profile_data['role_remove']]) if profile_data['role_remove'] else '`None`'}\n"
-                        
-                        confim = Confirm(interaction.user, 60)
-                        confim.message= await interaction.original_response()
-                        confim.children[0].label = "Save"
-                        confim.children[1].label = "Cancel"         
 
-                        await view.interaction.response.edit_message(embed=embed, view=confim)
+                        confim = Confirm(interaction.user, 60)
+                        confim.message = await interaction.original_response()
+                        confim.children[0].label = "Save"
+                        confim.children[1].label = "Cancel"
+
+                        await view.interaction.response.edit_message(
+                            embed=embed, view=confim
+                        )
                         await confim.wait()
 
                         if confim.value:
                             self.data["profiles"][profile_data["_id"]] = profile_data
-                            await interaction.client.blacklist.update_config(interaction.guild_id, self.data)
-                            await confim.interaction.response.edit_message(content="Profile has been added", view=None)
+                            await interaction.client.blacklist.update_config(
+                                interaction.guild_id, self.data
+                            )
+                            await confim.interaction.response.edit_message(
+                                content="Profile has been added", view=None
+                            )
                             await self.update_message(interaction, self.data)
                         else:
                             await confim.interaction.delete_original_message()
@@ -122,16 +191,28 @@ class Blacklist_Config(View):
                 case "remove":
                     remove = View()
                     remove.value = None
-                    options = [SelectOption(label=profile, value=profile) for profile in self.data["profiles"].keys()]
-                    remove.select = Select_General(placeholder="Please select profile you want to remove", options=options, max_values=1)
+                    options = [
+                        SelectOption(label=profile, value=profile)
+                        for profile in self.data["profiles"].keys()
+                    ]
+                    remove.select = Select_General(
+                        placeholder="Please select profile you want to remove",
+                        options=options,
+                        max_values=1,
+                    )
                     remove.add_item(remove.select)
                     await view.select.interaction.response.edit_message(view=remove)
                     await remove.wait()
 
                     if remove.value:
                         del self.data["profiles"][remove.select.values[0]]
-                        await interaction.client.blacklist.update_config(interaction.guild_id, self.data)
-                        await remove.select.interaction.response.edit_message(content=f"Removed {remove.select.values[0]} profile", view=None)
+                        await interaction.client.blacklist.update_config(
+                            interaction.guild_id, self.data
+                        )
+                        await remove.select.interaction.response.edit_message(
+                            content=f"Removed {remove.select.values[0]} profile",
+                            view=None,
+                        )
                         await self.update_message(interaction, self.data)
                     else:
                         await view.select.interaction.delete_original_message()
@@ -152,32 +233,54 @@ class Profile_create(View):
         self.value = None
         self.interaction = None
         super().__init__(timeout=120)
-    
-    @discord.ui.select(placeholder="Please select roles you want to add", min_values=1, max_values=10, cls=RoleSelect, custom_id="role_add")
+
+    @discord.ui.select(
+        placeholder="Please select roles you want to add",
+        min_values=1,
+        max_values=10,
+        cls=RoleSelect,
+        custom_id="role_add",
+    )
     async def role_add(self, interaction: Interaction, select: Role_select):
         self.data["role_add"] = [role.id for role in select.values]
         select.disabled = True
         await interaction.response.edit_message(view=self)
-    
-    @discord.ui.select(placeholder="Please select roles you want to remove", min_values=1, max_values=10, cls=RoleSelect, custom_id="role_remove")
+
+    @discord.ui.select(
+        placeholder="Please select roles you want to remove",
+        min_values=1,
+        max_values=10,
+        cls=RoleSelect,
+        custom_id="role_remove",
+    )
     async def role_remove(self, interaction: Interaction, select: Role_select):
         self.data["role_remove"] = [role.id for role in select.values]
         select.disabled = True
         await interaction.response.edit_message(view=self)
-    
-    @discord.ui.select(placeholder="Select Profile Type", custom_id="type", options=[SelectOption(label="Strike", value="strike"), SelectOption(label="Normal ", value="normal")], max_values=1, min_values=1)
+
+    @discord.ui.select(
+        placeholder="Select Profile Type",
+        custom_id="type",
+        options=[
+            SelectOption(label="Strike", value="strike"),
+            SelectOption(label="Normal ", value="normal"),
+        ],
+        max_values=1,
+        min_values=1,
+    )
     async def type(self, interaction: Interaction, select: discord.ui.Select):
         self.data["type"] = select.values[0]
         select.disabled = True
         if select.values[0] == "strike":
-            for chl in self.children: 
-                if chl.custom_id in ['role_add', 'role_remove']: self.remove_item(chl)
+            for chl in self.children:
+                if chl.custom_id in ["role_add", "role_remove"]:
+                    self.remove_item(chl)
 
-            self.add_item(Strik_limit())    
+            self.add_item(Strik_limit())
             self.add_item(Strik_expire())
             self.children[-1].disabled = False
             self.children[-2].disabled = False
-            
+
             select.options[1].default = True
         else:
             select.options[0].default = True
@@ -190,32 +293,45 @@ class Profile_create(View):
         self.interaction = interaction
         self.stop()
 
+
 class Strik_limit(discord.ui.Select):
     def __init__(self):
-        super().__init__(placeholder="Select Strike Limit", custom_id="strike_limit", options=[SelectOption(label=str(i), value=str(i)) for i in range(1, 11)], disabled=True)
-    
+        super().__init__(
+            placeholder="Select Strike Limit",
+            custom_id="strike_limit",
+            options=[SelectOption(label=str(i), value=str(i)) for i in range(1, 11)],
+            disabled=True,
+        )
+
     async def callback(self, interaction: Interaction):
         self.view.data["strike_limit"] = int(self.values[0])
         self.disabled = True
         await interaction.response.edit_message(view=self.view)
 
+
 class Strik_expire(discord.ui.Select):
     def __init__(self):
-        super().__init__(placeholder="Select Strike Expire duration", custom_id="strike_expire",
-                          options=[
-                            SelectOption(label="1 Day", value=f"{86400}"),
-                             SelectOption(label="2 Days", value=f"{86400*2}"),
-                             SelectOption(label="3 Days", value=f"{86400*3}"),
-                             SelectOption(label="4 Days", value=f"{86400*4}"),
-                             SelectOption(label="5 Days", value=f"{86400*5}"),
-                             SelectOption(label="6 Days", value=f"{86400*6}"),
-                             SelectOption(label="7 Days", value=f"{86400*7}"),
-                             SelectOption(label="8 Days", value=f"{86400*8}"),
-                             SelectOption(label="9 Days", value=f"{86400*9}"),
-                             SelectOption(label="10 Days", value=f"{86400*10}"),
-                          ], max_values=1, min_values=1, disabled=True)
+        super().__init__(
+            placeholder="Select Strike Expire duration",
+            custom_id="strike_expire",
+            options=[
+                SelectOption(label="1 Day", value=f"{86400}"),
+                SelectOption(label="2 Days", value=f"{86400*2}"),
+                SelectOption(label="3 Days", value=f"{86400*3}"),
+                SelectOption(label="4 Days", value=f"{86400*4}"),
+                SelectOption(label="5 Days", value=f"{86400*5}"),
+                SelectOption(label="6 Days", value=f"{86400*6}"),
+                SelectOption(label="7 Days", value=f"{86400*7}"),
+                SelectOption(label="8 Days", value=f"{86400*8}"),
+                SelectOption(label="9 Days", value=f"{86400*9}"),
+                SelectOption(label="10 Days", value=f"{86400*10}"),
+            ],
+            max_values=1,
+            min_values=1,
+            disabled=True,
+        )
 
     async def callback(self, interaction: Interaction):
         self.view.data["strike_expire"] = int(self.values[0])
         self.disabled = True
-        await interaction.response.edit_message(view=self.view)        
+        await interaction.response.edit_message(view=self.view)

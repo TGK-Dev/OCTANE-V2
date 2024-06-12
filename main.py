@@ -48,15 +48,15 @@ class Botbase(commands.Bot):
         if interaction.user.id in self.bot_blacklist_cache.keys():
             data = self.blacklist_cache[interaction.user.id]
             await interaction.response.defer(ephemeral=True)
-            embed = discord.Embed(description=f"", color=self.default_color)
+            embed = discord.Embed(description="", color=self.default_color)
             embed.set_author(name="Blacklist Manager",
                              icon_url="https://cdn.discordapp.com/emojis/867400863822512148.webp?size=96&quality"
                                       "=lossless")
             embed.description += (f"### Hello {interaction.user.mention}\nUnfortunately, due to {data['reason']}, you "
                                   f"have been blacklisted from using {interaction.client.user.mention} and will no "
                                   f"longer be able to access any commands. \n")
-            embed.description += (f"If you have any questions or concerns about why you are blacklisted or would like "
-                                  f"to appeal, please raise a ticket in the support channel.\n")
+            embed.description += ("If you have any questions or concerns about why you are blacklisted or would like "
+                                  "to appeal, please raise a ticket in the support channel.\n")
             embed.timestamp = datetime.datetime.utcnow()
             await interaction.followup.send(embed=embed)
             return False
@@ -68,7 +68,7 @@ class Botbase(commands.Bot):
                 await self.load_extension(f"cogs.{file[:-3]}")
         
         for folder in os.listdir("./modules"):
-            if folder == "__pycache__" or folder in ["Security", "Channels"]:
+            if folder == "__pycache__" or folder in ["Security", "Channels", "game"]:
                 continue
             for file in os.listdir(f"./modules/{folder}"):
                 if file == "module.py":
@@ -137,7 +137,7 @@ async def on_app_command_error(interaction: discord.Interaction, error: Exceptio
             f"Please wait {error.retry_after:.2f} seconds before trying again.", ephemeral=True, delete_after=10)
     if isinstance(error, Blocked):
         return await interaction.response.send_message(
-            f"Sorry, you have been blocked from using custom perks commands.", ephemeral=True, delete_after=10)
+            "Sorry, you have been blocked from using custom perks commands.", ephemeral=True, delete_after=10)
     if isinstance(error, app_commands.errors.CheckFailure):
         return 
     else:

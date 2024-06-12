@@ -12,42 +12,61 @@ class TimeConverter(commands.Converter):
         time = 0
         for v, k in matches:
             try:
-                time += time_dict[k]*float(v)
+                time += time_dict[k] * float(v)
             except KeyError:
-                raise commands.BadArgument("{} is an invalid time-key! h/m/s/d are valid!".format(k))
+                raise commands.BadArgument(
+                    "{} is an invalid time-key! h/m/s/d are valid!".format(k)
+                )
             except ValueError:
                 raise commands.BadArgument("{} is not a number!".format(v))
         return time
-
 
 
 class DMCConverter_Ctx(commands.Converter):
     async def convert(self, ctx, argument: str):
         try:
             value = argument.lower()
-            value = value.replace("⏣", "").replace(",", "").replace("k", "e3").replace("m", "e6").replace(" mil", "e6").replace("mil", "e6").replace("b", "e9")
-            if 'e' not in value:
+            value = (
+                value.replace("⏣", "")
+                .replace(",", "")
+                .replace("k", "e3")
+                .replace("m", "e6")
+                .replace(" mil", "e6")
+                .replace("mil", "e6")
+                .replace("b", "e9")
+            )
+            if "e" not in value:
                 return int(value)
             value = value.split("e")
 
-            if len(value) > 2: raise Exception(f"Invalid number format try using 1e3 or 1k, provided: {argument}")
+            if len(value) > 2:
+                raise Exception(
+                    f"Invalid number format try using 1e3 or 1k, provided: {argument}"
+                )
 
             price = value[0]
             multi = int(value[1])
-            price = float(price) * (10 ** multi)
+            price = float(price) * (10**multi)
 
             return int(price)
-        except Exception as e:
-            return Exception(f"Invalid number format try using 1e3 or 1k, provided: {argument}")
+        except Exception:
+            return Exception(
+                f"Invalid number format try using 1e3 or 1k, provided: {argument}"
+            )
 
 
 def millify(n):
     n = float(n)
-    millnames = ['',' K',' Mil',' Bil',' T']
-    millidx = max(0,min(len(millnames)-1,
-                        int(math.floor(0 if n == 0 else math.log10(abs(n))/3))))
+    millnames = ["", " K", " Mil", " Bil", " T"]
+    millidx = max(
+        0,
+        min(
+            len(millnames) - 1, int(math.floor(0 if n == 0 else math.log10(abs(n)) / 3))
+        ),
+    )
 
-    return '{:.0f}{}'.format(n / 10**(3 * millidx), millnames[millidx])
+    return "{:.0f}{}".format(n / 10 ** (3 * millidx), millnames[millidx])
+
 
 def clean_code(content):
     if content.startswith("```") and content.endswith("```"):
@@ -55,28 +74,30 @@ def clean_code(content):
     else:
         return content
 
-#create an function to convert a dict to a tree and return it as string and use characters to display the tree, where  is a branch, ├─ is a branch with a child, └─ is a branch with a child and ─ is a child
+
+# create an function to convert a dict to a tree and return it as string and use characters to display the tree, where  is a branch, ├─ is a branch with a child, └─ is a branch with a child and ─ is a child
 def dict_to_tree(data, indent=0):
     tree = ""
     for i, (key, value) in enumerate(data.items()):
-        tree += "\n" + "│  "*indent
+        tree += "\n" + "│  " * indent
         if isinstance(value, (dict, list)):
             tree += f"├─{key}:"
             if isinstance(value, dict):
-                tree += dict_to_tree(value, indent=indent+1)
+                tree += dict_to_tree(value, indent=indent + 1)
             elif isinstance(value, list):
                 for index, item in enumerate(value):
-                    tree += "\n" + "│  "*(indent+1) + f"├─{key}[{index}]:"
+                    tree += "\n" + "│  " * (indent + 1) + f"├─{key}[{index}]:"
                     if isinstance(item, (dict, list)):
-                        tree += dict_to_tree(item, indent=indent+2)
+                        tree += dict_to_tree(item, indent=indent + 2)
                     else:
-                        tree += "\n" + "│  "*(indent+2) + str(item)
+                        tree += "\n" + "│  " * (indent + 2) + str(item)
         else:
-            if i == len(data)-1:
+            if i == len(data) - 1:
                 tree += f"└─{key}: {value}"
             else:
                 tree += f"├─{key}: {value}"
     return tree
+
 
 def get_bar(per: int):
     emojis = {
@@ -93,8 +114,13 @@ def get_bar(per: int):
     if per == 0:
         bar = emojis["start_empty"] + (emojis["mid_empty"] * 8) + emojis["end_empty"]
     elif per == 100:
-        bar = emojis["start_fill"] + (emojis["mid_fill"] * 8) + emojis["end_fill"] 
+        bar = emojis["start_fill"] + (emojis["mid_fill"] * 8) + emojis["end_fill"]
     else:
-        bar = (emojis["start_fill"]) + (emojis['mid_fill']*(num_fill-1)) + (emojis['mid_empty']*(num_empty-1)) + (emojis['end_empty'])
+        bar = (
+            (emojis["start_fill"])
+            + (emojis["mid_fill"] * (num_fill - 1))
+            + (emojis["mid_empty"] * (num_empty - 1))
+            + (emojis["end_empty"])
+        )
 
     return bar
