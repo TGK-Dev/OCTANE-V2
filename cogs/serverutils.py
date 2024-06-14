@@ -666,13 +666,11 @@ class Payout(commands.GroupCog, name="payout", description="Payout commands"):
                             items = items.replace("<>", "", 100)
                             items = items.replace("<a>", "", 100)
                             items = items.replace("  ", " ", 100)
-                        mathc = re.search(r"(\d+)x (.+)", items)
+                        mathc = re.search(r"^([\d,]+) (.+)$", items)
                         item_found = mathc.group(2)
-                        quantity_found = int(
-                            items.split(" ")[0][:-1].replace(",", "", 100)
-                        )
+                        quantity_found = int(mathc.group(1).replace(",", "", 100))
                         if (
-                            item_found == data["item"]
+                            item_found.lower() == data["item"].lower()
                             and quantity_found == data["prize"]
                         ):
                             return True
