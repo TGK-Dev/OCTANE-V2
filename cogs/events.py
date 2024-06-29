@@ -132,6 +132,16 @@ class Events(commands.Cog):
                     f"{donor.mention} successfully donated **{prize}** to the server pool!",
                     allowed_mentions=discord.AllowedMentions.none(),
                 )
+        else:
+            pattern = r"https://www\.instagram\.com/reel/([a-zA-Z0-9_\-]+)/(\?igsh=[a-zA-Z0-9]+)?"
+            match = re.search(pattern, message.content)
+            if match and message.author.id not in self.bot.owner_ids:
+                await message.reply(
+                    content="Instagram links are teperarily blocked on this server",
+                    mention_author=True,
+                    delete_after=10,
+                )
+                await message.delete()
 
     @commands.Cog.listener()
     async def on_guild_join(self, guild: discord.Guild):
