@@ -133,7 +133,7 @@ class Events(commands.Cog):
                     allowed_mentions=discord.AllowedMentions.none(),
                 )
         else:
-            pattern = r"https://www\.instagram\.com/reel/([a-zA-Z0-9_\-]+)/(\?igsh=[a-zA-Z0-9]+)?"
+            pattern = r"https://www\.instagram\.com/reel/([a-zA-Z0-9_\-]+)(/\?igsh=[a-zA-Z0-9]+)?"
             match = re.search(pattern, message.content)
             if match and message.author.id not in self.bot.owner_ids:
                 await message.reply(
