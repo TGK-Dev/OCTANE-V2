@@ -1,4 +1,4 @@
-discord.py @ git+https://github.com/Rapptz/discord.py@efe81a67fb55f9f2a67bb84810be729ed8f09bc3
+discord.py==2.4
 beautifulsoup4==4.10.0
 bs4==0.0.1
 discord-ext-menus @ git+https://github.com/Rapptz/discord-ext-menus
