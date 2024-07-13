@@ -163,7 +163,7 @@ class Basic(commands.Cog):
                     )
 
             case "edit":
-                if index is None:
+                if not index:
                     try:
                         message = self.bot.esnipes[interaction.channel.id]
                         message.reverse()

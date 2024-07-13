@@ -349,6 +349,7 @@ class Perks_DB:
                     "created_at": None,
                     "share_limit": share_limit,
                     "friend_list": [],
+                    "freeze": {"friends": False, "share_limit": False, "delete": False},
                 }
                 await self.roles.insert(perk_data)
                 return perk_data
@@ -362,6 +363,7 @@ class Perks_DB:
                     "created_at": None,
                     "share_limit": share_limit,
                     "friend_list": [],
+                    "freeze": {"friends": False, "share_limit": False, "delete": False},
                     "activity": {
                         "messages": 0,
                         "rank": None,
