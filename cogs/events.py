@@ -102,47 +102,6 @@ class Events(commands.Cog):
                 log_channel = self.bot.get_channel(1076586539368333342)
                 await log_channel.send(embed=log_embed, view=link_view)
 
-            # elif embed.description.startswith(
-            #     "Successfully donated "
-            # ) and message.channel.id in [
-            #     812711254790897714,
-            #     1210094990315753472,
-            #     1116295238584111155,
-            #     1086323496788963328,
-            # ]:
-            #     command_message = await message.channel.fetch_message(
-            #         message.reference.message_id
-            #     )
-            #     if command_message._interaction is None:
-            #         return
-            #     if command_message._interaction.name != "serverevents donate":
-            #         return
-
-            #     embed = command_message.embeds[0].to_dict()
-            #     donor = command_message._interaction.user
-            #     prize = re.findall(r"\*\*(.*?)\*\*", embed["description"])[0]
-            #     emojis = list(set(re.findall(":\w*:\d*", prize)))
-            #     for emoji in emojis:
-            #         prize = prize.replace(emoji, "", 100)
-            #         prize = prize.replace("<>", "", 100)
-            #         prize = prize.replace("<a>", "", 100)
-            #         prize = prize.replace("  ", " ", 100)
-
-            #     await command_message.reply(
-            #         f"{donor.mention} successfully donated **{prize}** to the server pool!",
-            #         allowed_mentions=discord.AllowedMentions.none(),
-            #     )
-        else:
-            pattern = r"https://www\.instagram\.com/reel/([a-zA-Z0-9_\-]+)(/\?igsh=[a-zA-Z0-9]+)?"
-            match = re.search(pattern, message.content)
-            if match and message.author.id not in self.bot.owner_ids:
-                await message.reply(
-                    content="Instagram links are teperarily blocked on this server",
-                    mention_author=True,
-                    delete_after=10,
-                )
-                await message.delete()
-
     @commands.Cog.listener()
     async def on_message_edit(self, before: discord.Message, after: discord.Message):
         if not before.guild or before.guild.id != 785839283847954433:
