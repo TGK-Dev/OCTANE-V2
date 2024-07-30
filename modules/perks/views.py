@@ -154,7 +154,7 @@ class PerkConfig(View):
                 content=f"Custom roles position set to <@&{position}>", view=None
             )
             await self.message.edit(
-                embed=await interaction.client.bot.Perk.get_config_embed(
+                embed=await interaction.client.Perk.get_config_embed(
                     interaction.guild, self.data
                 )
             )
