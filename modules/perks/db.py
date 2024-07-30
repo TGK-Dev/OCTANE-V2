@@ -423,6 +423,7 @@ class Perks_DB:
                         "highlights": {},
                         "emojis": {},
                     },
+                    "top_channel_category": {"name": None, "cat_id": None},
                 }
                 await self.config.insert(perk_config)
                 return perk_config
