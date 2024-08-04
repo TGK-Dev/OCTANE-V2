@@ -1,3 +1,4 @@
+from itertools import islice
 from discord.ext import commands
 import re
 import math
@@ -124,3 +125,7 @@ def get_bar(per: int):
         )
 
     return bar
+
+def chunk(it, size):
+	it = iter(it)
+	return iter(lambda: tuple(islice(it, size)), ())
