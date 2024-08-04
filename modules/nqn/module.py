@@ -17,9 +17,6 @@ class Emoji(TypedDict):
     managed: bool
     animated: bool
 
-
-@app_commands.allowed_installs(users=True, guilds=False)
-@app_commands.allowed_contexts(guilds=True, dms=True)
 class nqn(commands.GroupCog, name="pemoji"):
     def __init__(self, bot):
         self.bot = bot
@@ -27,9 +24,10 @@ class nqn(commands.GroupCog, name="pemoji"):
         self.config_cache = {}
         self.emoijs = {}
         self.webhooks = {}
+        self.whitelist = [651711446081601545, 488614633670967307, 301657045248114690]
 
     async def interaction_check(self, interaction: Interaction) -> bool:
-        if interaction.user.id not in self.bot.owner_ids:
+        if interaction.user.id not in self.whitelist:
             await interaction.response.send_message(
                 "You are not authorized to use this command.", ephemeral=True
             )
@@ -75,7 +73,9 @@ class nqn(commands.GroupCog, name="pemoji"):
     async def on_message(self, message: discord.Message):
         if message.author.bot:
             return
-        if message.author.id not in self.bot.owner_ids:
+        if message.author.id not in self.whitelist:
+            return
+        if message.author.premium_since is None:
             return
         if message.author.id in self.config_cache.keys():
             if not self.config_cache[message.author.id]["enabled"]:
