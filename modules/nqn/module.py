@@ -6,6 +6,7 @@ from discord import Interaction, app_commands
 from discord.ext import commands
 from utils.converters import chunk
 from utils.paginator import Paginator
+from utils.db import Document
 
 
 class Emoji(TypedDict):
@@ -19,9 +20,11 @@ class Emoji(TypedDict):
 
 @app_commands.allowed_installs(users=True, guilds=False)
 @app_commands.allowed_contexts(guilds=True, dms=True)
-class nqn(commands.GroupCog, name="nqn"):
+class nqn(commands.GroupCog, name="pemoji"):
     def __init__(self, bot):
         self.bot = bot
+        self.config = Document(bot.db, "nqn")
+        self.config_cache = {}
         self.emoijs = {}
         self.webhooks = {}
 
@@ -35,6 +38,10 @@ class nqn(commands.GroupCog, name="nqn"):
 
     @commands.Cog.listener()
     async def on_ready(self):
+        configs = await self.config.get_all()
+        for config in configs:
+            self.config_cache[config["_id"]] = config
+
         async with aiohttp.ClientSession() as session:
             url = f"https://discord.com/api/v10/applications/{self.bot.user.id}/emojis"
             headers = {
@@ -70,6 +77,19 @@ class nqn(commands.GroupCog, name="nqn"):
             return
         if message.author.id not in self.bot.owner_ids:
             return
+        if message.author.id in self.config_cache.keys():
+            if not self.config_cache[message.author.id]["enabled"]:
+                return
+        else:
+            data = await self.config.find(message.author.id)
+            if data is None:
+                data = {"_id": message.author.id, "enabled": False}
+                await self.config.insert(data)
+                self.config_cache[message.author.id] = data
+            else:
+                self.config_cache[message.author.id] = data
+                if not data["enabled"]:
+                    return
 
         message_conent = message.content
         replace = False
@@ -176,6 +196,22 @@ class nqn(commands.GroupCog, name="nqn"):
             content=f"Added {added_emojis} emojis and failed to add {failed} emojis"
         )
 
+    @app_commands.command(name="toggle", description="Toggle NQN")
+    async def toggle(self, interaction: Interaction):
+        data = self.config_cache.get(interaction.user.id)
+        if data is None:
+            data = {"_id": interaction.user.id, "enabled": False}
+            await self.config.insert(data)
+            self.config_cache[interaction.user.id] = data
+        else:
+            data["enabled"] = not data["enabled"]
+            await self.config.update(data)
+            self.config_cache[interaction.user.id] = data
+
+        await interaction.response.send_message(
+            f"{'Enabled' if data['enabled'] else 'Disabled'} NQN"
+        )
+
 
 async def setup(bot):
-    await bot.add_cog(nqn(bot), guilds=[discord.Object(999551299286732871), discord.Object(785839283847954433)])
+    await bot.add_cog(nqn(bot))
