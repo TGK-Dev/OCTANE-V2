@@ -106,8 +106,8 @@ class TicketConfig_View(View):
     )
     async def _channel_select(self, interaction: Interaction, button: Button):
         naming_scheme = {
-            "locked": self.data["nameing_schems"]["locked"],
-            "unlocked": self.data["nameing_schems"]["unlocked"],
+            "locked": self.data["nameing_scheme"]["locked"],
+            "unlocked": self.data["nameing_scheme"]["unlocked"],
         }
         view = Channel_Config(name_scheme=naming_scheme)
         await interaction.response.send_message(view=view, ephemeral=True)
@@ -126,10 +126,10 @@ class TicketConfig_View(View):
         ]
         for key in keys:
             if key == "nameing_scheme":
-                self.data["nameing_schems"]["locked"] = view.data["nameing_scheme"][
+                self.data["nameing_scheme"]["locked"] = view.data["nameing_scheme"][
                     "locked"
                 ]
-                self.data["nameing_schems"]["unlocked"] = view.data["nameing_scheme"][
+                self.data["nameing_scheme"]["unlocked"] = view.data["nameing_scheme"][
                     "unlocked"
                 ]
                 continue
@@ -228,9 +228,7 @@ class TicketConfig_View(View):
                     interaction=interaction,
                     placeholder="Select the panel you want to edit",
                     options=[
-                        SelectOption(
-                            label=f"{k}", value=k, emoji=self.data["panels"][k]["emoji"]
-                        )
+                        SelectOption(label=f"{k}", value=k)
                         for k in self.data["panels"].keys()
                     ],
                 )
@@ -1178,13 +1176,13 @@ class Channel_Config(View):
         modal.open = TextInput(
             label="Enter the open ticket scheme",
             placeholder="Enter the nameing scheme you want to use eg. (⸝⸝🎫。)",
-            min_length=3,
+            min_length=1,
             max_length=100,
         )
         modal.close = TextInput(
             label="Enter the close ticket scheme",
             placeholder="Enter the nameing scheme you want to use eg. (⸝⸝🎫。)",
-            min_length=3,
+            min_length=1,
             max_length=100,
         )
 
