@@ -546,13 +546,25 @@ class Perks(commands.Cog, name="perk", description="manage your custom perks"):
         color = tuple(round(c * 255) for c in Color(color).rgb)
         color = discord.Color.from_rgb(*color)
 
-        position_role = interaction.guild.get_role(config["custom_roles_position"])
-        position = position_role.position + 1
+        guild_roles = await interaction.guild.fetch_roles()
+        position_role = next(
+            (
+                role.position
+                for role in guild_roles
+                if role.id == config["custom_roles_position"]
+            ),
+            None,
+        )
+        if position_role is None:
+            await interaction.edit_original_response(
+                content="Custom roles position not found", embed=None
+            )
+            return
+        position = position_role
 
         role = await interaction.guild.create_role(
             name=name, color=color, display_icon=icon
         )
-        await role.edit(position=position)
         user_data = await self.backend.create(
             self.backend.types.roles,
             interaction.user.id,
@@ -570,6 +582,10 @@ class Perks(commands.Cog, name="perk", description="manage your custom perks"):
             )
         )
         await interaction.user.add_roles(role)
+        await asyncio.sleep(5)
+        new_role = await role.edit(position=int(position + 1))
+        if new_role.position == role.position:
+            new_role = await role.edit(position=int(position + 1))
 
     @privrole.command(name="edit", description="Edit your custom role")
     @app_commands.checks.cooldown(1, 600, key=lambda i: (i.guild.id, i.user.id))
@@ -1343,7 +1359,6 @@ class Perks(commands.Cog, name="perk", description="manage your custom perks"):
         all_emojis = await self.backend.emoji.find_many_by_custom(
             {"guild_id": interaction.guild.id}
         )
-        print(all_emojis)
         if len(all_emojis) >= config["emojis"]["max"]:
             return await interaction.edit_original_response(
                 content=None,
@@ -1749,12 +1764,15 @@ class Perks(commands.Cog, name="perk", description="manage your custom perks"):
         perk="The perk you want to delete",
     )
     async def _delete(
-        self, interaction: Interaction, member: discord.Member, perk: Perk_Type
+        self,
+        interaction: Interaction,
+        member: discord.Member,
+        perk: Literal["roles", "channel", "reacts", "highlights", "emojis"],
     ):
         config: Config = await self.backend.get_data(
             self.backend.types.config, interaction.guild.id, interaction.user.id
         )
-        if config is None:
+        if not config:
             await interaction.response.send_message(
                 "You need to setup config first", ephemeral=True
             )
@@ -1776,46 +1794,51 @@ class Perks(commands.Cog, name="perk", description="manage your custom perks"):
 
         await interaction.response.defer(thinking=True)
 
-        if isinstance(perk_data, Perk_Type.roles):
-            role = interaction.guild.get_role(perk_data["role_id"])
-            if role:
-                await role.delete(reason=f"Perk Removed By {interaction.user.name}")
-        if isinstance(
-            perk_data,
-        ):
-            channel = interaction.guild.get_channel(perk_data["channel_id"])
-            if channel:
-                await channel.delete(reason=f"Perk Removed By {interaction.user.name}")
-        if isinstance(perk_data, Perk_Type.reacts):
-            try:
-                del self.backend.cach["react"][interaction.guild.id][member.id]
-            except Exception:
-                pass
-            try:
-                self.backend.cach["react"][interaction.guild.id].pop(member.id)
-            except Exception:
-                pass
-        if isinstance(perk_data, Perk_Type.highlights):
-            try:
-                del self.backend.cach["highlight"][interaction.guild.id][member.id]
-            except Exception:
-                pass
-            try:
-                self.backend.cach["highlight"][interaction.guild.id].pop(member.id)
-            except Exception:
-                pass
-        if isinstance(perk_data, Perk_Type.emojis):
-            for emoji in perk_data["emojis"]:
-                emoji = interaction.guild.get_emoji(emoji)
-                if emoji:
-                    await emoji.delete(
+        match perk:
+            case "roles":
+                role = interaction.guild.get_role(perk_data["role_id"])
+                if role:
+                    await role.delete(reason=f"Perk Removed By {interaction.user.name}")
+
+            case "channel":
+                channel = interaction.guild.get_channel(perk_data["channel_id"])
+                if channel:
+                    await channel.delete(
                         reason=f"Perk Removed By {interaction.user.name}"
                     )
+
+            case "reacts":
+                try:
+                    del self.backend.cach["react"][interaction.guild.id][member.id]
+                except Exception:
+                    pass
+                try:
+                    self.backend.cach["react"][interaction.guild.id].pop(member.id)
+                except Exception:
+                    pass
+
+            case "highlights":
+                try:
+                    del self.backend.cach["highlight"][interaction.guild.id][member.id]
+                except Exception:
+                    pass
+                try:
+                    self.backend.cach["highlight"][interaction.guild.id].pop(member.id)
+                except Exception:
+                    pass
+
+            case "emojis":
+                for emoji in perk_data["emojis"]:
+                    emoji = interaction.guild.get_emoji(emoji)
+                    if emoji:
+                        await emoji.delete(
+                            reason=f"Perk Removed By {interaction.user.name}"
+                        )
 
         await self.backend.delete(perk, perk_data)
 
         await interaction.followup.send(
-            f"Successfully removed {perk.name} from {member.mention}", ephemeral=False
+            f"Successfully removed {perk} from {member.mention}", ephemeral=False
         )
 
     @admin.command(
