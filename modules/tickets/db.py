@@ -83,7 +83,10 @@ class TicketDB:
             "log_channel": None,
             "transcript_channel": None,
             "default_channel": None,
-            "nameing_schems": None,
+            "nameing_scheme": {
+                "locked": None,
+                "unlocked": None,
+            },
             "panel_message": 0,
             "panels": {},
         }
