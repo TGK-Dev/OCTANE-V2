@@ -17,6 +17,7 @@ class Emoji(TypedDict):
     managed: bool
     animated: bool
 
+
 class nqn(commands.GroupCog, name="pemoji"):
     def __init__(self, bot):
         self.bot = bot
@@ -24,7 +25,12 @@ class nqn(commands.GroupCog, name="pemoji"):
         self.config_cache = {}
         self.emoijs = {}
         self.webhooks = {}
-        self.whitelist = [651711446081601545, 488614633670967307, 301657045248114690]
+        self.whitelist = [
+            651711446081601545,
+            488614633670967307,
+            301657045248114690,
+            488614633670967307,
+        ]
 
     async def interaction_check(self, interaction: Interaction) -> bool:
         if interaction.user.id not in self.whitelist:
@@ -75,7 +81,7 @@ class nqn(commands.GroupCog, name="pemoji"):
             return
         if message.author.id not in self.whitelist:
             return
-        if message.author.premium_since is None:
+        if message.author.premium_since:
             return
         if message.author.id in self.config_cache.keys():
             if not self.config_cache[message.author.id]["enabled"]:
