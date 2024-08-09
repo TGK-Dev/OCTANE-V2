@@ -38,11 +38,11 @@ class Ticket(commands.GroupCog, name="ticket"):
         log = await self.bot.fetch_channel(1246067626783014992)
         self.backend.AttachmentHandler = AttachmentToDiscordChannelHandler(channel=log)
         config = await self.backend.config.get_all()
-        for guild in config:
-            guild = self.bot.get_guild(guild["_id"])
+        for data in config:
+            guild = self.bot.get_guild(data["_id"])
             if not guild:
                 try:
-                    guild = await self.bot.fetch_guild(guild["_id"])
+                    guild = await self.bot.fetch_guild(data["_id"])
                 except discord.NotFound:
                     continue
             await self.RestoreViews(guild)
