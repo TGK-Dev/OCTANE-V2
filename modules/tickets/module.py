@@ -39,6 +39,12 @@ class Ticket(commands.GroupCog, name="ticket"):
         self.backend.AttachmentHandler = AttachmentToDiscordChannelHandler(channel=log)
         config = await self.backend.config.get_all()
         for guild in config:
+            guild = self.bot.get_guild(guild["_id"])
+            if not guild:
+                try:
+                    guild = await self.bot.fetch_guild(guild["_id"])
+                except discord.NotFound:
+                    continue
             await self.RestoreViews(self.bot.get_guild(guild["_id"]))
 
         self.bot.add_view(TicketControl())
