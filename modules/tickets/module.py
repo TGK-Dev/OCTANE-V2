@@ -45,7 +45,7 @@ class Ticket(commands.GroupCog, name="ticket"):
                     guild = await self.bot.fetch_guild(guild["_id"])
                 except discord.NotFound:
                     continue
-            await self.RestoreViews(self.bot.get_guild(guild["_id"]))
+            await self.RestoreViews(guild)
 
         self.bot.add_view(TicketControl())
         self.bot.add_view(Refresh_Trancsript())
