@@ -30,6 +30,7 @@ class nqn(commands.GroupCog, name="pemoji"):
             488614633670967307,
             301657045248114690,
             488614633670967307,
+            760411176378695681,
         ]
 
     async def interaction_check(self, interaction: Interaction) -> bool:
