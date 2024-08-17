@@ -2,7 +2,14 @@ import discord
 import asyncio
 import humanfriendly
 from discord.ui import View, Button
-from .db import GuildConfig, Backend, ChannelsProfiles, CustomChannelSettings
+from .db import (
+    GuildConfig,
+    Backend,
+    ChannelsProfiles,
+    CustomChannelSettings,
+    RolesProfiles,
+    CustomRoleSettings,
+)
 
 from utils.views.selects import Channel_select, Select_General
 from utils.views.modal import General_Modal
@@ -384,7 +391,7 @@ class ChannelProfilesView(View):
         )
 
     @discord.ui.button(
-        label="Modify Profiles",
+        label="Manage Profiles",
         style=discord.ButtonStyle.gray,
         emoji="<:tgk_create:1107262030399930428>",
     )
@@ -651,6 +658,479 @@ class ChannelProfilesView(View):
         await interaction.edit_original_response(embed=embed, view=view)
 
 
+# NOTE: Role Profiles
+
+
+class RoleProfileModify(View):
+    def __init__(self, interaction: discord.Interaction, data: RolesProfiles):
+        super().__init__(timeout=60)
+        self.data = data
+        self.saved = False
+        self._interaction = interaction
+        if isinstance(self.data["RoleId"], int):
+            self.children[0].default_values = [
+                discord.SelectDefaultValue(
+                    id=self.data["RoleId"], type=discord.SelectDefaultValueType.role
+                )
+            ]
+            self.children[0].disabled = True
+            self.children[-1].disabled = False
+
+    async def on_error(self, interaction: discord.Interaction, error: Exception):
+        if interaction.response.is_done():
+            return interaction.followup.send(
+                "An error occurred: {error}", ephemeral=True
+            )
+        return interaction.response.send_message(
+            f"An error occurred: {error}", ephemeral=True
+        )
+
+    async def update_embed(self, interaction: discord.Interaction, data: RolesProfiles):
+        embed = discord.Embed(
+            description="<:tgk_bank:1134892342910914602> `Role Profile Modification`\n\n",
+            color=interaction.client.default_color,
+        )
+        embed_args = await get_formated_embed(
+            ["Role", "Duration", "Friend Limit"],
+            custom_end=":",
+        )
+
+        embed.description += f"{await get_formated_field(interaction.guild, name=embed_args['Role'], data=data['RoleId'], type='role')}\n"
+        embed.description += f"{await get_formated_field(interaction.guild, name=embed_args['Friend Limit'], data=data['FriendLimit'], type='str')}\n"
+        embed.description += f"{await get_formated_field(interaction.guild, name=embed_args['Duration'], data=data['Duration'], type='time')}\n"
+
+        return embed
+
+    @discord.ui.select(
+        placeholder="Role required to access this profile",
+        row=0,
+        cls=discord.ui.RoleSelect,
+    )
+    async def _role(
+        self, interaction: discord.Interaction, select: discord.ui.RoleSelect
+    ):
+        self.data["RoleId"] = select.values[0].id
+        self.children[-1].disabled = False
+        await interaction.response.edit_message(
+            embed=await self.update_embed(interaction, self.data), view=self
+        )
+
+    @discord.ui.select(
+        placeholder="Select a friend limit",
+        min_values=1,
+        max_values=1,
+        options=[
+            discord.SelectOption(label=str(i), value=str(i)) for i in range(1, 11)
+        ],
+        row=1,
+    )
+    async def _friend_limit(
+        self, interaction: discord.Interaction, select: discord.ui.Select
+    ):
+        self.data["FriendLimit"] = int(select.values[0])
+        self.children[-1].disabled = False
+        await interaction.response.edit_message(
+            embed=await self.update_embed(interaction, self.data), view=self
+        )
+
+    @discord.ui.button(
+        label="Duration",
+        style=discord.ButtonStyle.gray,
+        emoji="<:tgk_clock:1198684272446414928>",
+    )
+    async def _duration(self, interaction: discord.Interaction, button: Button):
+        view = General_Modal(title="Duration", interaction=interaction)
+        view.add_input(
+            label="Duration",
+            placeholder="Enter the duration for the profile",
+            required=True,
+            max_length=50,
+            default=self.data["Duration"] if self.data["Duration"] else None,
+        )
+
+        if self.data["Duration"] == "Permanent":
+            view.children[0].default = "Permanent"
+        elif isinstance(self.data["Duration"], int):
+            view.children[0].default = humanfriendly.format_timespan(
+                self.data["Duration"]
+            )
+
+        await interaction.response.send_modal(view)
+        await view.wait()
+        if view.value:
+            value = view.children[0].value
+            if value.startswith("perm"):
+                self.data["Duration"] = "Permanent"
+            else:
+                value = await TimeConverter().transform(
+                    interaction=interaction, argument=value
+                )
+                if isinstance(value, str):
+                    return await view.interaction.response.send_message(
+                        content=f"Invald time format: {value}", ephemeral=True
+                    )
+                self.data["Duration"] = int(value)
+
+            await view.interaction.response.edit_message(
+                embed=await self.update_embed(interaction, self.data), view=self
+            )
+
+            self.children[-1].disabled = False
+        else:
+            await interaction.delete_original_response()
+
+    @discord.ui.button(
+        label="Save",
+        style=discord.ButtonStyle.gray,
+        disabled=True,
+        emoji="<:tgk_save:1210649255501635594>",
+        row=4,
+    )
+    async def _save(self, interaction: discord.Interaction, button: Button):
+        if self.data["Duration"] is None or self.data["RoleId"] is None:
+            await interaction.response.send_message(
+                content="Duration and Role are required fields", ephemeral=True
+            )
+        button.style = discord.ButtonStyle.green
+        for btn in self.children:
+            btn.disabled = True
+        embed = interaction.message.embeds[0]
+        embed.color = discord.Color.green()
+        await interaction.response.edit_message(embed=embed, view=self)
+        self.saved = True
+        self.stop()
+        await self._interaction.delete_original_response()
+
+
+class RoleProfilesView(View):
+    def __init__(
+        self,
+        interaction: discord.Interaction,
+        db: Backend,
+        data: dict[str, RolesProfiles],
+        settings: CustomRoleSettings,
+        message: discord.Message = None,
+    ):
+        super().__init__(timeout=60)
+        self.data = data
+        self.saved = False
+        self.settings = settings
+        self._interaction = interaction
+        self.db = db
+
+        if isinstance(self.settings["RolePossition"], int):
+            self.children[0].default_values = [
+                discord.SelectDefaultValue(
+                    id=self.settings["RolePossition"],
+                    type=discord.SelectDefaultValueType.role,
+                )
+            ]
+            self.children[-1].disabled = False
+
+    async def on_error(self, interaction: discord.Interaction, error: Exception):
+        if interaction.response.is_done():
+            return interaction.followup.send(
+                "An error occurred: {error}", ephemeral=True
+            )
+        return interaction.response.send_message(
+            f"An error occurred: {error}", ephemeral=True
+        )
+
+    async def update_embed(
+        self, interaction: discord.Interaction, data: dict[str, RolesProfiles]
+    ):
+        embed = discord.Embed(
+            description="<:tgk_bank:1134892342910914602> `Role Profiles Configuration`\n\n",
+            color=interaction.client.default_color,
+        )
+        embed.description += "`Custom Role Position`:"
+        if isinstance(self.settings["RolePossition"], int):
+            role = interaction.guild.get_role(self.settings["RolePossition"])
+            if role:
+                embed.description += f" {role.mention}\n\n"
+            else:
+                self.settings["RolePossition"] = None
+                embed.description += "None\n\n"
+        else:
+            embed.description += "None\n\n"
+        embed.description += "-# <:tgk_hint:1206282482744561744> Make sure to save your changes if made\n-# * Any changes to role position will be only applied new custom roles\n"
+        return embed
+
+    @discord.ui.select(
+        placeholder="select a role for position",
+        cls=discord.ui.RoleSelect,
+        max_values=1,
+    )
+    async def _role_position(
+        self, interaction: discord.Interaction, select: discord.ui.RoleSelect
+    ):
+        self.settings["RolePossition"] = int(select.values[0].id)
+        self.children[-1].disabled = False
+        await interaction.response.edit_message(
+            embed=await self.update_embed(interaction, self.data), view=self
+        )
+
+    @discord.ui.button(
+        label="Manage Profiles",
+        style=discord.ButtonStyle.gray,
+        emoji="<:tgk_entries:1124995375548338176>",
+    )
+    async def _profiles(self, interaction: discord.Interaction, button: Button):
+        self.children[-1].disabled = False
+        view = View()
+        view.value = None
+        view.select = Select_General(
+            interaction=interaction,
+            options=[
+                discord.SelectOption(
+                    label="Add Profile",
+                    value="add_role",
+                    description="Add a new role profile",
+                    emoji="<:tgk_add:1073902485959352362>",
+                ),
+                discord.SelectOption(
+                    label="Delete Profile",
+                    value="delete_role",
+                    description="Delete a role profile",
+                    emoji="<:tgk_delete:1113517803203461222>",
+                ),
+                discord.SelectOption(
+                    label="Modify Profile",
+                    value="edit_role",
+                    description="Edit a role profile",
+                    emoji="<:tgk_edit:1073902428224757850>",
+                ),
+                discord.SelectOption(
+                    label="View Profiles",
+                    value="view_role",
+                    description="View all role profiles",
+                    emoji="<:tgk_logging:1107652646887759973>",
+                ),
+            ],
+            min_values=1,
+            max_values=1,
+        )
+        view.add_item(view.select)
+
+        await interaction.response.send_message(
+            view=view,
+            ephemeral=True,
+        )
+        await view.wait()
+
+        if view.value:
+            if view.select.values[0] == "add_role":
+                profile_data: RolesProfiles = {
+                    "RoleId": None,
+                    "Duration": None,
+                    "FriendLimit": 0,
+                }
+                create_view = RoleProfileModify(
+                    interaction=interaction, data=profile_data
+                )
+                embed = discord.Embed(
+                    description="<:tgk_bank:1134892342910914602> `Role Profile Modification`\n\n",
+                    color=interaction.client.default_color,
+                )
+                embed_args = await get_formated_embed(
+                    ["Duration", "Friend Limit", "Role"],
+                    custom_end=":",
+                )
+                embed.description += f"{await get_formated_field(interaction.guild, name=embed_args['Role'], data=profile_data['RoleId'], type='role')}\n"
+                embed.description += f"{await get_formated_field(interaction.guild, name=embed_args['Friend Limit'], data=profile_data['FriendLimit'], type='str')}\n"
+                embed.description += f"{await get_formated_field(interaction.guild, name=embed_args['Duration'], data=profile_data['Duration'], type='time')}\n"
+
+                await view.select.interaction.response.edit_message(
+                    embed=embed, view=create_view
+                )
+                await create_view.wait()
+                if create_view.saved:
+                    self.data[str(profile_data["RoleId"])] = profile_data
+                    self.children[-1].disabled = False
+                    await self.message.edit(
+                        embed=await self.update_embed(interaction, self.data), view=self
+                    )
+
+            elif view.select.values[0] == "delete_role":
+                if self.data == {}:
+                    return await view.select.interaction.response.edit_message(
+                        content="No profiles to delete",
+                        view=None,
+                    )
+                delete_view = View()
+                delete_view.value = None
+                options = []
+                for profile in self.data.keys():
+                    role = interaction.guild.get_role(int(profile))
+                    if role:
+                        description = ""
+                        if isinstance(self.data[profile]["Duration"], int):
+                            description += f"Duration: {humanfriendly.format_timespan(self.data[profile]['Duration'])} | "
+                        else:
+                            description += (
+                                f"Duration: {self.data[profile]['Duration']} | "
+                            )
+                        description += (
+                            f"Friend Limit: {self.data[profile]['FriendLimit']} | "
+                        )
+
+                        options.append(
+                            discord.SelectOption(
+                                label=role.name,
+                                value=role.id,
+                                description=description,
+                            )
+                        )
+                    else:
+                        del self.data[profile]
+                delete_view.select = Select_General(
+                    interaction=interaction,
+                    options=options,
+                    min_values=1,
+                    max_values=len(options) - 1 if len(options) > 1 else 1,
+                )
+                delete_view.add_item(delete_view.select)
+
+                await view.select.interaction.response.edit_message(view=delete_view)
+                await delete_view.wait()
+                if delete_view.value:
+                    for value in delete_view.select.values:
+                        del self.data[value]
+                    self.children[-1].disabled = False
+                    await delete_view.select.interaction.response.edit_message(
+                        content="Successfully deleted the selected profiles", view=None
+                    )
+
+            elif view.select.values[0] == "edit_role":
+                profile_select_view = View()
+                profile_select_view.value = None
+                options = []
+                for profile in self.data.keys():
+                    role = interaction.guild.get_role(int(profile))
+                    if role:
+                        description = ""
+                        if isinstance(self.data[profile]["Duration"], int):
+                            description += f"Duration: {humanfriendly.format_timespan(self.data[profile]['Duration'])} | "
+                        else:
+                            description += (
+                                f"Duration: {self.data[profile]['Duration']} | "
+                            )
+                        description += (
+                            f"Friend Limit: {self.data[profile]['FriendLimit']} | "
+                        )
+                        description += f"Top Position: {'Yes' if self.data[profile]['TopPosition'] else 'No'}"
+
+                        options.append(
+                            discord.SelectOption(
+                                label=role.name,
+                                value=role.id,
+                                description=description,
+                            )
+                        )
+                    else:
+                        del self.data[profile]
+
+                profile_select_view.select = Select_General(
+                    interaction=interaction,
+                    options=options,
+                    min_values=1,
+                    max_values=1,
+                )
+                profile_select_view.add_item(profile_select_view.select)
+
+                await view.select.interaction.response.edit_message(
+                    view=profile_select_view
+                )
+                await profile_select_view.wait()
+                if profile_select_view.value:
+                    try:
+                        profile_data = self.data[profile_select_view.select.values[0]]
+                    except KeyError:
+                        return await profile_select_view.select.interaction.response.edit_message(
+                            content="Profile not found", view=None
+                        )
+                    edit_view = RoleProfileModify(
+                        interaction=interaction, data=profile_data
+                    )
+                    embed = discord.Embed(
+                        description="<:tgk_bank:1134892342910914602> `Role Profile Modification`\n",
+                        color=interaction.client.default_color,
+                    )
+                    embed_args = await get_formated_embed(
+                        ["Duration", "Friend Limit", "Top Position", "Role"],
+                        custom_end=":",
+                    )
+                    embed.description += f"{await get_formated_field(interaction.guild, name=embed_args['Role'], data=profile_data['RoleId'], type='role')}\n"
+                    embed.description += f"{await get_formated_field(interaction.guild, name=embed_args['Friend Limit'], data=profile_data['FriendLimit'], type='str')}\n"
+                    embed.description += f"{await get_formated_field(interaction.guild, name=embed_args['Duration'], data=profile_data['Duration'], type='time')}\n"
+
+                    await profile_select_view.select.interaction.response.edit_message(
+                        embed=embed, view=edit_view
+                    )
+                    await edit_view.wait()
+                    if edit_view.saved:
+                        self.data[str(profile_data["RoleId"])] = profile_data
+                        self.children[-1].disabled = False
+                        await self.message.edit(
+                            embed=await self.update_embed(interaction, self.data),
+                            view=self,
+                        )
+
+            elif view.select.values[0] == "view_role":
+                chunked = chunk(self.data.keys(), 2)
+                embeds = []
+                for chunked_data in chunked:
+                    embed = discord.Embed(
+                        color=interaction.client.default_color, description=""
+                    )
+                    for profile in chunked_data:
+                        role = interaction.guild.get_role(int(profile))
+                        if role:
+                            value = f"**Profile Role: {role.mention}**\n"
+                            if isinstance(self.data[profile]["Duration"], int):
+                                value += f"* Duration: {humanfriendly.format_timespan(self.data[profile]['Duration'])}\n"
+                            else:
+                                value += (
+                                    f"* Duration: {self.data[profile]['Duration']}\n"
+                                )
+                            value += (
+                                f"* Friend Limit: {self.data[profile]['FriendLimit']}\n"
+                            )
+                            embed.description += value
+                        else:
+                            del self.data[profile]
+                    embeds.append(embed)
+
+                await Paginator(
+                    interaction=view.select.interaction, pages=embeds
+                ).start(embeded=True, timeout=20, quick_navigation=False, hidden=True)
+
+    @discord.ui.button(
+        label="Save",
+        style=discord.ButtonStyle.gray,
+        emoji="<:tgk_save:1210649255501635594>",
+        row=4,
+    )
+    async def _save(self, interaction: discord.Interaction, button: Button):
+        config = await self.db.GetGuildConfig(interaction.guild)
+        config["ProfileSettings"]["CustomRoles"] = self.settings
+        config["Profiles"]["RolesProfiles"] = self.data
+        await self.db.UpdateGuildConfig(interaction.guild, config)
+        for btn in self.children:
+            btn.disabled = True
+        button.style = discord.ButtonStyle.green
+        embed = interaction.message.embeds[0]
+        embed.color = discord.Color.green()
+        await interaction.response.edit_message(embed=embed, view=self)
+        self.saved = True
+        self.stop()
+        await asyncio.sleep(2)
+        view = PerksConfigPanel(member=interaction.user, data=config, backend=self.db)
+        view.message = interaction.message
+        embed = await view.update_embed(interaction, data=config)
+        await interaction.edit_original_response(embed=embed, view=view)
+
+
 class PerksConfigPanel(View):
     def __init__(
         self,
@@ -878,7 +1358,39 @@ class PerksConfigPanel(View):
                 self.stop()
 
             elif view.select.values[0] == "role_profiles":
-                pass
+                embed = discord.Embed(
+                    description="<:tgk_bank:1134892342910914602> `Role Profiles Configuration`\n\n",
+                    color=interaction.client.default_color,
+                )
+                embed.description += "`Custom Role Position`:"
+                if isinstance(
+                    self.data["ProfileSettings"]["CustomRoles"]["RolePossition"], int
+                ):
+                    role = interaction.guild.get_role(
+                        self.data["ProfileSettings"]["CustomRoles"]["RolePossition"]
+                    )
+                    if role:
+                        embed.description += f" {role.mention}\n"
+                    else:
+                        self.data["ProfileSettings"]["CustomRoles"]["RolePossition"] = (
+                            None
+                        )
+                        embed.description += "None\n\n"
+                else:
+                    embed.description += "None\n\n"
+                embed.description += "-# <:tgk_hint:1206282482744561744> Make sure to save your changes if made\n-# * Any changes to role position will be only applied new custom roles\n"
+
+                role_profile_view = RoleProfilesView(
+                    interaction=interaction,
+                    db=self.backend,
+                    data=self.data["Profiles"]["RolesProfiles"],
+                    settings=self.data["ProfileSettings"]["CustomRoles"],
+                )
+                self.stop()
+                await interaction.delete_original_response()
+                await self.message.edit(embed=embed, view=role_profile_view)
+                role_profile_view.message = self.message
+
             elif view.select.values[0] == "ar_profiles":
                 pass
             elif view.select.values[0] == "highlight_profiles":
