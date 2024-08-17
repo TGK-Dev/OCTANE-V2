@@ -33,16 +33,40 @@ class nqn(commands.GroupCog, name="pemoji"):
             760411176378695681,
         ]
 
-    async def interaction_check(self, interaction: Interaction) -> bool:
-        if interaction.user.id not in self.whitelist:
-            await interaction.response.send_message(
-                "You are not authorized to use this command.", ephemeral=True
-            )
-            return False
-        return True
+    async def upload(self, emoji: discord.Emoji):
+        emoji_data = await emoji.read()
+        data = discord.utils._bytes_to_base64_data(emoji_data)
+        if emoji.animated:
+            data += f"data:image/gif;base64,{emoji_data}"
+        else:
+            data += f"data:image/png;base64,{emoji_data}"
+        async with aiohttp.ClientSession() as session:
+            url = f"https://discord.com/api/v10/applications/{self.bot.user.id}/emojis"
+            headers = {
+                "Authorization": f"Bot {self.bot.http.token}",
+                "Content-Type": "application/json",
+            }
+            json = {"name": emoji.name, "image": data}
+            async with session.post(url, headers=headers, json=json) as response:
+                emoji = await response.json()
+                if "available" in emoji.keys():
+                    if emoji["animated"]:
+                        self.emoijs[emoji["name"]] = (
+                            f"<a:{emoji['name']}:{emoji['id']}>"
+                        )
+                    else:
+                        self.emoijs[emoji["name"]] = f"<:{emoji['name']}:{emoji['id']}>"
+                    await session.close()
+                    return True
 
-    @commands.Cog.listener()
-    async def on_ready(self):
+    async def find_most_similar(self, target):
+        return max(
+            list(self.emoijs.keys()),
+            key=lambda s: difflib.SequenceMatcher(None, target, s).ratio(),
+            default=None,
+        )
+
+    async def build_cach(self):
         configs = await self.config.get_all()
         for config in configs:
             self.config_cache[config["_id"]] = config
@@ -67,14 +91,37 @@ class nqn(commands.GroupCog, name="pemoji"):
                 else:
                     self.emoijs[emoji["name"]] = f"<:{emoji['name']}:{emoji['id']}>"
 
-        print(f"Loaded {len(self.emoijs)} emojis")
+        return len(self.emoijs)
 
-    async def find_most_similar(self, target):
-        return max(
-            list(self.emoijs.keys()),
-            key=lambda s: difflib.SequenceMatcher(None, target, s).ratio(),
-            default=None,
-        )
+    async def whitelistcheck(interaction: Interaction):
+        if interaction.user.id not in [
+            651711446081601545,
+            488614633670967307,
+            301657045248114690,
+            488614633670967307,
+        ]:
+            return False
+        return True
+
+    async def cog_app_command_error(
+        self,
+        interaction: Interaction[discord.Client],
+        error: app_commands.AppCommandError,
+    ) -> None:
+        if isinstance(error, app_commands.CheckFailure):
+            await interaction.response.send_message(
+                "You do not have permission to use this command",
+                ephemeral=True,
+                delete_after=2.5,
+            )
+        else:
+            await interaction.response.send_message(
+                f"An error occured: {error}", ephemeral=True
+            )
+
+    @commands.Cog.listener()
+    async def on_ready(self):
+        await self.build_cach()
 
     @commands.Cog.listener()
     async def on_message(self, message: discord.Message):
@@ -158,33 +205,8 @@ class nqn(commands.GroupCog, name="pemoji"):
             embeded=True, timeout=60, quick_navigation=False, hidden=hidden
         )
 
-    async def upload(self, emoji: discord.Emoji):
-        emoji_data = await emoji.read()
-        data = discord.utils._bytes_to_base64_data(emoji_data)
-        if emoji.animated:
-            data += f"data:image/gif;base64,{emoji_data}"
-        else:
-            data += f"data:image/png;base64,{emoji_data}"
-        async with aiohttp.ClientSession() as session:
-            url = f"https://discord.com/api/v10/applications/{self.bot.user.id}/emojis"
-            headers = {
-                "Authorization": f"Bot {self.bot.http.token}",
-                "Content-Type": "application/json",
-            }
-            json = {"name": emoji.name, "image": data}
-            async with session.post(url, headers=headers, json=json) as response:
-                emoji = await response.json()
-                if "available" in emoji.keys():
-                    if emoji["animated"]:
-                        self.emoijs[emoji["name"]] = (
-                            f"<a:{emoji['name']}:{emoji['id']}>"
-                        )
-                    else:
-                        self.emoijs[emoji["name"]] = f"<:{emoji['name']}:{emoji['id']}>"
-                    await session.close()
-                    return True
-
     @app_commands.command(name="add-guild", description="Add NQN to guild")
+    @app_commands.check(whitelistcheck)
     async def add_guild(self, interaction: Interaction):
         await interaction.response.send_message("Adding NQN to guild")
         added_emojis = 0
@@ -203,6 +225,15 @@ class nqn(commands.GroupCog, name="pemoji"):
             content=f"Added {added_emojis} emojis and failed to add {failed} emojis"
         )
 
+    @app_commands.command(name="rebuild_cache", description="Rebuild NQN cache")
+    @app_commands.check(whitelistcheck)
+    async def rebuild_cache(self, interaction: Interaction):
+        await interaction.response.send_message("Rebuilding NQN cache")
+        emojislen = await self.build_cach()
+        await interaction.edit_original_response(
+            content=f"Rebuild cache successfully with {emojislen} emojis"
+        )
+
     @app_commands.command(name="toggle", description="Toggle NQN")
     async def toggle(self, interaction: Interaction):
         data = self.config_cache.get(interaction.user.id)
@@ -216,7 +247,9 @@ class nqn(commands.GroupCog, name="pemoji"):
             self.config_cache[interaction.user.id] = data
 
         await interaction.response.send_message(
-            f"{'Enabled' if data['enabled'] else 'Disabled'} NQN"
+            f"Module is now {'enabled' if data['enabled'] else 'disabled'} for you",
+            ephemeral=True,
+            delete_after=2.5,
         )
 
 
