@@ -127,8 +127,6 @@ class nqn(commands.GroupCog, name="pemoji"):
     async def on_message(self, message: discord.Message):
         if message.author.bot:
             return
-        if message.author.id not in self.whitelist:
-            return
         if message.author.premium_since:
             return
         if message.author.id in self.config_cache.keys():
