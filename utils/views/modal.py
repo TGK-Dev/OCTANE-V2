@@ -1,5 +1,6 @@
-from discord import Interaction
-from discord.ui import Modal
+from discord import Interaction, TextStyle
+from typing import Literal
+from discord.ui import Modal, TextInput
 
 
 class Question_Modal(Modal):
@@ -76,6 +77,28 @@ class General_Modal(Modal):
         super().__init__(timeout=120, title=title, **kwargs)
         self.interaction = interaction
         self.value = None
+
+    def add_input(
+        self,
+        label: str,
+        placeholder: str,
+        required: bool,
+        style: Literal["long", "short"] = "short",
+        max_length: int = None,
+        min_length: int = None,
+        default: str = None,
+    ):
+        style = TextStyle.short if style == "short" else TextStyle.long
+        atrr = TextInput(
+            placeholder=placeholder,
+            label=label,
+            required=required,
+            style=style,
+            max_length=max_length,
+            min_length=min_length,
+            default=default,
+        )
+        self.add_item(atrr)
 
     async def on_submit(self, interaction: Interaction):
         self.value = True
