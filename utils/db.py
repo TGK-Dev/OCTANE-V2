@@ -545,6 +545,19 @@ class Document:
         """
         self.__ensure_list_of_dicts(data)
         await self._document.insert_many(data)
+    
+    async def create_index(self, field: str, index_type: int = 1):
+        """
+        Create an index on a given field
+
+        Parameters
+        ----------
+        field: str
+            The field to create the index on
+        index_type: int
+            The type of index to create
+        """
+        await self._document.create_index(field, index_type)
 
     # <-- Private methods -->
     @staticmethod
