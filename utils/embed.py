@@ -36,7 +36,9 @@ async def get_formated_embed(
             output[arg] = f" `{arg}{' '* (final_lenth - len(arg))}` "
     else:
         for arg in arguments:
-            output[arg] = f" `{arg}{' '* (final_lenth - (len(arg) + len(custom_end)))}{custom_end}` "
+            output[arg] = (
+                f" `{arg}{' '* (final_lenth - (len(arg) + len(custom_end)))}{custom_end}` "
+            )
 
     return output
 
@@ -132,10 +134,12 @@ async def get_formated_field(
             else:
                 return f"{name}None"
         case "str":
-            if isinstance(data, str):
+            try:
+                data = str(data)
                 return f"{name}{data}"
-            else:
+            except Exception:
                 return f"{name}None"
+
         case "bool":
             if data is True:
                 return f"{name}<:toggle_on:1123932825956134912>"
