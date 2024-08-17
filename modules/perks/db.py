@@ -48,17 +48,22 @@ class Profiles(TypedDict):
     ArsProfiles: Dict[str, ArsProfiles]
     EmojisProfiles: Dict[str, EmojisProfiles]
 
+
 class CustomChannelSettings(TypedDict):
     CategoryName: str
     TopCategoryName: str
     ChannelPerCategory: int
     CustomCategorys: List[int]
 
+
 class CustomRoleSettings(TypedDict):
     RolePossition: int
+
+
 class ProfileSettings(TypedDict):
     CustomChannels: CustomChannelSettings
     CustomRoles: CustomRoleSettings
+
 
 class GuildConfig(TypedDict):
     _id: int
@@ -451,5 +456,10 @@ class Backend:
         profile_value += f"* Emojis Profiles: {len(profiles['EmojisProfiles'])}\n"
 
         embed.add_field(name="Profiles", value=profile_value, inline=False)
+
+        embed.set_footer(
+            text="Make sure to save your changes if made any",
+            icon_url="https://cdn.discordapp.com/emojis/1206282482744561744.webp?quality=lossless",
+        )
 
         return embed
