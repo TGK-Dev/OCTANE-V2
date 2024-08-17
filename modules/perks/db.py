@@ -1,698 +1,455 @@
-import discord
 import datetime
-import enum
-from typing import Union, TypedDict
+from typing import List, Dict, TypedDict
+from discord.ext.commands import Bot
+from discord import Guild, Embed
+from enum import Enum
+
+from utils.db import Document
 from utils.embed import get_formated_embed, get_formated_field
 
 
-class Freeze(TypedDict):
-    friends: bool
-    share_limit: bool
-    delete: bool
+COLOR = 0x2B2D31
 
 
-class Activity(TypedDict):
-    messages: int
-    last_message: datetime.datetime
-    previous_cat: int
+class RolesProfiles(TypedDict):
+    RoleId: int
+    Duration: int | str
+    FriendLimit: int
 
 
-class Custom_Channel(TypedDict):
-    user_id: int
-    guild_id: int
-    channel_id: int
-    duration: Union[int, str]
-    created_at: Union[int, str]
-    share_limit: int
-    friend_list: list[int]
-    activity: Activity
-    freeze: Freeze
+class ChannelsProfiles(TypedDict):
+    RoleId: int
+    Duration: int | str
+    FriendLimit: int
+    TopPosition: bool
 
 
-class Custom_Roles(TypedDict):
-    user_id: int
-    guild_id: int
-    role_id: int
-    duration: Union[int, str]
-    created_at: Union[int, str]
-    share_limit: int
-    friend_list: list[int]
-    freeze: Freeze
+class EmojisProfiles(TypedDict):
+    RoleId: int
+    Duration: int | str
 
 
-class Custom_React(TypedDict):
-    guild_id: int
-    user_id: int
-    emojis: list[int]
-    last_react: datetime.datetime
-    max_emoji: int
+class HighLightsProfiles(TypedDict):
+    RoleId: int
+    Duration: int | str
+    TriggerLimit: int
 
 
-class Custom_Highlight(TypedDict):
-    guild_id: int
-    user_id: int
-    triggers: list[str]
-    ignore_channel: list[int]
-    ignore_users: list[int]
-    last_trigger: datetime.datetime
-    tigger_limit: int
+class ArsProfiles(TypedDict):
+    RoleId: int
+    Duration: int | str
+    TriggerLimit: int
 
 
-class Custom_Emoji(TypedDict):
-    guild_id: int
-    user_id: int
-    emojis: list[int]
-    max_emoji: int
+class Profiles(TypedDict):
+    RolesPorfiles: Dict[str, RolesProfiles]
+    ChannelsProfiles: Dict[str, ChannelsProfiles]
+    HighLightsProfiles: Dict[str, HighLightsProfiles]
+    ArsProfiles: Dict[str, ArsProfiles]
+    EmojisProfiles: Dict[str, EmojisProfiles]
 
+class CustomChannelSettings(TypedDict):
+    CategoryName: str
+    TopCategoryName: str
+    ChannelPerCategory: int
+    CustomCategorys: List[int]
 
-class Emoji_Request(TypedDict):
+class CustomRoleSettings(TypedDict):
+    RolePossition: int
+class ProfileSettings(TypedDict):
+    CustomChannels: CustomChannelSettings
+    CustomRoles: CustomRoleSettings
+
+class GuildConfig(TypedDict):
     _id: int
-    user_id: int
-    guild_id: int
-    shared_limit: int
-    emojis: list[int]
+    GuildId: int
+    ModRoles: List[int]
+    AdminRoles: List[int]
+    LogChannel: int
+    ProfileSettings: Dict[str, ProfileSettings]
+    Profiles: Dict[str, Profiles]
 
 
-class Profile(TypedDict):
-    role_id: int
-    duration: Union[int, str]
-    share_limit: int
-    top_profile: bool
+# NOTE User Configs Types
 
 
-class Emojji_Config(TypedDict):
-    max: int
-    request_channel: int
+class Ignore(TypedDict):
+    Users: List[int]
+    Channels: List[int]
 
 
-class Custom_Category(TypedDict):
-    name: str
-    last_cat: int
-    cat_list: list[int]
+class UserCustomRoles(TypedDict):
+    RoleId: int
+    UserId: int
+    GuildId: int
+    Duration: int | str
+    CreatedAt: int
+    FriendLimit: int
+    Friends: List[int]
+    Freezed: bool
+    LastActivity: datetime.datetime
 
 
-class Top_Category(TypedDict):
-    name: str
-    cat_id: int
+class UserCustomChannels(TypedDict):
+    ChannelId: int
+    UserId: int
+    GuildId: int
+    Duration: int | str
+    CreatedAt: int
+    FriendLimit: int
+    Friends: List[int]
+    Freezed: bool
+    LastActivity: datetime.datetime
 
 
-class Config(TypedDict):
-    _id: int
-    custom_category: Custom_Category
-    custom_roles_position: int
-    top_channel_category: Top_Category
-    emojis: Emojji_Config
-    admin_roles: list[int]
-    profiles: dict[str, Profile]
+class UserCustomEmojis(TypedDict):
+    EmojiId: int
+    UserId: int
+    GuildId: int
+    Duration: int | str
+    CreatedAt: int
+    Freezed: bool
+    LastActivity: datetime.datetime
 
 
-class Perk_Type(enum.Enum):
-    roles = "roles"
-    channels = "channels"
-    reacts = "reacts"
-    highlights = "highlights"
-    emojis = "emojis"
-    config = "config"
+class UserCustomHighLights(TypedDict):
+    UserId: int
+    GuildId: int
+    Duration: int | str
+    CreatedAt: int
+    TriggerLimit: int
+    Freezed: bool
+    LastActivity: datetime.datetime
+    Ignore: Ignore
 
 
-class Perks_DB:
-    """
-    A class to interact with the perk database
+class ArTypes(Enum):
+    Emoji = 1
+    Channel = 2
 
-    Attributes
-    ----------
 
-    bot: commands.Bot
-        The bot instance
+class UserCustomArs(TypedDict):
+    UserId: int
+    GuildId: int
+    Duration: int | str
+    CreatedAt: int
+    TriggerLimit: int
+    Freezed: bool
+    LastActivity: datetime.datetime
+    Ignore: Ignore
+    Type: ArTypes
 
-    Document: class
-        The document class to interact
 
-    roles: Document
-        The document for custom roles
+class ClaimedInfo(TypedDict):
+    RoleId: int
+    ClaimedAt: datetime.datetime
 
-    channel: Document
-        The document for custom channels
 
-    react: Document
-        The document for custom reacts
+class Claimed(TypedDict):
+    Roles: Dict[str, ClaimedInfo]
+    Channels: Dict[str, ClaimedInfo]
+    Emojis: Dict[str, ClaimedInfo]
+    HighLights: List[int]
+    Ars: Dict[str, ClaimedInfo]
 
-    highlight: Document
-        The document for custom highlights
 
-    emoji: Document
-        The document for custom emojis
+class Ban(TypedDict):
+    Banned: bool
+    Reason: str
+    BannedBy: int
 
-    """
 
-    def __init__(self, bot, Document):
-        self.bot = bot
-        self.db = self.bot.mongo["Perk_Database"]
-        self.roles = Document(self.db, "custom_roles")
-        self.channel = Document(self.db, "custom_channel")
-        self.react = Document(self.db, "custom_react")
-        self.highlight = Document(self.db, "custom_highlight")
-        self.emoji = Document(self.db, "custom_emoji")
-        self.config = Document(self.db, "config")
-        self.bans = Document(self.db, "bans")
-        self.emoji_request = Document(self.db, "emoji_request")
-        self.cach = {"react": {}, "highlight": {}}
-        self.types = Perk_Type
+class UserConfig(TypedDict):
+    UserId: int
+    GuildId: int
+    Claimed: Claimed
+    IgnoreClaimed: bool
+    Banned: Ban
 
-    async def get_data(
-        self, type: Perk_Type | str, guild_id: int, user_id: int
-    ) -> Union[
-        Custom_Roles,
-        Custom_Channel,
-        Custom_React,
-        Custom_Highlight,
-        Custom_Emoji,
-        Config,
-    ]:
-        """
-        Get the data from the database
 
-        Parameters
-        ----------
-        type: Perk_Type | str
-            The type of perk to get
-        guild_id: int
-            The guild id
-        user_id: int
-            The user id
+class Backend:
+    def __init__(self, bot: Bot, CollectionName: str):
+        self.db = bot.mongo[CollectionName]  # type: ignore
+        self.Configs = Document(self.db, "Configs", GuildConfig)
+        self.UserSettings = Document(self.db, "UserSettings", UserConfig)
+        self.UserCustomRoles = Document(self.db, "UserCustomRoles", UserCustomRoles)
+        self.UserCustomChannels = Document(
+            self.db, "UserCustomChannels", UserCustomChannels
+        )
+        self.UserCustomEmojis = Document(self.db, "UserCustomEmojis", UserCustomEmojis)
+        self.UserCustomHighLights = Document(
+            self.db, "UserCustomHighLights", UserCustomHighLights
+        )
+        self.UserCustomArs = Document(self.db, "UserCustomArs", UserCustomArs)
 
-        Returns
-        -------
-        Union[Custom_Roles, Custom_Channel, Custom_React, Custom_Highlight, Custom_Emoji, Config]
-            The data from the database
+    async def CreateGuildConfig(self, GuildId: int | Guild):
+        data: GuildConfig = {
+            "_id": GuildId.id if isinstance(GuildId, Guild) else GuildId,
+            "GuildId": GuildId,
+            "ModRoles": [],
+            "AdminRoles": [],
+            "LogChannel": None,
+            "ProfileSettings": {
+                "CustomChannels": {
+                    "CategoryName": "Custom Channels",
+                    "TopCategoryName": "Top Custom Channels",
+                    "ChannelPerCategory": 10,
+                },
+                "CustomRoles": {"RolePossition": None},
+            },
+            "Profiles": {
+                "RolesProfiles": {},
+                "ChannelsProfiles": {},
+                "HighLightsProfiles": {},
+                "ArsProfiles": {},
+                "EmojisProfiles": {},
+            },
+        }
+        await self.Configs.insert(data)
+        return data
 
-        Raises
-        ------
-        Exception
-            If the perk type is invalid
+    async def GetGuildConfig(self, GuildId: int | Guild) -> GuildConfig:
+        return await self.Configs.find(
+            GuildId.id if isinstance(GuildId, Guild) else GuildId
+        )
 
-        """
-        match type:
-            case Perk_Type.roles | "roles":
-                return await self.roles.find({"guild_id": guild_id, "user_id": user_id})
-            case Perk_Type.channels | "channels":
-                return await self.channel.find(
-                    {"guild_id": guild_id, "user_id": user_id}
-                )
-            case Perk_Type.reacts | "reacts":
-                return await self.react.find({"guild_id": guild_id, "user_id": user_id})
-            case Perk_Type.highlights | "highlights":
-                return await self.highlight.find(
-                    {"guild_id": guild_id, "user_id": user_id}
-                )
-            case Perk_Type.emojis | "emojis":
-                return await self.emoji.find({"guild_id": guild_id, "user_id": user_id})
-            case Perk_Type.config | "config":
-                return await self.config.find({"_id": guild_id})
-            case _:
-                raise Exception("Invalid perk type")
+    async def UpdateGuildConfig(self, GuildId: int | Guild, Data: GuildConfig):
+        return await self.Configs.update(
+            filter_dict={"_id": GuildId.id if isinstance(GuildId, Guild) else GuildId},
+            data=Data,
+        )
 
-    async def update(self, type: Perk_Type | str, data: dict) -> None:
-        """
-        Update the data in the database
+    async def CreateUserConfig(self, UserId: int, GuildId: int):
+        return await self.UserSettings.insert(
+            {
+                "UserId": UserId,
+                "GuildId": GuildId,
+                "Claimed": {
+                    "Roles": {},
+                    "Channels": {},
+                    "Emojis": {},
+                    "HighLights": [],
+                    "Ars": {},
+                },
+                "IgnoreClaimed": False,
+            }
+        )
 
-        Parameters
-        ----------
-        type: Perk_Type | str
-            The type of perk to update
-        data: dict
-            The data to update
+    async def GetUserConfig(self, UserId: int, GuildId: int):
+        return await self.UserSettings.find({"UserId": UserId, "GuildId": GuildId})
 
-        Returns
-        -------
-        None
+    async def UpdateUserConfig(self, UserId: int, GuildId: int, Data: UserConfig):
+        return await self.UserSettings.update(
+            filter_dict={"UserId": UserId, "GuildId": GuildId}, data=Data
+        )
 
-        Raises
-        ------
-        Exception
-            If the perk type is invalid
-
-        """
-        match type:
-            case Perk_Type.roles | "roles":
-                await self.roles.update(data["_id"], data)
-
-            case Perk_Type.channels | "channels":
-                await self.channel.update(data["_id"], data)
-
-            case Perk_Type.reacts | "reacts":
-                await self.react.update(data["_id"], data)
-
-            case Perk_Type.highlights | "highlights":
-                await self.highlight.update(data["_id"], data)
-
-            case Perk_Type.emojis | "emojis":
-                await self.emoji.update(data["_id"], data)
-
-            case Perk_Type.config | "config":
-                await self.config.update(data["_id"], data)
-
-            case _:
-                raise Exception("Invalid perk type")
-
-    async def delete(self, type: Perk_Type | str, data: dict) -> None:
-        """
-        Delete the data from the database
-
-        Parameters
-        ----------
-        type: Perk_Type | str
-            The type of perk to delete
-        data: dict
-            The data to delete
-
-        Returns
-        -------
-        None
-
-        Raises
-        ------
-        Exception
-            If the perk type is invalid
-
-        """
-
-        match type:
-            case Perk_Type.roles | "roles":
-                await self.roles.delete(data["_id"])
-
-            case Perk_Type.channels | "channels":
-                await self.channel.delete(data["_id"])
-
-            case Perk_Type.reacts | "reacts":
-                await self.react.delete(data["_id"])
-
-            case Perk_Type.highlights | "highlights":
-                await self.highlight.delete(data["_id"])
-
-            case Perk_Type.emojis | "emoji":
-                await self.emoji.delete(data["_id"])
-
-            case _:
-                raise Exception("Invalid perk type")
-
-    async def create(
+    async def CreateUserCustomRole(
         self,
-        type: Perk_Type | str,
         user_id: int,
         guild_id: int,
-        duration: Union[int, str] = None,
-        share_limit: int = None,
-    ) -> Union[
-        Custom_Roles,
-        Custom_Channel,
-        Custom_React,
-        Custom_Highlight,
-        Custom_Emoji,
-        Config,
-    ]:
-        """
-        Create a new perk in the database
+        role_id: int,
+        duration: int | str,
+        friend_limit: int,
+    ):
+        return await self.UserCustomRoles.insert(
+            {
+                "UserId": user_id,
+                "GuildId": guild_id,
+                "RoleId": role_id,
+                "Duration": duration,
+                "FriendLimit": friend_limit,
+                "Friends": [],
+                "Freezed": False,
+                "LastActivity": datetime.datetime.utcnow(),
+            }
+        )
 
-        Parameters
-        ----------
-        type: Perk_Type | str
-            The type of perk to create
-        user_id: int
-            The user id
-        guild_id: int
-            The guild id
-        duration: Union[int, str]
-            The duration of the perk
-        share_limit: int
-            The friend limit of the perk
+    async def GetUserCustomRoles(self, user_id: int, guild_id: int):
+        return await self.UserCustomRoles.find({"UserId": user_id, "GuildId": guild_id})
 
-        Returns
-        -------
-        Union[Custom_Roles, Custom_Channel, Custom_React, Custom_Highlight, Custom_Emoji, Config]
-            The data from the database
+    async def UpdateUserCustomRole(
+        self, user_id: int, guild_id: int, role_id: int, data: UserCustomRoles
+    ):
+        return await self.UserCustomRoles.update(
+            filter_dict={"UserId": user_id, "GuildId": guild_id, "RoleId": role_id},
+            data=data,
+        )
 
-        Raises
-        ------
-        Exception
-            If the perk type is invalid
+    async def CreateUserCustomChannel(
+        self,
+        user_id: int,
+        guild_id: int,
+        channel_id: int,
+        duration: int | str,
+        friend_limit: int,
+    ):
+        return await self.UserCustomChannels.insert(
+            {
+                "UserId": user_id,
+                "GuildId": guild_id,
+                "ChannelId": channel_id,
+                "Duration": duration,
+                "FriendLimit": friend_limit,
+                "Friends": [],
+                "Freezed": False,
+                "LastActivity": datetime.datetime.utcnow(),
+            }
+        )
 
-        """
+    async def GetUserCustomChannels(self, user_id: int, guild_id: int):
+        return await self.UserCustomChannels.find(
+            {"UserId": user_id, "GuildId": guild_id}
+        )
 
-        match type:
-            case Perk_Type.roles | "roles":
-                perk_data: Custom_Roles = {
-                    "user_id": user_id,
-                    "guild_id": guild_id,
-                    "role_id": None,
-                    "duration": duration,
-                    "created_at": None,
-                    "share_limit": share_limit,
-                    "friend_list": [],
-                    "freeze": {"friends": False, "share_limit": False, "delete": False},
-                }
-                await self.roles.insert(perk_data)
-                return perk_data
+    async def UpdateUserCustomChannel(
+        self, user_id: int, guild_id: int, channel_id: int, data: UserCustomChannels
+    ):
+        return await self.UserCustomChannels.update(
+            filter_dict={
+                "UserId": user_id,
+                "GuildId": guild_id,
+                "ChannelId": channel_id,
+            },
+            data=data,
+        )
 
-            case Perk_Type.channels | "channels":
-                perk_data: Custom_Channel = {
-                    "user_id": user_id,
-                    "guild_id": guild_id,
-                    "channel_id": None,
-                    "duration": duration,
-                    "created_at": None,
-                    "share_limit": share_limit,
-                    "friend_list": [],
-                    "freeze": {"friends": False, "share_limit": False, "delete": False},
-                    "activity": {
-                        "messages": 0,
-                        "rank": None,
-                        "previous_rank": 0,
-                        "cooldown": None,
-                        "last_message": None,
-                    },
-                }
-                await self.channel.insert(perk_data)
-                return perk_data
+    async def CreateUserCustomEmoji(
+        self, user_id: int, guild_id: int, emoji_id: int, duration: int | str
+    ):
+        return await self.UserCustomEmojis.insert(
+            {
+                "UserId": user_id,
+                "GuildId": guild_id,
+                "EmojiId": emoji_id,
+                "Duration": duration,
+                "Freezed": False,
+                "LastActivity": datetime.datetime.utcnow(),
+            }
+        )
 
-            case Perk_Type.reacts | "reacts":
-                perk_data: Custom_React = {
-                    "guild_id": guild_id,
-                    "user_id": user_id,
-                    "emojis": [],
-                    "last_react": None,
-                    "max_emoji": share_limit if share_limit else 1,
-                }
-                await self.react.insert(perk_data)
-                return perk_data
+    async def GetUserCustomEmojis(self, user_id: int, guild_id: int):
+        return await self.UserCustomEmojis.find(
+            {"UserId": user_id, "GuildId": guild_id}
+        )
 
-            case Perk_Type.highlights | "highlights":
-                perk_data: Custom_Highlight = {
-                    "guild_id": guild_id,
-                    "user_id": user_id,
-                    "triggers": [],
-                    "ignore_channel": [],
-                    "ignore_users": [],
-                    "last_trigger": None,
-                    "tigger_limit": share_limit if share_limit else 1,
-                }
-                await self.highlight.insert(perk_data)
-                return perk_data
+    async def UpdateUserCustomEmoji(
+        self, user_id: int, guild_id: int, emoji_id: int, data: UserCustomEmojis
+    ):
+        return await self.UserCustomEmojis.update(
+            filter_dict={"UserId": user_id, "GuildId": guild_id, "EmojiId": emoji_id},
+            data=data,
+        )
 
-            case Perk_Type.emojis | "emojis":
-                perk_data: Custom_Emoji = {
-                    "emojis": [],
-                    "max_emoji": share_limit,
-                    "guild_id": guild_id,
-                    "user_id": user_id,
-                }
-                await self.emoji.insert(perk_data)
-                return perk_data
+    async def CreateUserCustomHighLight(
+        self, user_id: int, guild_id: int, duration: int | str, trigger_limit: int
+    ):
+        return await self.UserCustomHighLights.insert(
+            {
+                "UserId": user_id,
+                "GuildId": guild_id,
+                "Duration": duration,
+                "TriggerLimit": trigger_limit,
+                "Freezed": False,
+                "LastActivity": datetime.datetime.utcnow(),
+                "Ignore": {"Users": [], "Channels": []},
+            }
+        )
 
-            case Perk_Type.config | "config":
-                perk_config: Config = {
-                    "_id": guild_id,
-                    "custom_category": {"name": None, "last_cat": None, "cat_list": []},
-                    "custom_roles_position": 0,
-                    "admin_roles": [],
-                    "emojis": {"max": 0, "request_channel": None},
-                    "profiles": {
-                        "roles": {},
-                        "channels": {},
-                        "reacts": {},
-                        "highlights": {},
-                        "emojis": {},
-                    },
-                    "top_channel_category": {"name": None, "cat_id": None},
-                }
-                await self.config.insert(perk_config)
-                return perk_config
+    async def GetUserCustomHighLights(self, user_id: int, guild_id: int):
+        return await self.UserCustomHighLights.find(
+            {"UserId": user_id, "GuildId": guild_id}
+        )
 
-            case _:
-                raise Exception("Invalid perk type")
+    async def UpdateUserCustomHighLight(
+        self, user_id: int, guild_id: int, data: UserCustomHighLights
+    ):
+        return await self.UserCustomHighLights.update(
+            filter_dict={"UserId": user_id, "GuildId": guild_id},
+            data=data,
+        )
 
-    async def insert(self, type: Perk_Type | str, data: dict) -> None:
-        """
-        Insert the data into the database
+    async def CreateUserCustomAr(
+        self,
+        user_id: int,
+        guild_id: int,
+        duration: int | str,
+        trigger_limit: int,
+        type: ArTypes,
+    ):
+        return await self.UserCustomArs.insert(
+            {
+                "UserId": user_id,
+                "GuildId": guild_id,
+                "Duration": duration,
+                "TriggerLimit": trigger_limit,
+                "Freezed": False,
+                "LastActivity": datetime.datetime.utcnow(),
+                "Ignore": {"Users": [], "Channels": []},
+                "Type": type,
+            }
+        )
 
-        Parameters
-        ----------
-        type: Perk_Type | str
-            The type of perk to insert
-        data: dict
-            The data to insert
+    async def GetUserCustomArs(self, user_id: int, guild_id: int):
+        return await self.UserCustomArs.find({"UserId": user_id, "GuildId": guild_id})
 
-        Returns
-        -------
-        None
+    async def UpdateUserCustomAr(
+        self, user_id: int, guild_id: int, data: UserCustomArs
+    ):
+        return await self.UserCustomArs.update(
+            filter_dict={"UserId": user_id, "GuildId": guild_id},
+            data=data,
+        )
 
-        Raises
-        ------
-        Exception
-            If the perk type is invalid
-        """
+    async def GetConfigEmbed(self, guild: Guild):
+        Config = await self.GetGuildConfig(GuildId=guild.id)
 
-        match type:
-            case Perk_Type.roles | "roles":
-                await self.roles.insert(data)
-
-            case Perk_Type.channels | "channels":
-                await self.channel.insert(data)
-
-            case Perk_Type.reacts | "reacts":
-                await self.react.insert(data)
-
-            case Perk_Type.highlights | "highlights":
-                await self.highlight.insert(data)
-
-            case Perk_Type.emojis | "emojis":
-                await self.emoji.insert(data)
-
-            case _:
-                raise Exception("Invalid perk type")
-
-    async def create_cach(self) -> bool:
-        """
-        Create the cache for the database
-
-        Returns
-        -------
-        bool
-            True if the cache is created
-
-        Returns
-        -------
-        bool
-            True if the cache is created
-        """
-        configs = await self.config.get_all()
-        await self.setup_reacts(configs)
-        await self.setup_highlights(configs)
-        return True
-
-    async def setup_channels(self, configs: list[dict]) -> None:
-        """
-        Setup the channels in the cache
-
-        Parameters
-        ----------
-
-        configs: list[dict]
-            The list of configs to setup the channels
-
-        Returns
-        -------
-        None
-        """
-
-        channels = await self.channel.get_all()
-        self.cach["channels"] = {}
-        for data in configs:
-            if data["_id"] not in self.cach["channels"].keys():
-                self.cach["channels"][data["_id"]] = {}
-
-        for channel in channels:
-            if channel["channel_id"] is not None:
-                continue
-            self.cach["channels"][channel["guild_id"]][channel["channel_id"]] = channel
-
-    async def setup_reacts(self, configs: list[dict]) -> None:
-        """
-        Setup the reacts in the cache
-
-        Parameters
-        ----------
-        configs: list[dict]
-            The list of configs to setup the reacts
-
-        Returns
-        -------
-        None
-        """
-        reacts = await self.react.get_all()
-        self.cach["react"] = {}
-        for data in configs:
-            if data["_id"] not in self.cach["react"].keys():
-                self.cach["react"][data["_id"]] = {}
-
-        for react in reacts:
-            self.cach["react"][react["guild_id"]][react["user_id"]] = react
-
-    async def setup_highlights(self, configs: list[dict]) -> None:
-        """
-        Setup the highlights in the cache
-
-        Parameters
-        ----------
-        configs: list[dict]
-            The list of configs to setup the highlights
-
-        Returns
-        -------
-        None
-        """
-
-        highlights = await self.highlight.get_all()
-        self.cach["highlight"] = {}
-        for data in configs:
-            if data["_id"] not in self.cach["highlight"].keys():
-                self.cach["highlight"][data["_id"]] = {}
-
-        for highlight in highlights:
-            self.cach["highlight"][highlight["guild_id"]][highlight["user_id"]] = (
-                highlight
-            )
-
-    async def update_cache(
-        self, perk: Perk_Type, guild: discord.Guild, data: dict
-    ) -> None:
-        """
-        Update the cache for the database
-
-        Parameters
-        ----------
-        perk: Perk_Type
-            The type of perk to update
-
-        guild: discord.Guild
-            The guild to update the cache
-
-        data: dict
-            The data to update
-
-        Returns
-        -------
-        None
-
-        Raises
-        ------
-        Exception
-            If the perk type is invalid
-        """
-
-        match perk:
-            case Perk_Type.reacts:
-                self.cach["react"][guild.id][data["user_id"]] = data
-            case Perk_Type.highlights:
-                self.cach["highlight"][guild.id][data["user_id"]] = data
-            case _:
-                raise Exception("Invalid perk type")
-
-    async def get_config_embed(
-        self, guild: discord.Guild, config: Config = None
-    ) -> discord.Embed:
-        """
-        Get the config embed for the guild
-
-        Parameters
-        ----------
-        guild: discord.Guild
-            The guild to get the config embed
-
-        config: Config(Optional)
-            The config to use to get the embed
-
-        Returns
-        -------
-        discord.Embed
-            The config embed for the guild
-        """
-
-        if not config:
-            config: Config = await self.get_data(
-                Perk_Type.config, guild.id, guild.owner_id
-            )
-        formated_args = await get_formated_embed(
-            [
+        if Config is None:
+            Config = await self.CreateGuildConfig(GuildId=guild.id)
+        embed_args = await get_formated_embed(
+            arguments=[
                 "Admin Roles",
-                "Custom Roles Position",
-                "Custom Channel Category",
-                "Top Channel Category",
-                "Max Emojis",
-                "Request Channel",
-            ]
+                "Mod Roles",
+                "Log Channel",
+            ],
+            custom_end=":",
         )
-
-        embed = discord.Embed(description="", color=self.bot.default_color)
-        embed.description = ""
-
-        embed.description += "<:level_roles:1123938667212312637> `Perks`"
-        embed.description += "\n\n"
-
-        embed.description += f"{await get_formated_field(guild=guild,name=formated_args['Admin Roles'], type='role', data=config['admin_roles'])}\n"
-        embed.description += f"{await get_formated_field(guild=guild,name=formated_args['Custom Roles Position'], type='role', data=config['custom_roles_position'])}\n"
-        embed.description += f"{await get_formated_field(guild=guild,name=formated_args['Custom Channel Category'], type='str', data=config['top_channel_category']['name'])}\n"
-        embed.description += f"{formated_args['Max Emojis']}{config['emojis']['max']}\n"
-        embed.description += f"{await get_formated_field(guild=guild,name=formated_args['Request Channel'], type='channel', data=config['emojis']['request_channel'])}\n"
-
-        embed.description += f"{formated_args['Custom Channel Category']}{len(config['custom_category']['cat_list'])}\n\n"
-
-        embed.description += "<:tgk_category:1076602579846447184> `Profiles List`\n\n"
-        profile_formated_args = await get_formated_embed(
-            ["Roles", "Channels", "Reacts", "Highlights", "Emojis"]
+        embed: Embed = Embed(
+            color=COLOR,
+            description=f"<:tgk_bank:1073920882130558987> `{guild.name} Custom Perk Settings`\n\n",
         )
-        embed.description += f"{profile_formated_args['Roles']} {len(config['profiles']['roles'].keys())}\n"
-        embed.description += f"{profile_formated_args['Channels']} {len(config['profiles']['channels'].keys())}\n"
-        embed.description += f"{profile_formated_args['Reacts']} {len(config['profiles']['reacts'].keys())}\n"
-        embed.description += f"{profile_formated_args['Highlights']} {len(config['profiles']['highlights'].keys())}\n"
-        embed.description += f"{profile_formated_args['Emojis']} {len(config['profiles']['emojis'].keys())}\n\n"
+        values = {
+            "Admin Roles": await get_formated_field(
+                name=embed_args["Admin Roles"],
+                type="role",
+                data=Config["AdminRoles"],
+                guild=guild,
+            ),
+            "Mod Roles": await get_formated_field(
+                name=embed_args["Mod Roles"],
+                type="role",
+                data=Config["ModRoles"],
+                guild=guild,
+            ),
+            "Log Channel": await get_formated_field(
+                name=embed_args["Log Channel"],
+                type="channel",
+                data=Config["LogChannel"],
+                guild=guild,
+            ),
+        }
 
-        embed.description += (
-            "<:tgk_hint:1206282482744561744> Use buttons below to changes the settings"
+        for value in values.values():
+            embed.description += f"{value}\n"
+        profiles: Profiles = Config["Profiles"]
+        profile_value = ""
+        profile_value += f"* Role Profiles: {len(profiles['RolesProfiles'])}\n"
+        profile_value += f"* Channel Profiles: {len(profiles['ChannelsProfiles'])}\n"
+        profile_value += (
+            f"* HighLights Profiles: {len(profiles['HighLightsProfiles'])}\n"
         )
+        profile_value += f"* Ars Profiles: {len(profiles['ArsProfiles'])}\n"
+        profile_value += f"* Emojis Profiles: {len(profiles['EmojisProfiles'])}\n"
+
+        embed.add_field(name="Profiles", value=profile_value, inline=False)
 
         return embed
-
-    async def calulate_profile(
-        self, type: Perk_Type, guild: discord.Guild, user: discord.Member
-    ) -> dict:
-        """
-        Calculate the profile for the user
-
-        Parameters
-        ----------
-        type: Perk_Type
-            The type of perk to calculate
-        guild: discord.Guild
-            The guild to calculate the profile
-        user: discord.Member
-            The user to calculate the profile
-
-        Returns
-        -------
-        dict
-            The profile for the user
-        """
-
-        config: Config = await self.get_data(Perk_Type.config, guild.id, guild.owner_id)
-        profile = config["profiles"][type.value]
-        user_roles = [role.id for role in user.roles]
-        share_limit = 0
-        duration = 0
-        for key, value in profile.items():
-            if int(key) in user_roles:
-                share_limit += value["share_limit"]
-                if value["duration"] == "permanent":
-                    duration = "permanent"
-
-        return {"share_limit": share_limit, "duration": duration}
