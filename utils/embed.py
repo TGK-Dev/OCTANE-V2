@@ -1,11 +1,11 @@
 import discord
 import datetime
 from humanfriendly import format_timespan
-from typing import List, Dict, Union, Literal
+from typing import List, Dict, Union, Literal, Optional
 
 
 async def get_formated_embed(
-    arguments: List[str], custom_lenth: int = None
+    arguments: List[str], custom_lenth: int = None, custom_end: str = None
 ) -> Dict[str, str]:
     """
     This fuctions creates a formated embed description fields
@@ -31,8 +31,12 @@ async def get_formated_embed(
         final_lenth = custom_lenth
     final_lenth = len(longest_arg) + 2
 
-    for arg in arguments:
-        output[arg] = f" `{arg}{' '* (final_lenth - len(arg))}` "
+    if not custom_end:
+        for arg in arguments:
+            output[arg] = f" `{arg}{' '* (final_lenth - len(arg))}` "
+    else:
+        for arg in arguments:
+            output[arg] = f" `{arg}{' '* (final_lenth - (len(arg) + len(custom_end)))}{custom_end}` "
 
     return output
 
@@ -42,7 +46,7 @@ async def get_formated_field(
     name: str,
     type: Literal["role", "channel", "user", "time", "str", "bool", "emoji"],
     data: Union[List[int], None, int],
-) -> str:
+):
     """
     This function creates a formated embed field for a role, channel or user.
 
@@ -60,7 +64,7 @@ async def get_formated_field(
     """
     match type:
         case "role":
-            if isinstance(data, List):
+            if isinstance(data, list):
                 if len(data) == 0:
                     return f"{name}None"
 
@@ -80,7 +84,7 @@ async def get_formated_field(
                 return f"{name}None"
 
         case "channel":
-            if isinstance(data, List):
+            if isinstance(data, list):
                 if len(data) == 0:
                     return f"{name}None"
 
