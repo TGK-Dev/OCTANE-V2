@@ -13,6 +13,8 @@ from .db import (
     HighLightsProfiles,
     EmojisProfiles,
     CustomEmojiSettings,
+    UserCustomRoles,
+    UserCustomChannels,
 )
 
 from utils.views.selects import Channel_select, Select_General
@@ -333,6 +335,15 @@ class ChannelProfilesView(View):
         self.db = db
         self.message = message
 
+        if self.settings["DefaultRoles"] != []:
+            role_select: discord.ui.RoleSelect = self.children[1]
+            role_select.default_values = [
+                discord.SelectDefaultValue(
+                    id=role, type=discord.SelectDefaultValueType.role
+                )
+                for role in self.settings["DefaultRoles"]
+            ]
+
     async def on_error(
         self, interaction: discord.Interaction, error: Exception, item: discord.ui.Item
     ):
@@ -357,6 +368,9 @@ class ChannelProfilesView(View):
                 "Top Category Name",
                 "Channel Per Category",
                 "Total Categories",
+                "Inactivity Limit",
+                "Activity Required",
+                "Default Roles",
             ],
             custom_end=":",
         )
@@ -364,10 +378,47 @@ class ChannelProfilesView(View):
         embed.description += f"{await get_formated_field(interaction.guild, name=embed_args['Category Name'], data=self.settings['CategoryName'], type='str')}\n"
         embed.description += f"{await get_formated_field(interaction.guild, name=embed_args['Top Category Name'], data=self.settings['TopCategoryName'], type='str')}\n"
         embed.description += f"{await get_formated_field(interaction.guild, name=embed_args['Channel Per Category'], data=self.settings['ChannelPerCategory'], type='str')}\n"
+        embed.description += f"{await get_formated_field(interaction.guild, name=embed_args['Default Roles'], data=self.settings['DefaultRoles'], type='role')}\n"
+        embed.description += f"{await get_formated_field(interaction.guild, name=embed_args['Inactivity Limit'], data=self.settings['Activity']['Time'], type='time')}\n"
+        embed.description += f"{await get_formated_field(interaction.guild, name=embed_args['Activity Required'], data=self.settings['Activity']['Messages'], type='str')}\n"
         embed.description += f"{await get_formated_field(interaction.guild, name=embed_args['Total Categories'], data=len(self.settings['CustomCategorys']), type='str')}\n\n"
 
         embed.description += "-# <:tgk_hint:1206282482744561744> Make sure to save your changes if made any\n"
         return embed
+
+    @discord.ui.select(
+        placeholder="Select number of channels you want for each category",
+        min_values=1,
+        max_values=1,
+        options=[
+            discord.SelectOption(label=str(i), value=str(i)) for i in range(1, 11)
+        ],
+        row=0,
+    )
+    async def _category_select(
+        self, interaction: discord.Interaction, select: discord.ui.Select
+    ):
+        self.settings["ChannelPerCategory"] = int(select.values[0])
+        self.children[-1].disabled = False
+        await interaction.response.edit_message(
+            embed=await self.update_embed(interaction, self.data), view=self
+        )
+
+    @discord.ui.select(
+        placeholder="Select default roles for new channels",
+        min_values=1,
+        max_values=10,
+        cls=discord.ui.RoleSelect,
+        row=1,
+    )
+    async def _default_roles(
+        self, interaction: discord.Interaction, select: discord.ui.RoleSelect
+    ):
+        self.settings["DefaultRoles"] = [int(role.id) for role in select.values]
+        self.children[-1].disabled = False
+        await interaction.response.edit_message(
+            embed=await self.update_embed(interaction, self.data), view=self
+        )
 
     @discord.ui.button(
         label="Category Names",
@@ -407,23 +458,52 @@ class ChannelProfilesView(View):
         else:
             await interaction.delete_original_response()
 
-    @discord.ui.select(
-        placeholder="Select number of channels you want for each category",
-        min_values=1,
-        max_values=1,
-        options=[
-            discord.SelectOption(label=str(i), value=str(i)) for i in range(1, 11)
-        ],
-        row=0,
+    @discord.ui.button(
+        label="Activity",
+        style=discord.ButtonStyle.gray,
+        emoji="<:tgk_clock:1198684272446414928>",
     )
-    async def _category_select(
-        self, interaction: discord.Interaction, select: discord.ui.Select
+    async def _inactivity_duration(
+        self, interaction: discord.Interaction, button: Button
     ):
-        self.settings["ChannelPerCategory"] = int(select.values[0])
-        self.children[-1].disabled = False
-        await interaction.response.edit_message(
-            embed=await self.update_embed(interaction, self.data), view=self
+        view = General_Modal(title="Inactivity Limit", interaction=interaction)
+        view.add_input(
+            label="Inactivity Limit",
+            placeholder="Enter the duration for inactivity",
+            required=True,
+            max_length=50,
+            default=humanfriendly.format_timespan(self.settings["Activity"]["Time"])
+            if self.settings["Activity"]["Time"]
+            else None,
         )
+        view.add_input(
+            label="Activity Required",
+            placeholder="Enter the activity required",
+            required=True,
+            max_length=2,
+            default=self.settings["Activity"]["Messages"]
+            if self.settings["Activity"]["Messages"]
+            else None,
+        )
+
+        await interaction.response.send_modal(view)
+        await view.wait()
+        if view.value:
+            duration = await TimeConverter().transform(
+                interaction=view.interaction, argument=view.children[0].value
+            )
+            if isinstance(duration, str):
+                return await view.interaction.response.send_message(
+                    content=f"Invald time format: {duration}", ephemeral=True
+                )
+            self.settings["Activity"]["Time"] = int(duration)
+            self.settings["Activity"]["Messages"] = int(view.children[1].value)
+            self.children[-1].disabled = False
+            await view.interaction.response.edit_message(
+                embed=await self.update_embed(interaction, self.data), view=self
+            )
+        else:
+            await interaction.delete_original_response()
 
     @discord.ui.button(
         label="Manage Profiles",
@@ -858,16 +938,19 @@ class RoleProfilesView(View):
             description="<:tgk_bank:1134892342910914602> `Role Profiles Configuration`\n\n",
             color=interaction.client.default_color,
         )
-        embed.description += "`Custom Role Position`:"
-        if isinstance(self.settings["RolePossition"], int):
-            role = interaction.guild.get_role(self.settings["RolePossition"])
-            if role:
-                embed.description += f" {role.mention}\n\n"
-            else:
-                self.settings["RolePossition"] = None
-                embed.description += "None\n\n"
-        else:
-            embed.description += "None\n\n"
+        embed_args = await get_formated_embed(
+            [
+                "Custom Role Position",
+                "Inactivity Limit",
+                "Activity Required",
+            ],
+            custom_end=":",
+        )
+
+        embed.description += f"{await get_formated_field(interaction.guild, name=embed_args['Custom Role Position'], data=self.settings['RolePossition'], type='role')}\n"
+        embed.description += f"{await get_formated_field(interaction.guild, name=embed_args['Inactivity Limit'], data=self.settings['Activity']['Time'], type='time')}\n"
+        embed.description += f"{await get_formated_field(interaction.guild, name=embed_args['Activity Required'], data=self.settings['Activity']['Messages'], type='str')}\n\n"
+
         embed.description += "-# <:tgk_hint:1206282482744561744> Make sure to save your changes if made\n-# * Any changes to role position will be only applied new custom roles\n"
         return embed
 
@@ -884,6 +967,53 @@ class RoleProfilesView(View):
         await interaction.response.edit_message(
             embed=await self.update_embed(interaction, self.data), view=self
         )
+
+    @discord.ui.button(
+        label="Activity",
+        style=discord.ButtonStyle.gray,
+        emoji="<:tgk_clock:1198684272446414928>",
+    )
+    async def _inactivity_duration(
+        self, interaction: discord.Interaction, button: Button
+    ):
+        view = General_Modal(title="Inactivity Limit", interaction=interaction)
+        view.add_input(
+            label="Inactivity Limit",
+            placeholder="Enter the duration for inactivity",
+            required=True,
+            max_length=50,
+            default=humanfriendly.format_timespan(self.settings["Activity"]["Time"])
+            if self.settings["Activity"]["Time"]
+            else None,
+        )
+        view.add_input(
+            label="Activity Required",
+            placeholder="Enter the activity required",
+            required=True,
+            max_length=2,
+            default=self.settings["Activity"]["Messages"]
+            if self.settings["Activity"]["Messages"]
+            else None,
+        )
+
+        await interaction.response.send_modal(view)
+        await view.wait()
+        if view.value:
+            duration = await TimeConverter().transform(
+                interaction=view.interaction, argument=view.children[0].value
+            )
+            if isinstance(duration, str):
+                return await view.interaction.response.send_message(
+                    content=f"Invald time format: {duration}", ephemeral=True
+                )
+            self.settings["Activity"]["Time"] = int(duration)
+            self.settings["Activity"]["Messages"] = int(view.children[1].value)
+            self.children[-1].disabled = False
+            await view.interaction.response.edit_message(
+                embed=await self.update_embed(interaction, self.data), view=self
+            )
+        else:
+            await interaction.delete_original_response()
 
     @discord.ui.button(
         label="Manage Profiles",
@@ -2553,6 +2683,9 @@ class PerksConfigPanel(View):
                         "Top Category Name",
                         "Channel Per Category",
                         "Total Categories",
+                        "Default Roles",
+                        "Inactivity Limit",
+                        "Activity Required",
                     ],
                     custom_end=":",
                 )
@@ -2560,6 +2693,9 @@ class PerksConfigPanel(View):
                 embed.description += f"{await get_formated_field(interaction.guild, name=embed_args['Category Name'], data=self.data['ProfileSettings']['CustomChannels']['CategoryName'], type='str')}\n"
                 embed.description += f"{await get_formated_field(interaction.guild, name=embed_args['Top Category Name'], data=self.data['ProfileSettings']['CustomChannels']['TopCategoryName'], type='str')}\n"
                 embed.description += f"{await get_formated_field(interaction.guild, name=embed_args['Channel Per Category'], data=self.data['ProfileSettings']['CustomChannels']['ChannelPerCategory'], type='str')}\n"
+                embed.description += f"{await get_formated_field(interaction.guild, name=embed_args['Default Roles'], data=self.data['ProfileSettings']['CustomChannels']['DefaultRoles'], type='role')}\n"
+                embed.description += f"{await get_formated_field(interaction.guild, name=embed_args['Inactivity Limit'], data=self.data['ProfileSettings']['CustomChannels']['Activity']['Time'], type='time')}\n"
+                embed.description += f"{await get_formated_field(interaction.guild, name=embed_args['Activity Required'], data=self.data['ProfileSettings']['CustomChannels']['Activity']['Messages'], type='str')}\n"
                 embed.description += f"{await get_formated_field(interaction.guild, name=embed_args['Total Categories'], data=len(self.data['ProfileSettings']['CustomChannels']['CustomCategorys']), type='str')}\n\n"
 
                 embed.description += "-# <:tgk_hint:1206282482744561744> Make sure to save your changes if made any"
@@ -2574,22 +2710,19 @@ class PerksConfigPanel(View):
                     description="<:tgk_bank:1134892342910914602> `Role Profiles Configuration`\n\n",
                     color=interaction.client.default_color,
                 )
-                embed.description += "`Custom Role Position`:"
-                if isinstance(
-                    self.data["ProfileSettings"]["CustomRoles"]["RolePossition"], int
-                ):
-                    role = interaction.guild.get_role(
-                        self.data["ProfileSettings"]["CustomRoles"]["RolePossition"]
-                    )
-                    if role:
-                        embed.description += f" {role.mention}\n"
-                    else:
-                        self.data["ProfileSettings"]["CustomRoles"]["RolePossition"] = (
-                            None
-                        )
-                        embed.description += "None\n\n"
-                else:
-                    embed.description += "None\n\n"
+                embed_args = await get_formated_embed(
+                    [
+                        "Custom Role Position",
+                        "Inactivity Limit",
+                        "Activity Required",
+                    ],
+                    custom_end=":",
+                )
+
+                embed.description += f"{await get_formated_field(interaction.guild, name=embed_args['Custom Role Position'], data=self.data['ProfileSettings']['CustomRoles']['RolePossition'], type='role')}\n"
+                embed.description += f"{await get_formated_field(interaction.guild, name=embed_args['Inactivity Limit'], data=self.data['ProfileSettings']['CustomRoles']['Activity']['Time'], type='time')}\n"
+                embed.description += f"{await get_formated_field(interaction.guild, name=embed_args['Activity Required'], data=self.data['ProfileSettings']['CustomRoles']['Activity']['Messages'], type='str')}\n\n"
+
                 embed.description += "-# <:tgk_hint:1206282482744561744> Make sure to save your changes if made\n-# * Any changes to role position will be only applied new custom roles\n"
 
                 role_profile_view = RoleProfilesView(
@@ -2658,3 +2791,294 @@ class PerksConfigPanel(View):
 
         else:
             await interaction.delete_original_response()
+
+
+class RoleFriendsManage(View):
+    def __init__(
+        self,
+        member: discord.Member,
+        data: UserCustomRoles,
+        db: Backend,
+        og_interaction: discord.Interaction = None,
+    ):
+        super().__init__(timeout=60)
+        self.data = data
+        self.member = member
+        self._message = og_interaction
+        self.db = db
+        if self.data["Friends"] != []:
+            default_values = []
+            for friend in self.data["Friends"]:
+                user = self._message.guild.get_member(friend)
+                if user:
+                    default_values.append(
+                        discord.SelectDefaultValue(
+                            id=user.id, type=discord.SelectDefaultValueType.user
+                        )
+                    )
+                else:
+                    self.data["Friends"].remove(friend)
+            self.children[0].default_values = default_values
+        else:
+            self.children[1].disabled = True
+
+        self.children[0].max_values = self.data["FriendLimit"]
+
+    async def on_error(
+        self, interaction: discord.Interaction, error: Exception, item: discord.ui.Item
+    ):
+        if interaction.response.is_done():
+            return interaction.followup.send(
+                "An error occurred: {error}", ephemeral=True
+            )
+        return interaction.response.send_message(
+            f"An error occurred: {error}", ephemeral=True
+        )
+
+    async def update_embed(
+        self, interaction: discord.Interaction, data: UserCustomRoles
+    ):
+        embed = discord.Embed(
+            description="<:tgk_bank:1134892342910914602> `Role Friends Configuration`\n\n",
+            color=interaction.client.default_color,
+        )
+        embed.description += f"`Total Role Friends:` {data['FriendLimit']}\n"
+        embed.description += (
+            f"* Friends: {','.join([f'<@{user}>' for user in data['Friends']])}\n"
+        )
+
+        return embed
+
+    @discord.ui.select(
+        placeholder="Select a user to add",
+        cls=discord.ui.UserSelect,
+        min_values=1,
+        max_values=1,
+    )
+    async def _add_user(
+        self, interaction: discord.Interaction, select: discord.ui.UserSelect
+    ):
+        await interaction.response.send_message(
+            content="Please wait while i update the user(s)", ephemeral=True
+        )
+
+        role = interaction.guild.get_role(self.data["RoleId"])
+        new_friends = [user.id for user in select.values]
+        old_friend = self.data["Friends"]
+        removed_friends = [friend for friend in old_friend if friend not in new_friends]
+
+        for user in removed_friends:
+            user = interaction.guild.get_member(user)
+            if user:
+                await user.remove_roles(role, reason="Role Friends Update")
+
+        for user in new_friends:
+            user = interaction.guild.get_member(user)
+            if user and role not in user.roles:
+                await user.add_roles(role, reason="Role Friends Update")
+
+        if self.data["UserId"] in new_friends:
+            new_friends.remove(self.data["UserId"])
+
+        self.data["Friends"] = new_friends
+
+        self.children[-1].disabled = False
+        select.default_values = [
+            discord.SelectDefaultValue(
+                id=user, type=discord.SelectDefaultValueType.user
+            )
+            for user in new_friends
+        ]
+        await interaction.delete_original_response()
+        await self._message.edit_original_response(
+            embed=await self.update_embed(interaction, self.data), view=self
+        )
+
+        await self.db.UpdateUserCustomRole(
+            user_id=self.data["UserId"],
+            data=self.data,
+            guild_id=interaction.guild.id,
+            role_id=self.data["RoleId"],
+        )
+
+    @discord.ui.button(
+        label="Reset Friends",
+        style=discord.ButtonStyle.gray,
+        emoji="<:tgk_reset:1210649255501635594>",
+    )
+    async def _reset_friends(self, interaction: discord.Interaction, button: Button):
+        await interaction.response.send_message(
+            "Please wait while i reset the friends", ephemeral=True
+        )
+        self.data["Friends"] = []
+        role = interaction.guild.get_role(self.data["RoleId"])
+        for member in role.members:
+            if member.id != self.data["UserId"]:
+                await member.remove_roles(role, reason="Role Friends Reset")
+
+        button.disabled = True
+        self.children[0].default_values = []
+        await self._message.edit_original_response(
+            embed=await self.update_embed(interaction, self.data), view=self
+        )
+        await self.db.UpdateUserCustomRole(
+            user_id=self.data["UserId"],
+            data=self.data,
+            guild_id=interaction.guild.id,
+            role_id=self.data["RoleId"],
+        )
+
+
+class ChannelFriendsManage(View):
+    def __init__(
+        self,
+        member: discord.Member,
+        data: UserCustomChannels,
+        db: Backend,
+        og_interaction: discord.Interaction = None,
+    ):
+        super().__init__(timeout=60)
+        self.data = data
+        self.member = member
+        self._message = og_interaction
+        self.db = db
+        if self.data["Friends"] != []:
+            default_values = []
+            for friend in self.data["Friends"]:
+                user = self._message.guild.get_member(friend)
+                if user:
+                    default_values.append(
+                        discord.SelectDefaultValue(
+                            id=user.id, type=discord.SelectDefaultValueType.user
+                        )
+                    )
+                else:
+                    self.data["Friends"].remove(friend)
+            self.children[0].default_values = default_values
+        else:
+            self.children[1].disabled = True
+
+        self.children[0].max_values = self.data["FriendLimit"]
+
+    async def on_error(
+        self, interaction: discord.Interaction, error: Exception, item: discord.ui.Item
+    ):
+        if interaction.response.is_done():
+            return interaction.followup.send(
+                "An error occurred: {error}", ephemeral=True
+            )
+        return interaction.response.send_message(
+            f"An error occurred: {error}", ephemeral=True
+        )
+
+    async def update_embed(
+        self, interaction: discord.Interaction, data: UserCustomChannels
+    ):
+        embed = discord.Embed(
+            description="<:tgk_bank:1134892342910914602> `Channel Friends Configuration`\n\n",
+            color=interaction.client.default_color,
+        )
+        embed.description += f"`Total Channel Friends:` {data['FriendLimit']}\n"
+        embed.description += (
+            f"* Friends: {','.join([f'<@{user}>' for user in data['Friends']])}\n"
+        )
+
+        return embed
+
+    @discord.ui.select(
+        placeholder="Select a user to add",
+        cls=discord.ui.UserSelect,
+        min_values=1,
+        max_values=1,
+    )
+    async def _add_user(
+        self, interaction: discord.Interaction, select: discord.ui.UserSelect
+    ):
+        await interaction.response.send_message(
+            content="Please wait while i update the user(s)", ephemeral=True
+        )
+
+        channel: discord.TextChannel = interaction.guild.get_channel(
+            self.data["ChannelId"]
+        )
+        new_friends = [user.id for user in select.values]
+        old_friend = self.data["Friends"]
+        removed_friends = [friend for friend in old_friend if friend not in new_friends]
+
+        for user in removed_friends:
+            user = interaction.guild.get_member(user)
+            if user and user in channel.overwrites.keys():
+                await channel.set_permissions(
+                    user, overwrite=None, reason="Channel Friends Update"
+                )
+
+        for user in new_friends:
+            user = interaction.guild.get_member(user)
+            if user and user not in channel.overwrites.keys():
+                await channel.set_permissions(
+                    user,
+                    read_messages=True,
+                    reason="Channel Friends Update",
+                )
+
+        if self.data["UserId"] in new_friends:
+            new_friends.remove(self.data["UserId"])
+
+        self.data["Friends"] = new_friends
+
+        self.children[-1].disabled = False
+        select.default_values = [
+            discord.SelectDefaultValue(
+                id=user, type=discord.SelectDefaultValueType.user
+            )
+            for user in new_friends
+        ]
+        await interaction.delete_original_response()
+        await self._message.edit_original_response(
+            embed=await self.update_embed(interaction, self.data), view=self
+        )
+
+        await self.db.UpdateUserCustomChannel(
+            user_id=self.data["UserId"],
+            data=self.data,
+            guild_id=interaction.guild.id,
+            channel_id=self.data["ChannelId"],
+        )
+
+    @discord.ui.button(
+        label="Reset Friends",
+        style=discord.ButtonStyle.gray,
+        emoji="<:tgk_reset:1210649255501635594>",
+    )
+    async def _reset_friends(self, interaction: discord.Interaction, button: Button):
+        await interaction.response.send_message(
+            "Please wait while i reset the friends", ephemeral=True
+        )
+        self.data["Friends"] = []
+        channel = interaction.guild.get_channel(self.data["ChannelId"])
+        for overwrite in channel.overwrites:
+            if overwrite.id not in [
+                self.data["UserId"],
+                channel.guild.default_role.id,
+                channel.guild.me.id,
+                channel.guild.owner.id,
+            ]:
+                await channel.set_permissions(
+                    overwrite, overwrite=None, reason="Channel Friends Reset"
+                )
+
+        button.disabled = True
+        self.children[0].default_values = []
+        await self._message.edit_original_response(
+            embed=await self.update_embed(interaction, self.data), view=self
+        )
+        await self.db.UpdateUserCustomChannel(
+            user_id=self.data["UserId"],
+            data=self.data,
+            guild_id=interaction.guild.id,
+            channel_id=self.data["ChannelId"],
+        )
+
+        await interaction.edit_original_response(
+            content="Successfully reset the friends", view=None, delete_after=1.5
+        )
