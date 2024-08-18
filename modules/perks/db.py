@@ -60,9 +60,13 @@ class CustomRoleSettings(TypedDict):
     RolePossition: int
 
 
+class CustomEmojiSettings(TypedDict):
+    TotalCustomEmojisLimit: int
+
 class ProfileSettings(TypedDict):
     CustomChannels: CustomChannelSettings
     CustomRoles: CustomRoleSettings
+    CustomEmoji: CustomEmojiSettings
 
 
 class GuildConfig(TypedDict):
