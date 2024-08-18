@@ -1,8 +1,12 @@
 import datetime
-from typing import List, Dict, TypedDict
+import discord
 from discord.ext.commands import Bot
-from discord import Guild, Embed
+from discord import Guild, Embed, Interaction, Role, Attachment
+
+import aiohttp
+from colour import Color
 from enum import Enum
+from typing import List, Dict, TypedDict
 
 from utils.db import Document
 from utils.embed import get_formated_embed, get_formated_field
@@ -49,19 +53,29 @@ class Profiles(TypedDict):
     EmojisProfiles: Dict[str, EmojisProfiles]
 
 
+class Activity(TypedDict):
+    Time: int
+    Messages: int
+
+
 class CustomChannelSettings(TypedDict):
     CategoryName: str
     TopCategoryName: str
     ChannelPerCategory: int
+    TopCategory: int
+    DefaultRoles: List[int]
+    Activity: dict[str, Activity]
     CustomCategorys: List[int]
 
 
 class CustomRoleSettings(TypedDict):
     RolePossition: int
+    Activity: dict[str, Activity]
 
 
 class CustomEmojiSettings(TypedDict):
     TotalCustomEmojisLimit: int
+
 
 class ProfileSettings(TypedDict):
     CustomChannels: CustomChannelSettings
@@ -203,8 +217,20 @@ class Backend:
                     "CategoryName": "Custom Channels",
                     "TopCategoryName": "Top Custom Channels",
                     "ChannelPerCategory": 10,
+                    "TopCategory": None,
+                    "DefaultRoles": [],
+                    "Activity": {
+                        "Time": 0,
+                        "Messages": 0,
+                    },
                 },
-                "CustomRoles": {"RolePossition": None},
+                "CustomRoles": {
+                    "RolePossition": None,
+                    "Activity": {
+                        "Time": 0,
+                        "Messages": 0,
+                    },
+                },
             },
             "Profiles": {
                 "RolesProfiles": {},
@@ -228,53 +254,42 @@ class Backend:
             data=Data,
         )
 
-    async def CreateUserConfig(self, UserId: int, GuildId: int):
-        return await self.UserSettings.insert(
-            {
-                "UserId": UserId,
-                "GuildId": GuildId,
-                "Claimed": {
-                    "Roles": {},
-                    "Channels": {},
-                    "Emojis": {},
-                    "HighLights": [],
-                    "Ars": {},
-                },
-                "IgnoreClaimed": False,
-            }
+    async def CreateUserSettings(self, user_id: int, guild_id: int) -> UserConfig:
+        userConfig: UserConfig = {
+            "UserId": user_id,
+            "GuildId": guild_id,
+            "Claimed": {
+                "Roles": {},
+                "Channels": {},
+                "Emojis": {},
+                "HighLights": [],
+                "Ars": {},
+            },
+            "IgnoreClaimed": False,
+            "Banned": {"Banned": False, "Reason": "", "BannedBy": None},
+        }
+        await self.UserSettings.insert(userConfig)
+        return userConfig
+
+    async def GetUserSettings(self, user_id: int, guild_id: int):
+        userData = await self.UserSettings.find(
+            {"UserId": user_id, "GuildId": guild_id}
         )
+        if userData is None:
+            userData = await self.CreateUserSettings(user_id, guild_id)
+        return userData
 
-    async def GetUserConfig(self, UserId: int, GuildId: int):
-        return await self.UserSettings.find({"UserId": UserId, "GuildId": GuildId})
-
-    async def UpdateUserConfig(self, UserId: int, GuildId: int, Data: UserConfig):
+    async def UpdateUserSettings(self, user_id: int, guild_id: int, data: UserConfig):
         return await self.UserSettings.update(
-            filter_dict={"UserId": UserId, "GuildId": GuildId}, data=Data
+            filter_dict={"UserId": user_id, "GuildId": guild_id},
+            data=data,
         )
 
-    async def CreateUserCustomRole(
-        self,
-        user_id: int,
-        guild_id: int,
-        role_id: int,
-        duration: int | str,
-        friend_limit: int,
-    ):
-        return await self.UserCustomRoles.insert(
-            {
-                "UserId": user_id,
-                "GuildId": guild_id,
-                "RoleId": role_id,
-                "Duration": duration,
-                "FriendLimit": friend_limit,
-                "Friends": [],
-                "Freezed": False,
-                "LastActivity": datetime.datetime.utcnow(),
-            }
-        )
+    # NOTE: Custom Role Related Functions
 
-    async def GetUserCustomRoles(self, user_id: int, guild_id: int):
-        return await self.UserCustomRoles.find({"UserId": user_id, "GuildId": guild_id})
+    async def CreateUserCustomRole(self, data: UserCustomRoles):
+        data = await self.UserCustomRoles.insert(data)
+        return data
 
     async def UpdateUserCustomRole(
         self, user_id: int, guild_id: int, role_id: int, data: UserCustomRoles
@@ -284,130 +299,104 @@ class Backend:
             data=data,
         )
 
-    async def CreateUserCustomChannel(
+    async def GetUserCustomRoles(self, user_id: int, guild_id: int):
+        return await self.UserCustomRoles.find({"UserId": user_id, "GuildId": guild_id})
+
+    async def DeleteUserCustomRole(self, user_id: int, guild_id: int, role_id: int):
+        return await self.UserCustomRoles.delete(
+            {"UserId": user_id, "GuildId": guild_id, "RoleId": role_id}
+        )
+
+    async def CreateCustomRole(
         self,
-        user_id: int,
-        guild_id: int,
-        channel_id: int,
-        duration: int | str,
-        friend_limit: int,
-    ):
-        return await self.UserCustomChannels.insert(
-            {
-                "UserId": user_id,
-                "GuildId": guild_id,
-                "ChannelId": channel_id,
-                "Duration": duration,
-                "FriendLimit": friend_limit,
-                "Friends": [],
-                "Freezed": False,
-                "LastActivity": datetime.datetime.utcnow(),
-            }
+        name: str,
+        color: str,
+        guild: Guild,
+        config: GuildConfig,
+        interaction: Interaction,
+        role_icon: Attachment = None,
+    ) -> Role | tuple[bool, str]:
+        if "AmariMod" in name:
+            return (False, "You can't create a role with that name")
+        if len(name) > 100:
+            return (False, "Role name can't be more than 100 characters")
+        if len(color.replace("#", "")) != 6:
+            return (False, "Color must be a hex code")
+        if not color.startswith("#"):
+            return (False, "Color must be a hex code starting with #")
+
+        display_icon = None
+        if role_icon:
+            if not role_icon.filename.endswith(("png", "jpg", "jpeg")):
+                return (False, "Role icon must be a png, jpg or jpeg file")
+
+            async with aiohttp.ClientSession() as session:
+                async with session.get(role_icon.url) as response:
+                    if response.status != 200:
+                        return (False, "Failed to download the role icon")
+                    display_icon = await response.read()
+
+        color = tuple(round(c * 255) for c in Color(color).rgb)
+        color = discord.Color.from_rgb(*color)
+
+        role = await guild.create_role(
+            name=name,
+            color=color,
+            reason=f"Custom Role Claimed By {interaction.user.name}",
+            display_icon=display_icon,
         )
 
-    async def GetUserCustomChannels(self, user_id: int, guild_id: int):
-        return await self.UserCustomChannels.find(
-            {"UserId": user_id, "GuildId": guild_id}
+        role_position = None
+        guild = await interaction.client.fetch_guild(guild.id)
+        position_role = guild.get_role(
+            config["ProfileSettings"]["CustomRoles"]["RolePossition"]
         )
+        if position_role:
+            role_position = position_role.position
 
-    async def UpdateUserCustomChannel(
-        self, user_id: int, guild_id: int, channel_id: int, data: UserCustomChannels
-    ):
-        return await self.UserCustomChannels.update(
-            filter_dict={
-                "UserId": user_id,
-                "GuildId": guild_id,
-                "ChannelId": channel_id,
-            },
-            data=data,
-        )
+        role = guild.get_role(role.id)
+        role = await role.edit(position=role_position + 1)
 
-    async def CreateUserCustomEmoji(
-        self, user_id: int, guild_id: int, emoji_id: int, duration: int | str
-    ):
-        return await self.UserCustomEmojis.insert(
-            {
-                "UserId": user_id,
-                "GuildId": guild_id,
-                "EmojiId": emoji_id,
-                "Duration": duration,
-                "Freezed": False,
-                "LastActivity": datetime.datetime.utcnow(),
-            }
-        )
+        return role
 
-    async def GetUserCustomEmojis(self, user_id: int, guild_id: int):
-        return await self.UserCustomEmojis.find(
-            {"UserId": user_id, "GuildId": guild_id}
-        )
-
-    async def UpdateUserCustomEmoji(
-        self, user_id: int, guild_id: int, emoji_id: int, data: UserCustomEmojis
-    ):
-        return await self.UserCustomEmojis.update(
-            filter_dict={"UserId": user_id, "GuildId": guild_id, "EmojiId": emoji_id},
-            data=data,
-        )
-
-    async def CreateUserCustomHighLight(
-        self, user_id: int, guild_id: int, duration: int | str, trigger_limit: int
-    ):
-        return await self.UserCustomHighLights.insert(
-            {
-                "UserId": user_id,
-                "GuildId": guild_id,
-                "Duration": duration,
-                "TriggerLimit": trigger_limit,
-                "Freezed": False,
-                "LastActivity": datetime.datetime.utcnow(),
-                "Ignore": {"Users": [], "Channels": []},
-            }
-        )
-
-    async def GetUserCustomHighLights(self, user_id: int, guild_id: int):
-        return await self.UserCustomHighLights.find(
-            {"UserId": user_id, "GuildId": guild_id}
-        )
-
-    async def UpdateUserCustomHighLight(
-        self, user_id: int, guild_id: int, data: UserCustomHighLights
-    ):
-        return await self.UserCustomHighLights.update(
-            filter_dict={"UserId": user_id, "GuildId": guild_id},
-            data=data,
-        )
-
-    async def CreateUserCustomAr(
+    async def ModifyCustomRole(
         self,
-        user_id: int,
-        guild_id: int,
-        duration: int | str,
-        trigger_limit: int,
-        type: ArTypes,
+        role: discord.Role,
+        interaction: discord.Interaction,
+        name: str = None,
+        color: str = None,
+        role_icon: Attachment = None,
     ):
-        return await self.UserCustomArs.insert(
-            {
-                "UserId": user_id,
-                "GuildId": guild_id,
-                "Duration": duration,
-                "TriggerLimit": trigger_limit,
-                "Freezed": False,
-                "LastActivity": datetime.datetime.utcnow(),
-                "Ignore": {"Users": [], "Channels": []},
-                "Type": type,
-            }
-        )
+        keywords = {}
+        if name:
+            if "AmariMod" in name:
+                return (False, "You can't create a role with that name")
+            if len(name) > 100:
+                return (False, "Role name can't be more than 100 characters")
+            keywords["name"] = name
 
-    async def GetUserCustomArs(self, user_id: int, guild_id: int):
-        return await self.UserCustomArs.find({"UserId": user_id, "GuildId": guild_id})
+        if color:
+            if len(color.replace("#", "")) != 6:
+                return (False, "Color must be a hex code")
+            if not color.startswith("#"):
+                return (False, "Color must be a hex code starting with #")
+            color = tuple(round(c * 255) for c in Color(color).rgb)
+            color = discord.Color.from_rgb(*color)
+            keywords["color"] = color
 
-    async def UpdateUserCustomAr(
-        self, user_id: int, guild_id: int, data: UserCustomArs
-    ):
-        return await self.UserCustomArs.update(
-            filter_dict={"UserId": user_id, "GuildId": guild_id},
-            data=data,
-        )
+        if role_icon:
+            if not role_icon.filename.endswith(("png", "jpg", "jpeg")):
+                return (False, "Role icon must be a png, jpg or jpeg file")
+
+            async with aiohttp.ClientSession() as session:
+                async with session.get(role_icon.url) as response:
+                    if response.status != 200:
+                        return (False, "Failed to download the role icon")
+                    display_icon = await response.read()
+            keywords["display_icon"] = display_icon
+
+        await role.edit(**keywords)
+        return role
 
     async def GetConfigEmbed(self, guild: Guild):
         Config = await self.GetGuildConfig(GuildId=guild.id)
@@ -467,3 +456,143 @@ class Backend:
         )
 
         return embed
+
+    # NOTE: Custom Channel Related Functions
+
+    async def CreateUserCustomChannel(self, data: UserCustomChannels):
+        data = await self.UserCustomChannels.insert(data)
+        return data
+
+    async def UpdateUserCustomChannel(
+        self, user_id: int, guild_id: int, channel_id: int, data: UserCustomChannels
+    ):
+        return await self.UserCustomChannels.update(
+            filter_dict={
+                "UserId": user_id,
+                "GuildId": guild_id,
+                "ChannelId": channel_id,
+            },
+            data=data,
+        )
+
+    async def GetUserCustomChannels(self, user_id: int, guild_id: int):
+        return await self.UserCustomChannels.find(
+            {"UserId": user_id, "GuildId": guild_id}
+        )
+
+    async def DeleteUserCustomChannel(
+        self, user_id: int, guild_id: int, channel_id: int
+    ):
+        return await self.UserCustomChannels.delete(
+            {"UserId": user_id, "GuildId": guild_id, "ChannelId": channel_id}
+        )
+
+    async def CreateCustomChannel(
+        self,
+        name: str,
+        guild: Guild,
+        config: GuildConfig,
+        interaction: Interaction,
+        top_cat: bool = False,
+    ) -> discord.TextChannel | tuple[bool, str]:
+        settings: CustomChannelSettings = config["ProfileSettings"]["CustomChannels"]
+        category = None
+        if top_cat:
+            category = guild.get_channel(settings["TopCategory"])
+            if not category:
+                category = await guild.create_category_channel(
+                    name=settings["TopCategoryName"],
+                    reason=f"Top Custom Channel Category Created By {interaction.user.name}",
+                    position=0,
+                    overwrites={
+                        guild.default_role: discord.PermissionOverwrite(
+                            view_channel=False
+                        ),
+                    },
+                )
+                config["ProfileSettings"]["CustomChannels"]["TopCategory"] = category.id
+                await self.UpdateGuildConfig(GuildId=guild.id, Data=config)
+        if settings["CustomCategorys"] == [] or category is None:
+            category = await guild.create_category_channel(
+                name=f"{settings['CategoryName']} - 1",
+                reason=f"Custom Channel Category Created By {interaction.user.name}",
+                overwrites={
+                    guild.default_role: discord.PermissionOverwrite(view_channel=False),
+                },
+            )
+            config["ProfileSettings"]["CustomChannels"]["CustomCategorys"] = [
+                category.id
+            ]
+            await self.UpdateGuildConfig(GuildId=guild.id, Data=config)
+        elif category is None:
+            for category_id in settings["CustomCategorys"]:
+                cat = guild.get_channel(category_id)
+                if len(cat.text_channels) >= settings["ChannelPerCategory"]:
+                    category = category
+                    break
+            if category is None:
+                category = await guild.create_category_channel(
+                    name=f"{settings['CategoryName']} - {len(settings['CustomCategorys']) + 1}",
+                    reason=f"Custom Channel Category Created By {interaction.user.name}",
+                    overwrites={
+                        guild.default_role: discord.PermissionOverwrite(
+                            view_channel=False
+                        ),
+                    },
+                )
+                config["ProfileSettings"]["CustomChannels"]["CustomCategorys"].append(
+                    category.id
+                )
+                await self.UpdateGuildConfig(GuildId=guild.id, Data=config)
+
+        overWrites = {
+            guild.default_role: discord.PermissionOverwrite(view_channel=False),
+            guild.me: discord.PermissionOverwrite(
+                view_channel=True, manage_channels=True, manage_permissions=True
+            ),
+            interaction.user: discord.PermissionOverwrite(
+                view_channel=True,
+                send_messages=True,
+                add_reactions=True,
+                external_emojis=True,
+                embed_links=True,
+                attach_files=True,
+                read_message_history=True,
+            ),
+        }
+        for role_id in settings["DefaultRoles"]:
+            role = guild.get_role(role_id)
+            if role:
+                overWrites[role] = discord.PermissionOverwrite(
+                    view_channel=True,
+                    send_messages=True,
+                    add_reactions=True,
+                    external_emojis=True,
+                    embed_links=True,
+                    attach_files=True,
+                    read_message_history=True,
+                )
+            else:
+                settings["DefaultRoles"].remove(role_id)
+                await self.UpdateGuildConfig(GuildId=guild.id, Data=config)
+
+        channel = await guild.create_text_channel(
+            name=name,
+            category=category,
+            overwrites=overWrites,
+            topic=f"Custom Channel Created By {interaction.user.name}",
+        )
+
+        return channel
+
+    async def ModifyCustomChannel(
+        self,
+        channel: discord.TextChannel,
+        name: str = None,
+    ):
+        keywords = {}
+        if name:
+            keywords["name"] = name
+
+        await channel.edit(**keywords)
+        return channel
