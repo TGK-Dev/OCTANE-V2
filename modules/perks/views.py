@@ -10,6 +10,7 @@ from .db import (
     RolesProfiles,
     CustomRoleSettings,
     ArsProfiles,
+    HighLightsProfiles,
 )
 
 from utils.views.selects import Channel_select, Select_General
@@ -1532,6 +1533,414 @@ class ArProfilesView(View):
         view = PerksConfigPanel(member=interaction.user, data=config, backend=self.db)
         await self.message.edit(embed=embed, view=view)
 
+
+# NOTE: Hightlight Views
+
+
+class HighlightModify(View):
+    def __init__(self, interaction: discord.Interaction, data: HighLightsProfiles):
+        super().__init__(timeout=60)
+        self.data = data
+        self.saved = False
+        self._interaction = interaction
+        if isinstance(self.data["RoleId"], int):
+            self.children[0].default_values = [
+                discord.SelectDefaultValue(
+                    id=self.data["RoleId"], type=discord.SelectDefaultValueType.role
+                )
+            ]
+            self.children[0].disabled = True
+            self.children[-1].disabled = False
+
+    async def on_error(self, interaction: discord.Interaction, error: Exception):
+        if interaction.response.is_done():
+            return interaction.followup.send(
+                "An error occurred: {error}", ephemeral=True
+            )
+        return interaction.response.send_message(
+            f"An error occurred: {error}", ephemeral=True
+        )
+
+    async def update_embed(
+        self, interaction: discord.Interaction, data: HighLightsProfiles
+    ):
+        embed = discord.Embed(
+            description="<:tgk_bank:1134892342910914602> `Highlight Profile Modification`\n\n",
+            color=interaction.client.default_color,
+        )
+        embed_args = await get_formated_embed(
+            ["Role", "Duration", "Trigger Limit"],
+            custom_end=":",
+        )
+
+        embed.description += f"{await get_formated_field(interaction.guild, name=embed_args['Role'], data=data['RoleId'], type='role')}\n"
+        embed.description += f"{await get_formated_field(interaction.guild, name=embed_args['Trigger Limit'], data=data['TriggerLimit'], type='str')}\n"
+        embed.description += f"{await get_formated_field(interaction.guild, name=embed_args['Duration'], data=data['Duration'], type='time')}\n"
+
+        return embed
+
+    @discord.ui.select(
+        placeholder="Role required to access this profile",
+        row=0,
+        cls=discord.ui.RoleSelect,
+    )
+    async def _role(
+        self, interaction: discord.Interaction, select: discord.ui.RoleSelect
+    ):
+        self.data["RoleId"] = select.values[0].id
+        self.children[-1].disabled = False
+        await interaction.response.edit_message(
+            embed=await self.update_embed(interaction, self.data), view=self
+        )
+
+    @discord.ui.select(
+        placeholder="Highlight limit",
+        min_values=1,
+        max_values=1,
+        options=[
+            discord.SelectOption(label=str(i), value=str(i)) for i in range(1, 11)
+        ],
+        row=1,
+    )
+    async def _trigger_limit(
+        self, interaction: discord.Interaction, select: discord.ui.Select
+    ):
+        self.data["TriggerLimit"] = int(select.values[0])
+        self.children[-1].disabled = False
+        await interaction.response.edit_message(
+            embed=await self.update_embed(interaction, self.data), view=self
+        )
+
+    @discord.ui.button(
+        label="Duration",
+        style=discord.ButtonStyle.gray,
+        emoji="<:tgk_clock:1198684272446414928>",
+    )
+    async def _duration(self, interaction: discord.Interaction, button: Button):
+        view = General_Modal(title="Duration", interaction=interaction)
+        view.add_input(
+            label="Duration",
+            placeholder="Enter the duration for the profile",
+            required=True,
+            max_length=50,
+            default=self.data["Duration"] if self.data["Duration"] else None,
+        )
+
+        if self.data["Duration"] == "Permanent":
+            view.children[0].default = "Permanent"
+        elif isinstance(self.data["Duration"], int):
+            view.children[0].default = humanfriendly.format_timespan(
+                self.data["Duration"]
+            )
+
+        await interaction.response.send_modal(view)
+        await view.wait()
+        if view.value:
+            value = view.children[0].value
+            if value.startswith("perm"):
+                self.data["Duration"] = "Permanent"
+            else:
+                value = await TimeConverter().transform(
+                    interaction=interaction, argument=value
+                )
+                if isinstance(value, str):
+                    return await view.interaction.response.send_message(
+                        content=f"Invald time format: {value}", ephemeral=True
+                    )
+                self.data["Duration"] = int(value)
+
+            await view.interaction.response.edit_message(
+                embed=await self.update_embed(interaction, self.data), view=self
+            )
+
+            self.children[-1].disabled = False
+        else:
+            await interaction.delete_original_response()
+
+    @discord.ui.button(
+        label="Save",
+        style=discord.ButtonStyle.gray,
+        disabled=True,
+        emoji="<:tgk_save:1210649255501635594>",
+        row=4,
+    )
+    async def _save(self, interaction: discord.Interaction, button: Button):
+        if self.data["Duration"] is None or self.data["RoleId"] is None:
+            await interaction.response.send_message(
+                content="Duration and Role are required fields", ephemeral=True
+            )
+
+        button.style = discord.ButtonStyle.green
+        for btn in self.children:
+            btn.disabled = True
+
+        embed = interaction.message.embeds[0]
+        embed.color = discord.Color.green()
+        await interaction.response.edit_message(embed=embed, view=self)
+
+        self.saved = True
+        self.stop()
+
+
+class HighlightProfilesView(View):
+    def __init__(
+        self,
+        interaction: discord.Interaction,
+        db: Backend,
+        data: dict[str, HighLightsProfiles],
+        message: discord.Message = None,
+    ):
+        super().__init__(timeout=60)
+        self.data = data
+        self.saved = False
+        self._interaction = interaction
+        self.db = db
+        self.message = message
+
+    async def on_error(self, interaction: discord.Interaction, error: Exception):
+        if interaction.response.is_done():
+            return interaction.followup.send(
+                "An error occurred: {error}", ephemeral=True
+            )
+        return interaction.response.send_message(
+            f"An error occurred: {error}", ephemeral=True
+        )
+
+    async def update_embed(
+        self, interaction: discord.Interaction, data: dict[str, HighLightsProfiles]
+    ):
+        embed = discord.Embed(
+            description="<:tgk_bank:1134892342910914602> `Highlight Profiles Configuration`\n\n",
+            color=interaction.client.default_color,
+        )
+        embed.description += f"`Total Highlight Profiles:` {len(data)}\n\n"
+        embed.description += "-# <:tgk_hint:1206282482744561744> Make sure to save your changes if made\n-# * Any changes to role position will be only applied new custom roles\n"
+        return embed
+
+    @discord.ui.button(
+        label="Add Profile",
+        style=discord.ButtonStyle.gray,
+        emoji="<:tgk_add:1073902485959352362>",
+    )
+    async def _add_profile(self, interaction: discord.Interaction, button: Button):
+        data: HighLightsProfiles = {
+            "Duration": None,
+            "RoleId": None,
+            "TriggerLimit": 1,
+        }
+        create_view = HighlightModify(interaction=interaction, data=data)
+        embed = discord.Embed(
+            description="<:tgk_bank:1134892342910914602> `Highlight Profile Modification`\n\n",
+            color=interaction.client.default_color,
+        )
+        embed_args = await get_formated_embed(
+            ["Role", "Duration", "Trigger Limit"],
+            custom_end=":",
+        )
+        embed.description += f"{await get_formated_field(interaction.guild, name=embed_args['Role'], data=data['RoleId'], type='role')}\n"
+        embed.description += f"{await get_formated_field(interaction.guild, name=embed_args['Trigger Limit'], data=data['TriggerLimit'], type='str')}\n"
+        embed.description += f"{await get_formated_field(interaction.guild, name=embed_args['Duration'], data=data['Duration'], type='time')}\n"
+
+        await interaction.response.edit_message(embed=embed, view=create_view)
+        await create_view.wait()
+        if create_view.saved:
+            self.data[str(data["RoleId"])] = data
+            self.children[-1].disabled = False
+            await create_view._interaction.edit_original_response(
+                embed=await self.update_embed(interaction, self.data), view=self
+            )
+
+    @discord.ui.button(
+        label="Delete Profile",
+        style=discord.ButtonStyle.gray,
+        emoji="<:tgk_delete:1113517803203461222>",
+    )
+    async def _delete_profile(self, interaction: discord.Interaction, button: Button):
+        if self.data == {}:
+            return await interaction.response.send_message(
+                content="No profiles to delete",
+                view=None,
+            )
+        delete_view = View()
+        delete_view.value = None
+        options = []
+        for profile in self.data.keys():
+            role = interaction.guild.get_role(int(profile))
+            if role:
+                description = ""
+                if isinstance(self.data[profile]["Duration"], int):
+                    description += f"Duration: {humanfriendly.format_timespan(self.data[profile]['Duration'])} | "
+                else:
+                    description += f"Duration: {self.data[profile]['Duration']} | "
+                description += f"Trigger Limit: {self.data[profile]['TriggerLimit']} | "
+
+                options.append(
+                    discord.SelectOption(
+                        label=role.name,
+                        value=role.id,
+                        description=description,
+                    )
+                )
+            else:
+                del self.data[profile]
+        delete_view.select = Select_General(
+            interaction=interaction,
+            options=options,
+            min_values=1,
+            max_values=len(options) - 1 if len(options) > 1 else 1,
+        )
+        delete_view.add_item(delete_view.select)
+
+        await interaction.response.send_message(view=delete_view, ephemeral=True)
+        await delete_view.wait()
+        if delete_view.value:
+            for value in delete_view.select.values:
+                del self.data[value]
+            self.children[-1].disabled = False
+            await delete_view.select.interaction.response.edit_message(
+                content="Successfully deleted the selected profiles",
+                view=None,
+                delete_after=1.5,
+            )
+            await interaction.edit_original_response(
+                embed=await self.update_embed(interaction, self.data), view=self
+            )
+        else:
+            await interaction.delete_original_response()
+
+    @discord.ui.button(
+        label="Edit Profile",
+        style=discord.ButtonStyle.gray,
+        emoji="<:tgk_edit:1073902428224757850>",
+    )
+    async def _edit_profile(self, interaction: discord.Interaction, button: Button):
+        profile_select_view = View()
+        profile_select_view.value = None
+        options = []
+        for profile in self.data.keys():
+            role = interaction.guild.get_role(int(profile))
+            if role:
+                description = ""
+                if isinstance(self.data[profile]["Duration"], int):
+                    description += f"Duration: {humanfriendly.format_timespan(self.data[profile]['Duration'])} | "
+                else:
+                    description += f"Duration: {self.data[profile]['Duration']} | "
+                description += f"Trigger Limit: {self.data[profile]['TriggerLimit']} | "
+
+                options.append(
+                    discord.SelectOption(
+                        label=role.name,
+                        value=role.id,
+                        description=description,
+                    )
+                )
+            else:
+                del self.data[profile]
+
+        profile_select_view.select = Select_General(
+            interaction=interaction,
+            options=options,
+            min_values=1,
+            max_values=1,
+        )
+        profile_select_view.add_item(profile_select_view.select)
+
+        await interaction.response.edit_message(view=profile_select_view)
+        await profile_select_view.wait()
+        if profile_select_view.value:
+            try:
+                profile_data = self.data[profile_select_view.select.values[0]]
+            except KeyError:
+                return (
+                    await profile_select_view.select.interaction.response.send_message(
+                        content="Profile not found", view=None
+                    )
+                )
+            edit_view = HighlightModify(interaction=interaction, data=profile_data)
+            embed = discord.Embed(
+                description="<:tgk_bank:1134892342910914602> `Highlight Profile Modification`\n",
+                color=interaction.client.default_color,
+            )
+            embed_args = await get_formated_embed(
+                ["Duration", "Trigger Limit", "Role"],
+                custom_end=":",
+            )
+            embed.description += f"{await get_formated_field(interaction.guild, name=embed_args['Role'], data=profile_data['RoleId'], type='role')}\n"
+            embed.description += f"{await get_formated_field(interaction.guild, name=embed_args['Trigger Limit'], data=profile_data['TriggerLimit'], type='str')}\n"
+            embed.description += f"{await get_formated_field(interaction.guild, name=embed_args['Duration'], data=profile_data['Duration'], type='time')}\n"
+
+            await profile_select_view.select.interaction.response.edit_message(
+                embed=embed, view=edit_view
+            )
+            await edit_view.wait()
+
+            if edit_view.saved:
+                self.data[str(profile_data["RoleId"])] = profile_data
+                self.children[-1].disabled = False
+                embed = await self.update_embed(interaction, self.data)
+                await profile_select_view.select.interaction.edit_original_response(
+                    view=self, embed=embed
+                )
+
+    @discord.ui.button(
+        label="View Profiles",
+        style=discord.ButtonStyle.gray,
+        emoji="<:tgk_logging:1107652646887759973>",
+    )
+    async def _view_profiles(self, interaction: discord.Interaction, button: Button):
+        chunked = chunk(self.data.keys(), 2)
+        embeds = []
+        for chunked_data in chunked:
+            embed = discord.Embed(
+                color=interaction.client.default_color, description=""
+            )
+            for profile in chunked_data:
+                role = interaction.guild.get_role(int(profile))
+                if role:
+                    value = f"**Profile Role: {role.mention}**\n"
+                    if isinstance(self.data[profile]["Duration"], int):
+                        value += f"* Duration: {humanfriendly.format_timespan(self.data[profile]['Duration'])}\n"
+                    else:
+                        value += f"* Duration: {self.data[profile]['Duration']}\n"
+                    value += f"* Trigger Limit: {self.data[profile]['TriggerLimit']}\n"
+                    embed.description += value
+                else:
+                    del self.data[profile]
+            embeds.append(embed)
+
+        await Paginator(interaction=interaction, pages=embeds).start(
+            embeded=True, timeout=20, quick_navigation=False, hidden=True
+        )
+
+    @discord.ui.button(
+        label="Save",
+        style=discord.ButtonStyle.gray,
+        emoji="<:tgk_save:1210649255501635594>",
+        row=4,
+    )
+    async def _save(self, interaction: discord.Interaction, button: Button):
+        config = await self.db.GetGuildConfig(interaction.guild)
+        config["Profiles"]["HighLightsProfiles"] = self.data
+        await self.db.UpdateGuildConfig(interaction.guild, config)
+
+        for btn in self.children:
+            btn.disabled = True
+        button.style = discord.ButtonStyle.green
+
+        embed = interaction.message.embeds[0]
+        embed.color = discord.Color.green()
+        await interaction.response.edit_message(embed=embed, view=self)
+
+        self.saved = True
+        self.stop()
+        await asyncio.sleep(2)
+        await interaction.delete_original_response()
+
+        embed = await self.db.GetConfigEmbed(interaction.guild)
+        view = PerksConfigPanel(member=interaction.user, data=config, backend=self.db)
+        await self.message.edit(embed=embed, view=view)
+
+
 class PerksConfigPanel(View):
     def __init__(
         self,
@@ -1810,7 +2219,23 @@ class PerksConfigPanel(View):
                 ar_view.message = self.message
 
             elif view.select.values[0] == "highlight_profiles":
-                pass
+                embed = discord.Embed(
+                    description="<:tgk_bank:1134892342910914602> `Highlight Profiles Configuration`\n\n",
+                    color=interaction.client.default_color,
+                )
+                embed.description += f"`Total Highlight Profiles:` {len(self.data['Profiles']['HighLightsProfiles'])}\n\n"
+                embed.description += "-# <:tgk_hint:1206282482744561744> Make sure to save your changes if made\n-# * Any changes to role position will be only applied new custom roles\n"
+
+                highlight_view = HighlightProfilesView(
+                    interaction=interaction,
+                    db=self.backend,
+                    data=self.data["Profiles"]["HighLightsProfiles"],
+                )
+                await view.select.interaction.response.edit_message(
+                    embed=embed, view=highlight_view
+                )
+                highlight_view.message = self.message
+
             elif view.select.values[0] == "emoji_profiles":
                 pass
         else:
