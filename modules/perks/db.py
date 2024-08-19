@@ -147,8 +147,13 @@ class UserCustomHighLights(TypedDict):
 
 
 class ArTypes(Enum):
-    Emoji = 1
-    Channel = 2
+    Reaction = "Reaction"
+    Message = "Message"
+
+
+class Triggers(TypedDict):
+    Type: ArTypes
+    Content: str
 
 
 class UserCustomArs(TypedDict):
@@ -157,10 +162,11 @@ class UserCustomArs(TypedDict):
     Duration: int | str
     CreatedAt: int
     TriggerLimit: int
+    Triggers: List[Triggers]
     Freezed: bool
     LastActivity: datetime.datetime
+    LastTrigger: datetime.datetime
     Ignore: Ignore
-    Type: ArTypes
 
 
 class ClaimedInfo(TypedDict):
@@ -596,3 +602,26 @@ class Backend:
 
         await channel.edit(**keywords)
         return channel
+
+    # NOTE: Custom React Related Functions
+
+    async def CreateUserCustomReact(self, data: UserCustomEmojis):
+        data = await self.UserCustomEmojis.insert(data)
+        return data
+
+    async def UpdateUserCustomReact(
+        self, user_id: int, guild_id: int, data: UserCustomEmojis
+    ):
+        return await self.UserCustomEmojis.update(
+            filter_dict={
+                "UserId": user_id,
+                "GuildId": guild_id,
+            },
+            data=data,
+        )
+
+    async def GetUserCustomReact(self, user_id: int, guild_id: int):
+        data = await self.UserCustomEmojis.find(
+            {"UserId": user_id, "GuildId": guild_id}
+        )
+        return data
