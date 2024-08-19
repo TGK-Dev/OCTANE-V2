@@ -92,7 +92,10 @@ class Reload(View):
     async def on_timeout(self):
         for button in self.children:
             button.disabled = True
-        await self.message.edit(view=self)
+        try:
+            await self.message.edit(view=self)
+        except discord.NotFound:
+            pass
         self.stop()
 
     @discord.ui.button(
