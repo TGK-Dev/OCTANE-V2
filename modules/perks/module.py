@@ -6,18 +6,20 @@ from .db import (
     Backend,
     GuildConfig,
     RolesProfiles,
-    Triggers,
     UserCustomRoles,
     UserCustomChannels,
     UserConfig,
     ChannelsProfiles,
     UserCustomArs,
     ArsProfiles,
+    UserCustomHighLights,
+    HighLightsProfiles,
+    Triggers,
 )
 
 import datetime
 from humanfriendly import format_timespan
-from typing import List, Literal
+from typing import Literal
 
 from .views import PerksConfigPanel, RoleFriendsManage, ChannelFriendsManage
 from utils.views.buttons import Confirm
@@ -47,7 +49,11 @@ class Perks(commands.Cog):
     )
 
     ar = app_commands.Group(
-        name="ar", description="Manage your Private custom roles", parent=_perks
+        name="ar", description="Manage your Private custom roles", parent=perk
+    )
+
+    hl = app_commands.Group(
+        name="hl", description="Manage your Private custom roles", parent=perk
     )
 
     async def cog_app_command_error(self, interaction: Interaction, error: Exception):
@@ -60,27 +66,6 @@ class Perks(commands.Cog):
             await interaction.followup.send(message, ephemeral=True)
         else:
             await interaction.response.send_message(message, ephemeral=True)
-
-    async def ar_autocomplete(
-        self, interaction: discord.Interaction, current: str
-    ) -> List[app_commands.Choice[str]]:
-        userInfo: UserCustomArs = await self.db.GetUserCustomReact(
-            user_id=interaction.user.id, guild_id=interaction.guild.id
-        )
-        if not userInfo:
-            return [
-                app_commands.Choice(name="No Auto Reaction", value="No Auto Reaction")
-            ]
-        choices = []
-        for trigger in userInfo["Triggers"]:
-            if trigger["Content"].startswith(current):
-                choices.append(
-                    app_commands.Choice(
-                        name=f"{trigger['Content']} | Type: {trigger['Type'].capitalize()}",
-                        value=str(userInfo["Triggers"].index(trigger)),
-                    )
-                )
-        return choices[:24]
 
     @staticmethod
     def _ModCheck():
@@ -653,171 +638,174 @@ class Perks(commands.Cog):
         react: str,
         type: Literal["message", "reaction"],
     ):
+        # remake this command fun take inspiration from highlight_add function code
         embed = discord.Embed(
             description="Please wait while i run few checks",
             color=interaction.client.default_color,
         )
         await interaction.response.send_message(embed=embed, ephemeral=False)
-        userInfo: UserCustomArs = await self.db.GetUserCustomReact(
+        userInfo: UserCustomHighLights = await self.db.GetUserCustomReact(
             user_id=interaction.user.id, guild_id=interaction.guild.id
         )
+
+        config = await self.db.GetGuildConfig(interaction.guild)
+        usersettings = await self.db.GetUserSettings(
+            user_id=interaction.user.id, guild_id=interaction.guild.id
+        )
+
+        user_roles = [str(role.id) for role in interaction.user.roles]
+        durations = 0
+        highlight_limit = 0
+        claimed_roles = usersettings["Claimed"]["Ars"]
+        arProfiles: dict[str, ArsProfiles] = config["Profiles"]["ArsProfiles"]
+
+        for role in user_roles:
+            if role in arProfiles.keys():
+                if role in claimed_roles.keys():
+                    continue
+
+                if durations != "Permanent":
+                    if arProfiles[role]["Duration"] == "Permanent":
+                        durations = "Permanent"
+                    else:
+                        claimed_roles[role] = {
+                            "RoleId": int(role),
+                            "ClaimedAt": datetime.datetime.utcnow(),
+                        }
+                        durations += arProfiles[role]["Duration"]
+
+                highlight_limit += arProfiles[role]["TriggerLimit"]
+
         if userInfo:
-            if len(userInfo["Triggers"]) >= userInfo["TriggerLimit"]:
-                embed = discord.Embed(
-                    description="You already have maximum triggers",
-                    color=discord.Color.red(),
+            if (
+                userInfo["TriggerLimit"] != highlight_limit
+                or userInfo["Duration"] != durations
+            ):
+                userInfo["TriggerLimit"] = highlight_limit
+                userInfo["Duration"] = durations
+                await self.db.UpdateUserCustomReact(
+                    user_id=interaction.user.id,
+                    guild_id=interaction.guild.id,
+                    data=userInfo,
                 )
-                await interaction.edit_original_response(embed=embed, content=None)
-                return
+
         else:
-            config = await self.db.GetGuildConfig(interaction.guild)
-            usersettings = await self.db.GetUserSettings(
-                user_id=interaction.user.id, guild_id=interaction.guild.id
-            )
-
-            user_roles = [str(role.id) for role in interaction.user.roles]
-            durations = 0
-            trigger_limit = 0
-            claimed_roles = usersettings["Claimed"]["Ars"]
-            arProfiles: dict[str, ArsProfiles] = config["Profiles"]["ArsProfiles"]
-
-            for role in user_roles:
-                if role in arProfiles.keys():
-                    if role in claimed_roles.keys():
-                        continue
-
-                    if durations != "Permanent":
-                        if arProfiles[role]["Duration"] == "Permanent":
-                            durations = "Permanent"
-                        else:
-                            claimed_roles[role] = {
-                                "RoleId": int(role),
-                                "ClaimedAt": datetime.datetime.utcnow(),
-                            }
-                            durations += arProfiles[role]["Duration"]
-
-                    trigger_limit += arProfiles[role]["TriggerLimit"]
-
             if durations == 0:
-                await interaction.edit_original_response(
-                    embed=discord.Embed(
-                        description="User don't have any role which has access to custom reactions",
-                        color=discord.Color.red(),
-                    )
+                embed = discord.Embed(
+                    description="You currently don't have any role which has access to auto reactions\n",
+                    color=interaction.client.default_color,
                 )
+                embed.description += "-# it's also possible that you may have already claimed temporary roles\n"
+                await interaction.edit_original_response(embed=embed)
                 return
-            else:
-                UseerInfo: UserCustomArs = {
-                    "UserId": interaction.user.id,
-                    "GuildId": interaction.guild.id,
-                    "Triggers": [],
-                    "TriggerLimit": trigger_limit,
-                    "Duration": durations,
-                    "LastActivity": None,
-                    "CreatedAt": datetime.datetime.utcnow(),
-                    "Freezed": False,
-                    "Ignore": {
-                        "Channels": [],
-                        "Roles": [],
-                    },
-                }
-                await self.db.CreateUserCustomReact(data=UseerInfo)
+
+            userInfo: UserCustomArs = {
+                "UserId": interaction.user.id,
+                "GuildId": interaction.guild.id,
+                "Triggers": [],
+                "Duration": durations,
+                "TriggerLimit": highlight_limit,
+                "LastActivity": None,
+                "CreatedAt": datetime.datetime.utcnow(),
+                "Freezed": False,
+                "Ignore": {
+                    "Channels": [],
+                    "Roles": [],
+                },
+                "LastTrigger": None,
+            }
+            await self.db.CreateUserCustomReact(data=userInfo)
+
+        if len(userInfo["Triggers"]) >= userInfo["TriggerLimit"]:
+            embed = discord.Embed(
+                description="You already have maximum auto reactions",
+                color=discord.Color.red(),
+            )
+            await interaction.edit_original_response(embed=embed, content=None)
+            return
 
         if type == "reaction":
             try:
                 message = await interaction.original_response()
                 await message.add_reaction(react)
                 await message.remove_reaction(react, interaction.guild.me)
-            except discord.HTTPException:
+            except Exception:
                 await interaction.edit_original_response(
                     content=None,
                     embed=discord.Embed(
-                        description=f"Faild to add reaction with {react} please choose a valid emoji",
+                        description=f"Faild to add reaction with {react} to the message perhaps it's not a valid emoji",
                         color=discord.Color.red(),
                     ),
                 )
                 return
-            Ardata: Triggers = {
-                "Content": react,
-                "Type": "Reaction",
-            }
-            userInfo["Triggers"].append(Ardata)
+            userInfo["Triggers"].append({"Content": react, "Type": type})
         else:
-            Ardata: Triggers = {
-                "Content": react,
-                "Type": "Message",
-            }
-            userInfo["Triggers"].append(Ardata)
+            userInfo["Triggers"].append({"Content": react, "Type": type})
 
         await self.db.UpdateUserCustomReact(
             user_id=interaction.user.id, guild_id=interaction.guild.id, data=userInfo
         )
 
         embed = discord.Embed(
-            description=f"Added **{react}** as {type} auto recation for you",
+            description=f"Added **{react}** as auto reaction for you",
             color=interaction.client.default_color,
         )
+
         await interaction.edit_original_response(embed=embed, content=None)
 
     @ar.command(
         name="remove", description="Remove a custom Auto Reaction for your self"
     )
     async def _ar_remove(self, interaction: Interaction):
-        view = discord.ui.View()
-        view.value = None
-
         userInfo: UserCustomArs = await self.db.GetUserCustomReact(
             user_id=interaction.user.id, guild_id=interaction.guild.id
         )
-        if len(userInfo["Triggers"]) == 0:
-            embed = discord.Embed(
-                description="You don't have any custom auto reaction",
-                color=discord.Color.red(),
+        if not userInfo:
+            await interaction.response.send_message(
+                "You don't have any custom auto reaction", ephemeral=True
             )
-            await interaction.response.send_message(embed=embed, ephemeral=True)
-            return
 
-        options = []
-        for trigger in userInfo["Triggers"]:
-            op = discord.SelectOption(
-                label=f"{trigger['Content']}",
-                description=f"Type: {trigger['Type'].capitalize()}",
-                emoji=trigger["Content"] if trigger["Type"] == "Reaction" else None,
-                value=str(userInfo["Triggers"].index(trigger)),
+        options: list[discord.SelectOption] = []
+        triggers: list[Triggers] = sorted(userInfo["Triggers"], key=lambda x: x["Type"])
+        for info in triggers:
+            options.append(
+                discord.SelectOption(
+                    label=info["Content"] if info["Type"] == "Message" else None,
+                    value=str(triggers.index(info)),
+                    description=f"Type: {info['Type'].capitalize()}",
+                    emoji=info["Content"] if info["Type"] == "Reaction" else None,
+                )
             )
-            options.append(op)
-
+        options = options[:24]
+        view = discord.ui.View()
         view.select = Select_General(
-            placeholder="Select the auto reaction you want to remove",
             interaction=interaction,
             options=options,
-            min_values=1,
+            placeholder="Select the auto reaction you want to remove",
             max_values=len(options) - 1 if len(options) > 1 else 1,
+            min_values=1,
         )
-
         view.add_item(view.select)
-        await interaction.response.send_message(view=view, ephemeral=True)
+        await interaction.response.send_message(view=view)
+
         await view.wait()
-
-        if view.value:
-            remove_trigger = [
-                userInfo["Triggers"][int(trigger)] for trigger in view.select.values
-            ]
-            for trigger in remove_trigger:
+        for value in view.select.values:
+            try:
+                trigger = triggers[int(value)]
                 userInfo["Triggers"].remove(trigger)
+            except KeyError:
+                continue
 
-            await self.db.UpdateUserCustomReact(
-                user_id=interaction.user.id,
-                guild_id=interaction.guild.id,
-                data=userInfo,
-            )
-            embed = discord.Embed(
-                description="I have successfully removed the auto reaction you requested",
-                color=interaction.client.default_color,
-            )
-            await view.select.interaction.response.edit_message(embed=embed, view=None)
-        else:
-            await interaction.delete_original_response()
+        await self.db.UpdateUserCustomHighlight(
+            user_id=interaction.user.id, guild_id=interaction.guild.id, data=userInfo
+        )
+        embed = discord.Embed(
+            description="I have successfully removed the auto reaction you requested",
+            color=interaction.client.default_color,
+        )
+        await view.select.interaction.response.edit_message(
+            embed=embed, view=None, content=None
+        )
 
     @ar.command(name="list", description="List all custom Auto Reactions for your self")
     async def _ar_list(self, interaction: Interaction):
@@ -845,6 +833,110 @@ class Perks(commands.Cog):
         await Paginator(interaction=interaction, pages=embeds).start(
             embeded=True, quick_navigation=False, hidden=True
         )
+
+    @hl.command(name="add", description="Create a custom Highlight for your self")
+    @app_commands.describe(
+        highlight="Highlight you want to add",
+    )
+    async def _highlight_add(self, interaction: Interaction, highlight: str):
+        embed = discord.Embed(
+            description="Please wait while i run few checks",
+            color=interaction.client.default_color,
+        )
+        await interaction.response.send_message(embed=embed, ephemeral=False)
+        userInfo: UserCustomHighLights = await self.db.GetUserCustomHighlight(
+            user_id=interaction.user.id, guild_id=interaction.guild.id
+        )
+
+        config = await self.db.GetGuildConfig(interaction.guild)
+        usersettings = await self.db.GetUserSettings(
+            user_id=interaction.user.id, guild_id=interaction.guild.id
+        )
+
+        user_roles = [str(role.id) for role in interaction.user.roles]
+        durations = 0
+        highlight_limit = 0
+        claimed_roles = usersettings["Claimed"]["Highlights"]
+        hlProfiles: dict[str, HighLightsProfiles] = config["Profiles"][
+            "HighLightsProfiles"
+        ]
+
+        for role in user_roles:
+            if role in hlProfiles.keys():
+                if role in claimed_roles.keys():
+                    continue
+
+                if durations != "Permanent":
+                    if hlProfiles[role]["Duration"] == "Permanent":
+                        durations = "Permanent"
+                    else:
+                        claimed_roles[role] = {
+                            "RoleId": int(role),
+                            "ClaimedAt": datetime.datetime.utcnow(),
+                        }
+                        durations += hlProfiles[role]["Duration"]
+
+                highlight_limit += hlProfiles[role]["HighlightLimit"]
+
+        if userInfo:
+            if (
+                userInfo["TriggerLimit"] != highlight_limit
+                or userInfo["Duration"] != durations
+            ):
+                userInfo["highlightLimit"] = highlight_limit
+                userInfo["Duration"] = durations
+                await self.db.UpdateUserCustomHighlight(
+                    user_id=interaction.user.id,
+                    guild_id=interaction.guild.id,
+                    data=userInfo,
+                )
+        else:
+            UseerInfo: UserCustomHighLights = {
+                "UserId": interaction.user.id,
+                "GuildId": interaction.guild.id,
+                "Highlights": [],
+                "Duration": durations,
+                "TriggerLimit": highlight_limit,
+                "LastActivity": None,
+                "CreatedAt": datetime.datetime.utcnow(),
+                "Freezed": False,
+                "Ignore": {
+                    "Channels": [],
+                    "Roles": [],
+                },
+                "LastTrigger": None,
+            }
+            await self.db.CreateUserCustomHighlight(data=UseerInfo)
+
+        if len(userInfo["Highlights"]) >= userInfo["HighlightLimit"]:
+            embed = discord.Embed(
+                description="You already have maximum highlights",
+                color=discord.Color.red(),
+            )
+            await interaction.edit_original_response(embed=embed, content=None)
+            return
+
+        if highlight.lower() in userInfo["Highlights"]:
+            embed = discord.Embed(
+                description="You already have this highlight",
+                color=interaction.client.default_color,
+            )
+            await interaction.edit_original_response(embed=embed, content=None)
+            return
+
+        userInfo["Highlights"].append(highlight.lower())
+
+        await self.db.UpdateUserCustomHighlight(
+            user_id=interaction.user.id, guild_id=interaction.guild.id, data=userInfo
+        )
+
+        embed = discord.Embed(
+            description=f"Added **{highlight}** as highlight for you",
+            color=interaction.client.default_color,
+        )
+
+        await interaction.edit_original_response(embed=embed, content=None)
+
 
 async def setup(bot: commands.Bot):
     await bot.add_cog(Perks(bot))

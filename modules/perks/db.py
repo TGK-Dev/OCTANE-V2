@@ -143,6 +143,7 @@ class UserCustomHighLights(TypedDict):
     TriggerLimit: int
     Freezed: bool
     LastActivity: datetime.datetime
+    LastTrigger: datetime.datetime
     Ignore: Ignore
 
 
@@ -605,14 +606,14 @@ class Backend:
 
     # NOTE: Custom React Related Functions
 
-    async def CreateUserCustomReact(self, data: UserCustomEmojis):
-        data = await self.UserCustomEmojis.insert(data)
+    async def CreateUserCustomReact(self, data: UserCustomArs):
+        data = await self.UserCustomArs.insert(data)
         return data
 
     async def UpdateUserCustomReact(
-        self, user_id: int, guild_id: int, data: UserCustomEmojis
+        self, user_id: int, guild_id: int, data: UserCustomArs
     ):
-        return await self.UserCustomEmojis.update(
+        return await self.UserCustomArs.update(
             filter_dict={
                 "UserId": user_id,
                 "GuildId": guild_id,
@@ -620,8 +621,8 @@ class Backend:
             data=data,
         )
 
-    async def GetUserCustomReact(self, user_id: int, guild_id: int):
-        data = await self.UserCustomEmojis.find(
+    async def GetUserCustomReact(self, user_id: int, guild_id: int) -> UserCustomArs:
+        data = await self.UserCustomArs.find(
             {"UserId": user_id, "GuildId": guild_id}
         )
         return data
