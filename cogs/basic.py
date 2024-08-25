@@ -240,22 +240,27 @@ class Basic(commands.Cog):
                         embed=embed, ephemeral=hidden
                     )
 
+    @app_commands.user_install()
     @app_commands.command(
         name="enter", description="Tell everyone that you enter the chat"
     )
-    @app_commands.checks.cooldown(1, 10, key=lambda i: (i.guild_id, i.user.id))
+    @app_commands.allowed_installs(guilds=True, users=True)
+    @app_commands.allowed_contexts(guilds=True, dms=True, private_channels=True)
     async def enter(self, interaction: discord.Interaction):
         await interaction.response.send_message(
-            f"**{interaction.user}** has entered the room! <:TGK_pepeenter:790189012148682782>"
+            f"**{interaction.user}** has entered the room! <:pepeEnter:1274302538472095835>"
         )
 
     @app_commands.command(
         name="exit", description="Tell everyone that you leave the chat"
     )
+    @app_commands.user_install()
+    @app_commands.allowed_installs(guilds=True, users=True)
+    @app_commands.allowed_contexts(guilds=True, dms=True, private_channels=True)
     @app_commands.checks.cooldown(1, 10, key=lambda i: (i.guild_id, i.user.id))
     async def leave(self, interaction: discord.Interaction):
         await interaction.response.send_message(
-            f"**{interaction.user}** has left the room! <:TGK_pepeexit:790189030569934849>"
+            f"**{interaction.user}** has left the room! <:pepeExit:1274302544113565812>"
         )
 
     @commands.Cog.listener()
