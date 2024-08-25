@@ -783,93 +783,133 @@ class donation(commands.Cog):
         self.db2 = bot.aceDb["TGK"]
         self.bot.donorBank = Document(self.db2, "donorBank")
 
-    # # Dont delete
-    #     self.celeb_lb.start()
+        # Dont delete
+        self.celeb_lb.start()
 
-    # def cog_unload(self):
-    #     self.celeb_lb.cancel()
+    def cog_unload(self):
+        self.celeb_lb.cancel()
 
-    # @tasks.loop(time=time)
-    # async def celeb_lb(self):
-    #     gk = self.bot.get_guild(785839283847954433)
-    #     leaderboard_channel = gk.get_channel(1209873854369898506)
-    #     log_channel = gk.get_channel(1074276583940034581)
-    #     beast_role = gk.get_role(821052747268358184)
-    #     members = beast_role.members
+    @tasks.loop(time=time)
+    async def celeb_lb(self):
+        gk = self.bot.get_guild(785839283847954433)
+        leaderboard_channel = gk.get_channel(1209873854369898506)
+        log_channel = gk.get_channel(1074276583940034581)
+        beast_role = gk.get_role(821052747268358184)
+        members = beast_role.members
 
-    #     if leaderboard_channel is None:
-    #         return
+        if leaderboard_channel is None:
+            return
 
-    #     data = await self.bot.donorBank.find_many_by_custom( {"event" : { "$elemMatch": { "name": '10k',"bal":{"$gt":0} }}})
-    #     df = pd.DataFrame(data)
-    #     df['10k']  = df.event.apply(lambda x: x[-1]['bal'])
-    #     df = df.drop(['bal','grinder_record','event'], axis=1)
-    #     df = df.sort_values(by='10k',ascending=False)
-    #     top_5 = df.head(5)
-    #     top_10 = df.head(10)
+        data = await self.bot.donorBank.find_many_by_custom(
+            {"event": {"$elemMatch": {"name": "10k", "bal": {"$gt": 0}}}}
+        )
+        df = pd.DataFrame(data)
+        df["10k"] = df.event.apply(lambda x: x[-1]["bal"])
+        df = df.drop(["bal", "grinder_record", "event"], axis=1)
+        df = df.sort_values(by="10k", ascending=False)
+        top_5 = df.head(5)
+        top_10 = df.head(10)
 
-    #     message = [message async for message in leaderboard_channel.history(limit=1)][0]
-    #     view = discord.ui.View()
-    #     view.add_item(discord.ui.Button(label="Check Leaderboard", style=discord.ButtonStyle.url, url=message.jump_url, emoji="<:tgk_link:1105189183523401828>"))
+        message = [message async for message in leaderboard_channel.history(limit=1)][0]
+        view = discord.ui.View()
+        view.add_item(
+            discord.ui.Button(
+                label="Check Leaderboard",
+                style=discord.ButtonStyle.url,
+                url=message.jump_url,
+                emoji="<:tgk_link:1105189183523401828>",
+            )
+        )
 
-    #     for user in beast_role.members:
-    #         if user.id not in top_5['_id'].values:
-    #             await user.remove_roles(beast_role)
-    #             embed = discord.Embed(
-    #                 title="You dropped from top 5!",
-    #                 description= f"Your `{beast_role.name}` role has been removed.\n"
-    #                             f"Don't worry, you can always grind your way back up!",
-    #                 color=0x2b2d31
-    #             )
-    #             embed.set_thumbnail(url="https://cdn.discordapp.com/emojis/830548561329782815.gif?v=1")
-    #             embed.set_footer(text=f"{gk.name}", icon_url=gk.icon.url)
-    #             try:
-    #                 await user.send(embed=embed, view=view)
-    #                 await log_channel.send(f'Removed {beast_role.mention} from {user.mention}(`{user.id}`).', allowed_mentions=discord.AllowedMentions.none())
-    #             except:
-    #                 await log_channel.send(f'Removed {beast_role.mention} from {user.mention}(`{user.id}`).\n> **Error:** Unable to send DM to user.', allowed_mentions=discord.AllowedMentions.none())
-    #             await asyncio.sleep(1)
+        for user in beast_role.members:
+            if user.id not in top_5["_id"].values:
+                await user.remove_roles(beast_role)
+                embed = discord.Embed(
+                    title="You dropped from top 5!",
+                    description=f"Your `{beast_role.name}` role has been removed.\n"
+                    f"Don't worry, you can always grind your way back up!",
+                    color=0x2B2D31,
+                )
+                embed.set_thumbnail(
+                    url="https://cdn.discordapp.com/emojis/830548561329782815.gif?v=1"
+                )
+                embed.set_footer(text=f"{gk.name}", icon_url=gk.icon.url)
+                try:
+                    await user.send(embed=embed, view=view)
+                    await log_channel.send(
+                        f"Removed {beast_role.mention} from {user.mention}(`{user.id}`).",
+                        allowed_mentions=discord.AllowedMentions.none(),
+                    )
+                except:
+                    await log_channel.send(
+                        f"Removed {beast_role.mention} from {user.mention}(`{user.id}`).\n> **Error:** Unable to send DM to user.",
+                        allowed_mentions=discord.AllowedMentions.none(),
+                    )
+                await asyncio.sleep(1)
 
-    #     leaderboard = []
-    #     users = []
-    #     for index in top_10.index:
-    #         user = gk.get_member(top_10['_id'][index])
-    #         if not isinstance(user, discord.Member):
-    #             user = await self.bot.fetch_user(top_10['_id'][index])
-    #         users.append(user)
-    #         leaderboard.append({'user': user,'name': top_10['name'][index],'donated': top_10['10k'][index]})
+        leaderboard = []
+        users = []
+        for index in top_10.index:
+            user = gk.get_member(top_10["_id"][index])
+            if not isinstance(user, discord.Member):
+                user = await self.bot.fetch_user(top_10["_id"][index])
+            users.append(user)
+            leaderboard.append(
+                {
+                    "user": user,
+                    "name": top_10["name"][index],
+                    "donated": top_10["10k"][index],
+                }
+            )
 
-    #     for index in top_5.index:
-    #         user = gk.get_member(top_5['_id'][index])
-    #         if not isinstance(user, discord.Member): continue
-    #         if beast_role not in user.roles:
-    #             await user.add_roles(beast_role)
-    #             embed = discord.Embed(
-    #                 title="You made it to top 5!",
-    #                 description=f"Congrats! Keep it up and grind your way to the top!",
-    #                 color=0x2b2d31
-    #             )
-    #             embed.add_field(name="You received:", value=f"`{beast_role.name}` role", inline=False)
-    #             embed.set_thumbnail(url="https://cdn.discordapp.com/emojis/830519601384128523.gif?v=1")
-    #             embed.set_footer(text=f"{gk.name}", icon_url=gk.icon.url)
-    #             try:
-    #                 await user.send(embed=embed, view=view)
-    #                 await log_channel.send(f'Added {beast_role.mention} to {user.mention}(`{user.id}`).', allowed_mentions=discord.AllowedMentions.none())
-    #             except:
-    #                 await log_channel.send(f'Added {beast_role.mention} to {user.mention}(`{user.id}`).\n> **Error:** Unable to send DM to user.', allowed_mentions=discord.AllowedMentions.none())
-    #             await asyncio.sleep(1)
+        for index in top_5.index:
+            user = gk.get_member(top_5["_id"][index])
+            if not isinstance(user, discord.Member):
+                continue
+            if beast_role not in user.roles:
+                await user.add_roles(beast_role)
+                embed = discord.Embed(
+                    title="You made it to top 5!",
+                    description=f"Congrats! Keep it up and grind your way to the top!",
+                    color=0x2B2D31,
+                )
+                embed.add_field(
+                    name="You received:",
+                    value=f"`{beast_role.name}` role",
+                    inline=False,
+                )
+                embed.set_thumbnail(
+                    url="https://cdn.discordapp.com/emojis/830519601384128523.gif?v=1"
+                )
+                embed.set_footer(text=f"{gk.name}", icon_url=gk.icon.url)
+                try:
+                    await user.send(embed=embed, view=view)
+                    await log_channel.send(
+                        f"Added {beast_role.mention} to {user.mention}(`{user.id}`).",
+                        allowed_mentions=discord.AllowedMentions.none(),
+                    )
+                except:
+                    await log_channel.send(
+                        f"Added {beast_role.mention} to {user.mention}(`{user.id}`).\n> **Error:** Unable to send DM to user.",
+                        allowed_mentions=discord.AllowedMentions.none(),
+                    )
+                await asyncio.sleep(1)
 
-    #     image = await self.create_lb(gk, leaderboard)
+        image = await self.create_lb(gk, leaderboard)
 
-    #     with BytesIO() as image_binary:
-    #         image.save(image_binary, 'PNG')
-    #         image_binary.seek(0)
-    #         await leaderboard_channel.send(file=discord.File(fp=image_binary, filename=f'{gk.name}_celeb_lb_card.png'))
-    #         image_binary.close()
+        with BytesIO() as image_binary:
+            image.save(image_binary, "PNG")
+            image_binary.seek(0)
+            await leaderboard_channel.send(
+                file=discord.File(
+                    fp=image_binary, filename=f"{gk.name}_celeb_lb_card.png"
+                )
+            )
+            image_binary.close()
 
-    # @celeb_lb.before_loop
-    # async def before_celeb_lb(self):
-    #     await self.bot.wait_until_ready()
+    @celeb_lb.before_loop
+    async def before_celeb_lb(self):
+        await self.bot.wait_until_ready()
 
     async def round_pfp(
         self,
