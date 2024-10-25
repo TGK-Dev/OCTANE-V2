@@ -46,15 +46,15 @@ class Botbase(commands.Bot):
             if (
                 file.endswith(".py")
                 and not file.startswith("_")
-                and file.startswith(("dev", "serversettings", "basic"))
+                and file.startswith(("dev", "basic"))
             ):
                 await self.load_extension(f"cogs.{file[:-3]}")
 
-    #     for folder in os.listdir("./modules"):
-    #         if folder == "notepad":
-    #             for file in os.listdir(f"./modules/{folder}"):
-    #                 if file == "module.py":
-    #                     await self.load_extension(f"modules.{folder}.{file[:-3]}")
+        for folder in os.listdir("./modules"):
+            if folder == "perks":
+                for file in os.listdir(f"./modules/{folder}"):
+                    if file == "module.py":
+                        await self.load_extension(f"modules.{folder}.{file[:-3]}")
 
 
 bot = Botbase(998152864201457754, False)
@@ -77,9 +77,9 @@ async def export(ctx):
 
 @bot.event
 async def on_ready():
-    await bot.tree.sync()
-    for guild in bot.guilds:
-        await bot.tree.sync(guild=guild)
+    # await bot.tree.sync()
+    # for guild in bot.guilds:
+    #     await bot.tree.sync(guild=guild)
     print(f"Logged in successfully as {bot.user.name} | {bot.user.id}")
     print(f"loaded cogs: {len(bot.extensions)}")
     # print(f"Cached Emoji Server: {bot.emoji_server.name} | {bot.emoji_server.id}")

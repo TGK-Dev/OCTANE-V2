@@ -924,10 +924,10 @@ class RoleProfilesView(View):
         self, interaction: discord.Interaction, error: Exception, item: discord.ui.Item
     ):
         if interaction.response.is_done():
-            return interaction.followup.send(
+            return await interaction.followup.send(
                 "An error occurred: {error}", ephemeral=True
             )
-        return interaction.response.send_message(
+        return await interaction.response.send_message(
             f"An error occurred: {error}", ephemeral=True
         )
 

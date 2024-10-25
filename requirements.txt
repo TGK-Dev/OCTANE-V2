@@ -4,7 +4,7 @@ bs4==0.0.1
 discord-ext-menus @ git+https://github.com/Rapptz/discord-ext-menus
 dnspython==2.6.1
 humanfriendly==9.2
-motor==3.1.1
+motor==3.6.0
 python-dotenv
 psutil
 Pillow==10.0.1
@@ -13,4 +13,4 @@ unidecode
 stringcase
 colour==0.1.5
 bcrypt==4.0.1
-pandas==2.0.3
+pandas

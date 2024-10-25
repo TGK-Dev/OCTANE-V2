@@ -53,7 +53,7 @@ class Profiles(TypedDict):
     EmojisProfiles: Dict[str, EmojisProfiles]
 
 
-class Activity(TypedDict):
+class ActivitySettings(TypedDict):
     Time: int
     Messages: int
 
@@ -64,13 +64,13 @@ class CustomChannelSettings(TypedDict):
     ChannelPerCategory: int
     TopCategory: int
     DefaultRoles: List[int]
-    Activity: dict[str, Activity]
+    Activity: dict[str, ActivitySettings]
     CustomCategorys: List[int]
 
 
 class CustomRoleSettings(TypedDict):
     RolePossition: int
-    Activity: dict[str, Activity]
+    Activity: dict[str, ActivitySettings]
 
 
 class CustomEmojiSettings(TypedDict):
@@ -100,6 +100,9 @@ class Ignore(TypedDict):
     Users: List[int]
     Channels: List[int]
 
+class Activity(TypedDict):
+    LastMessage: datetime.datetime
+    MessageCount: int
 
 class UserCustomRoles(TypedDict):
     RoleId: int
@@ -110,7 +113,7 @@ class UserCustomRoles(TypedDict):
     FriendLimit: int
     Friends: List[int]
     Freezed: bool
-    LastActivity: datetime.datetime
+    Activity: dict[str, Activity]
 
 
 class UserCustomChannels(TypedDict):
@@ -122,7 +125,7 @@ class UserCustomChannels(TypedDict):
     FriendLimit: int
     Friends: List[int]
     Freezed: bool
-    LastActivity: datetime.datetime
+    Activity: dict[str, Activity]
 
 
 class UserCustomEmojis(TypedDict):
@@ -132,7 +135,6 @@ class UserCustomEmojis(TypedDict):
     Duration: int | str
     CreatedAt: int
     Freezed: bool
-    LastActivity: datetime.datetime
 
 
 class UserCustomHighLights(TypedDict):
@@ -142,7 +144,6 @@ class UserCustomHighLights(TypedDict):
     CreatedAt: int
     TriggerLimit: int
     Freezed: bool
-    LastActivity: datetime.datetime
     LastTrigger: datetime.datetime
     Ignore: Ignore
 
@@ -165,7 +166,6 @@ class UserCustomArs(TypedDict):
     TriggerLimit: int
     Triggers: List[Triggers]
     Freezed: bool
-    LastActivity: datetime.datetime
     LastTrigger: datetime.datetime
     Ignore: Ignore
 
@@ -211,6 +211,8 @@ class Backend:
             self.db, "UserCustomHighLights", UserCustomHighLights
         )
         self.UserCustomArs = Document(self.db, "UserCustomArs", UserCustomArs)
+        self.ar_cache = {}
+        self.hl_cache = {}
 
     async def CreateGuildConfig(self, GuildId: int | Guild):
         data: GuildConfig = {

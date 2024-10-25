@@ -57,15 +57,33 @@ class Perks(commands.Cog):
     )
 
     async def cog_app_command_error(self, interaction: Interaction, error: Exception):
-        if isinstance(error, commands.CheckFailure):
-            message = "You don't have the required permissions to run this command."
+        if isinstance(error, app_commands.CheckFailure):
+            return
         else:
-            message = f"An error occurred: {error}"
+            message = f"An error occured while processing your request\nError: {error}"
 
         if interaction.response.is_done():
             await interaction.followup.send(message, ephemeral=True)
         else:
             await interaction.response.send_message(message, ephemeral=True)
+
+    @staticmethod
+    def _BannedCheck():
+        async def Ban_check(interaction: Interaction):
+            db: Backend = interaction.client.perks
+            userInfo = await db.GetUserSettings(
+                user_id=interaction.user.id, guild_id=interaction.guild.id
+            )
+            if userInfo["Banned"]["Banned"]:
+                embed = discord.Embed(
+                    description=f"You are banned from using perks commands due to {userInfo['Banned']['Reason']}",
+                    color=interaction.client.default_color,
+                )
+                await interaction.response.send_message(embed=embed, ephemeral=True)
+                return False
+            return True
+
+        return app_commands.check(Ban_check)
 
     @staticmethod
     def _ModCheck():
@@ -109,6 +127,7 @@ class Perks(commands.Cog):
         view.message = await interaction.original_response()
 
     @role.command(name="create", description="Create your own custom role")
+    @_BannedCheck()
     @app_commands.describe(
         name="Name for your custom role",
         color="Color for your custom role",
@@ -208,7 +227,10 @@ class Perks(commands.Cog):
             "Freezed": False,
             "FriendLimit": shareLimit,
             "Friends": [],
-            "LastActivity": None,
+            "Activity": {
+                "LastMessage": None,
+                "MessageCount": 0,
+            },
         }
 
         role = await self.db.CreateCustomRole(
@@ -239,6 +261,7 @@ class Perks(commands.Cog):
             await interaction.user.add_roles(role)
 
     @role.command(name="delete", description="Delete your own custom role")
+    @_BannedCheck()
     async def _role_delete(self, interaction: Interaction):
         userInfo: UserCustomRoles = await self.db.GetUserCustomRoles(
             user_id=interaction.user.id, guild_id=interaction.guild.id
@@ -287,6 +310,7 @@ class Perks(commands.Cog):
             await interaction.delete_original_response()
 
     @role.command(name="edit", description="Edit your own custom role")
+    @_BannedCheck()
     @app_commands.describe(
         name="New name for your custom role",
         color="New color for your custom role",
@@ -340,6 +364,7 @@ class Perks(commands.Cog):
     @role.command(
         name="friends", description="Manage Sharing your custom roles with friends"
     )
+    @_BannedCheck()
     async def _role_friends(self, interaction: Interaction):
         userInfo: UserCustomRoles = await self.db.GetUserCustomRoles(
             user_id=interaction.user.id, guild_id=interaction.guild.id
@@ -368,14 +393,16 @@ class Perks(commands.Cog):
         await interaction.response.send_message(embed=embed, ephemeral=True, view=view)
 
     @channel.command(name="create", description="Create your own custom channel")
+    @_BannedCheck()
     @app_commands.describe(name="Name for your custom channel")
     async def _channel_create(self, interaction: Interaction, name: str):
         userInfo: UserCustomChannels = await self.db.GetUserCustomChannels(
             user_id=interaction.user.id, guild_id=interaction.guild.id
         )
-        if userInfo:
+        if userInfo and userInfo["ChannelId"]:
             await interaction.response.send_message(
-                "You already have a custom channel", ephemeral=True
+                f"You already have a custom channel <#{userInfo['ChannelId']}>",
+                ephemeral=True,
             )
             return
         else:
@@ -461,7 +488,10 @@ class Perks(commands.Cog):
             "Freezed": False,
             "FriendLimit": shareLimit,
             "Friends": [],
-            "LastActivity": None,
+            "Activity": {
+                "LastMessage": None,
+                "MessageCount": 0,
+            },
         }
 
         channel = await self.db.CreateCustomChannel(
@@ -516,6 +546,7 @@ class Perks(commands.Cog):
             )
 
     @channel.command(name="delete", description="Delete your own custom channel")
+    @_BannedCheck()
     async def _channel_delete(self, interaction: Interaction):
         userInfo: UserCustomChannels = await self.db.GetUserCustomChannels(
             user_id=interaction.user.id, guild_id=interaction.guild.id
@@ -535,7 +566,7 @@ class Perks(commands.Cog):
             return
 
         embed = discord.Embed(
-            description="Are you sure you want to delete your custom channel?\nIf your channel is temporary it you will lose the remaining time and you will not be able to claim it again",
+            description="Are you sure you want to delete your custom channel?",
             color=interaction.client.default_color,
         )
         view = Confirm(user=interaction.user, timeout=30)
@@ -549,11 +580,21 @@ class Perks(commands.Cog):
             )
             await view.interaction.response.edit_message(embed=embed, view=None)
             await channel.delete()
-            await self.db.DeleteUserCustomChannel(
+
+            timespent = int(
+                (datetime.datetime.utcnow() - userInfo["CreatedAt"]).total_seconds()
+            )
+            if userInfo["Duration"] != "Permanent":
+                userInfo["Duration"] = userInfo["Duration"] - timespent
+
+            userInfo["ChannelId"] = None
+            userInfo["CreatedAt"] = None
+            await self.db.UpdateUserCustomChannel(
                 user_id=interaction.user.id,
                 guild_id=interaction.guild.id,
-                channel_id=channel.id,
+                data=userInfo,
             )
+
             embed = discord.Embed(
                 description="I have successfully deleted your custom channel",
                 color=interaction.client.default_color,
@@ -564,6 +605,7 @@ class Perks(commands.Cog):
             await interaction.delete_original_response()
 
     @channel.command(name="edit", description="Edit your own custom channel")
+    @_BannedCheck()
     @app_commands.describe(name="New name for your custom channel")
     async def _channel_edit(self, interaction: Interaction, name: str):
         userInfo: UserCustomChannels = await self.db.GetUserCustomChannels(
@@ -600,6 +642,7 @@ class Perks(commands.Cog):
     @channel.command(
         name="friends", description="Manage Sharing your custom channels with friends"
     )
+    @_BannedCheck()
     async def _channel_friends(self, interaction: Interaction):
         userInfo: UserCustomChannels = await self.db.GetUserCustomChannels(
             user_id=interaction.user.id, guild_id=interaction.guild.id
@@ -632,6 +675,7 @@ class Perks(commands.Cog):
         react="Auto Reaction you want to add",
         type="Type of auto reaction",
     )
+    @_BannedCheck()
     async def _ar_create(
         self,
         interaction: Interaction,
@@ -705,7 +749,6 @@ class Perks(commands.Cog):
                 "Triggers": [],
                 "Duration": durations,
                 "TriggerLimit": highlight_limit,
-                "LastActivity": None,
                 "CreatedAt": datetime.datetime.utcnow(),
                 "Freezed": False,
                 "Ignore": {
@@ -756,6 +799,7 @@ class Perks(commands.Cog):
     @ar.command(
         name="remove", description="Remove a custom Auto Reaction for your self"
     )
+    @_BannedCheck()
     async def _ar_remove(self, interaction: Interaction):
         userInfo: UserCustomArs = await self.db.GetUserCustomReact(
             user_id=interaction.user.id, guild_id=interaction.guild.id
@@ -770,10 +814,10 @@ class Perks(commands.Cog):
         for info in triggers:
             options.append(
                 discord.SelectOption(
-                    label=info["Content"] if info["Type"] == "Message" else None,
+                    label=info["Content"],
                     value=str(triggers.index(info)),
                     description=f"Type: {info['Type'].capitalize()}",
-                    emoji=info["Content"] if info["Type"] == "Reaction" else None,
+                    emoji=info["Content"] if info["Type"] == "reaction" else None,
                 )
             )
         options = options[:24]
@@ -796,7 +840,7 @@ class Perks(commands.Cog):
             except KeyError:
                 continue
 
-        await self.db.UpdateUserCustomHighlight(
+        await self.db.UpdateUserCustomReact(
             user_id=interaction.user.id, guild_id=interaction.guild.id, data=userInfo
         )
         embed = discord.Embed(
@@ -808,6 +852,7 @@ class Perks(commands.Cog):
         )
 
     @ar.command(name="list", description="List all custom Auto Reactions for your self")
+    @_BannedCheck()
     async def _ar_list(self, interaction: Interaction):
         userInfo: UserCustomArs = await self.db.GetUserCustomReact(
             user_id=interaction.user.id, guild_id=interaction.guild.id
@@ -835,6 +880,7 @@ class Perks(commands.Cog):
         )
 
     @hl.command(name="add", description="Create a custom Highlight for your self")
+    @_BannedCheck()
     @app_commands.describe(
         highlight="Highlight you want to add",
     )
@@ -897,7 +943,6 @@ class Perks(commands.Cog):
                 "Highlights": [],
                 "Duration": durations,
                 "TriggerLimit": highlight_limit,
-                "LastActivity": None,
                 "CreatedAt": datetime.datetime.utcnow(),
                 "Freezed": False,
                 "Ignore": {
@@ -936,6 +981,68 @@ class Perks(commands.Cog):
         )
 
         await interaction.edit_original_response(embed=embed, content=None)
+
+    @commands.Cog.listener()
+    async def on_message(self, message: discord.Message):
+        if message.author.bot and message._interaction is None:
+            return
+        if message.guild is None:
+            return
+        if len(message.mentions) > 0:
+            self.bot.dispatch("ar_trigger", message)
+        if message.content is not None or message.content != "":
+            self.bot.dispatch("hl_trigger", message)
+
+        custom_channel: UserCustomChannels = (
+            await self.db.UserCustomChannels.find_by_custom(
+                filter_dict={
+                    "ChannelId": message.channel.id,
+                    "GuildId": message.guild.id,
+                    "UserId": message.author.id,
+                },
+            )
+        )
+        if not custom_channel:
+            return
+
+        if message.author.id != custom_channel["UserId"]:
+            if (
+                message._interaction is not None
+                and message._interaction.user.id != custom_channel["UserId"]
+            ):
+                return
+            
+        if custom_channel['Activity']['LastMessage'] is not None:
+            if not datetime.datetime.utcnow() > (custom_channel['Activity']['LastMessage'] + datetime.timedelta(seconds=8)):
+                return
+        
+        custom_channel['Activity']['LastMessage'] = datetime.datetime.utcnow()
+        custom_channel['Activity']['MessageCount'] += 1
+
+        await self.db.UpdateUserCustomChannel(
+            user_id=message.author.id,
+            guild_id=message.guild.id,
+            data=custom_channel,
+        )
+
+    @commands.Cog.listener()
+    async def on_ar_trigger(self, message: discord.Message):
+        if len(message.mentions) == 0:
+            return
+        guildCache: dict = self.db.ar_cache.get(message.guild.id)
+        if guildCache is None:
+            self.db.ar_cache[message.guild.id] = {}
+            guildCache = {}
+
+        for mention in message.mentions:
+            userInfo = guildCache.get(mention.id)
+            if userInfo is None:
+                userInfo = await self.db.GetUserCustomReact(
+                    user_id=mention.id, guild_id=message.guild.id
+                )
+                if userInfo is None:
+                    continue
+                guildCache[mention.id] = userInfo
 
 
 async def setup(bot: commands.Bot):
