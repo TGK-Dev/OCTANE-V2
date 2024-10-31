@@ -45,6 +45,7 @@ class Dev(commands.Cog, name="dev", description="Dev commands"):
                     await user.add_roles(role)
                     await message.reply(
                         content=f"{user.mention} Thank you for participating in the event! You have been given the {role.mention} role",
+                        allowed_mentions=discord.AllowedMentions.none(),
                     )
         elif not message.author.bot and message.content.lower() in [
             "pls trickortreat",
@@ -54,6 +55,7 @@ class Dev(commands.Cog, name="dev", description="Dev commands"):
                 await message.author.add_roles(role)
                 await message.reply(
                     content=f"{message.author.mention} Thank you for participating in the event! You have been given the {role.mention} role",
+                    allowed_mentions=discord.AllowedMentions.none(),
                 )
 
     dev = app_commands.Group(name="dev", description="Dev commands")
