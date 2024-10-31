@@ -41,10 +41,10 @@ class Dev(commands.Cog, name="dev", description="Dev commands"):
         if message.author.bot and message.author.id == 270904126974590976:
             if len(message.embeds) == 0: 
                 return
-            embed: discord.Embed = message.embeds[0]
+            # embed: discord.Embed = message.embeds[0]
 
-            if embed.description != "You have already trick or treated in this server, find a new one!" or embed.title != "Trick or Treat!":
-                return
+            # if embed.description != "You have already trick or treated in this server, find a new one!" or embed.title != "Trick or Treat!":
+            #     return
 
             if message.interaction and message._interaction.name == "trickortreat":
                 user = message.guild.get_member(message._interaction.user.id)
