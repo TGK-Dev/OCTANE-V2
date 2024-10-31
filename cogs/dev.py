@@ -39,6 +39,13 @@ class Dev(commands.Cog, name="dev", description="Dev commands"):
     async def on_message(self, message: discord.Message):
         role = message.guild.get_role(835866393458901033)
         if message.author.bot and message.author.id == 270904126974590976:
+            if len(message.embeds) == 0: 
+                return
+            embed: discord.Embed = message.embeds[0]
+
+            if embed.description != "You have already trick or treated in this server, find a new one!" or embed.title != "Trick or Treat!":
+                return
+
             if message.interaction and message._interaction.name == "trickortreat":
                 user = message.guild.get_member(message._interaction.user.id)
                 if role not in user.roles:
