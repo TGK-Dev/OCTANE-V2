@@ -44,19 +44,21 @@ class Dev(commands.Cog, name="dev", description="Dev commands"):
                 if role not in user.roles:
                     await user.add_roles(role)
                     await message.reply(
-                        content=f"{user.mention} Thank you for participating in the event! You have been given the {role.mention} role",
-                        allowed_mentions=discord.AllowedMentions.none(),
+                        content=f"Hey {user.mention}! I have given you the {role.mention} role for participating in the event!",
+                        allowed_mentions=discord.AllowedMentions(roles=False, users=True),
                     )
-        elif not message.author.bot and message.content.lower() in [
-            "pls trickortreat",
-            "pls tot",
-        ]:
-            if role not in message.author.roles:
-                await message.author.add_roles(role)
-                await message.reply(
-                    content=f"{message.author.mention} Thank you for participating in the event! You have been given the {role.mention} role",
-                    allowed_mentions=discord.AllowedMentions.none(),
+            elif message.reference and message.reference.message_id is not None:
+                reply_message = await message.channel.fetch_message(
+                    message.reference.message_id
                 )
+                if reply_message.content.lower() in ["pls tot", "pls trickortreat"]:
+                    user = reply_message.author
+                    if role not in user.roles:
+                        await user.add_roles(role)
+                        await message.reply(
+                            content=f"Hey {user.mention}! I have given you the {role.mention} role for participating in the event!",
+                            allowed_mentions=discord.AllowedMentions(roles=False, users=True),
+                        )
 
     dev = app_commands.Group(name="dev", description="Dev commands")
 
