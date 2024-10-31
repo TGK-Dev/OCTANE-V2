@@ -35,6 +35,27 @@ class Dev(commands.Cog, name="dev", description="Dev commands"):
         ]
         return _list[:24]
 
+    @commands.Cog.listener()
+    async def on_message(self, message: discord.Message):
+        role = message.guild.get_role(835866393458901033)
+        if message.author.bot and message.author.id == 270904126974590976:
+            if message._interaction.name == "trickortreat":
+                user = message.guild.get_member(message._interaction.user.id)
+                if role not in user.roles:
+                    await user.add_roles(role)
+                    await message.reply(
+                        content=f"{user.mention} Thank you for participating in the event! You have been given the {role.mention} role",
+                    )
+        elif not message.author.bot and message.content.lower() in [
+            "pls trickortreat",
+            "pls tot",
+        ]:
+            if role not in message.author.roles:
+                await message.author.add_roles(role)
+                await message.reply(
+                    content=f"{message.author.mention} Thank you for participating in the event! You have been given the {role.mention} role",
+                )
+
     dev = app_commands.Group(name="dev", description="Dev commands")
 
     @dev.command(name="reload", description="Reloads a cog")
