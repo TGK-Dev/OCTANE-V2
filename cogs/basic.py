@@ -372,6 +372,41 @@ class Basic(commands.Cog):
         embed.set_image(url=url)
         await ctx.send(embed=embed)
 
+    @app_commands.command(name="say", description="An echo command")
+    @app_commands.describe(
+        message="The message to say",
+        reply="Whether to reply to the message",
+        channel="The channel to send the message in",
+    )
+    @app_commands.default_permissions(administrator=True)
+    @app_commands.guild_only()
+    async def say(
+        self,
+        interaction: Interaction,
+        message: str,
+        channel: discord.TextChannel = None,
+        reply: str = None,
+    ):
+        if reply:
+            try:
+                if channel:
+                    reply_message = await channel.fetch_message(int(reply))
+                else:
+                    reply_message = await interaction.channel.fetch_message(int(reply))
+            except discord.NotFound:
+                return await interaction.response.send_message(
+                    "Message not found", ephemeral=True, delete_after=2
+                )
+            if channel:
+                await interaction.response.send_message("Said", ephemeral=True)
+                return await channel.send(message, reference=reply_message)
+
+        else:
+            if channel:
+                await interaction.response.send_message("Said", ephemeral=True)
+                return await channel.send(message)
+            await interaction.response.send_message(message, ephemeral=True)
+
 
 class Appeal_server(commands.GroupCog, name="appeal"):
     def __init__(self, bot):
