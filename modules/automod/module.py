@@ -1,7 +1,7 @@
 import random
 import discord
 import datetime
-from discord.ext import commands
+from discord.ext import commands, tasks
 from discord import app_commands, Interaction
 from utils.db import Document
 from typing import TypedDict, List
@@ -185,6 +185,10 @@ class AutoMod(commands.GroupCog, description="Automod commands"):
         self.bot = bot
         self.automod_confifg = Document(self.bot.db, "automod_config")
         self.offenders = {}
+        self.clear_offenses.start()
+    
+    def cog_unload(self):
+        self.clear_offenses.cancel()
 
     async def rule_auto(
         self, interaction: discord.Interaction, current: str
@@ -197,8 +201,22 @@ class AutoMod(commands.GroupCog, description="Automod commands"):
             rules.append(app_commands.Choice(name="No rules found", value="None"))
         return rules[:24]
 
-    perm = discord.Permissions()
-    perm.ban_members = True
+    @tasks.loop(seconds=60)
+    async def clear_offenses(self):
+        for user in self.offenders.keys():
+            for guild in self.offenders[user].keys():
+                for offense in self.offenders[user][guild]:
+                    # remove offenses older than 1 hour
+                    if offense["offense_at"] < discord.utils.utcnow() - datetime.timedelta(
+                        hours=1
+                    ):
+                        self.offenders[user][guild].remove(offense)
+        
+    @clear_offenses.before_loop
+    async def before_clear_offenses(self):
+        await self.bot.wait_until_ready()
+
+
 
     @app_commands.command(
         name="auto-punish", description="Enable/Disable custom automod punishment"
