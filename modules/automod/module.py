@@ -137,7 +137,9 @@ message_actions_dict_cring = {
 }
 
 
-class AutoMod(commands.Cog):
+@app_commands.guild_only()
+@app_commands.default_permissions(ban_members=True)
+class AutoMod(commands.GroupCog, description="Automod commands"):
     def __init__(self, bot):
         self.bot = bot
         self.automod_confifg = Document(self.bot.db, "automod_config")
@@ -156,14 +158,8 @@ class AutoMod(commands.Cog):
 
     perm = discord.Permissions()
     perm.ban_members = True
-    automod = app_commands.Group(
-        name="automod",
-        description="Automod settings",
-        default_permissions=perm,
-        allowed_installs=app_commands.AppInstallationType(guild=True, user=False),
-    )
 
-    @automod.command(
+    @app_commands.command(
         name="auto-punish", description="Enable/Disable custom automod punishment"
     )
     @app_commands.autocomplete(rule=rule_auto)
@@ -190,7 +186,7 @@ class AutoMod(commands.Cog):
             ephemeral=True,
         )
 
-    @automod.command(
+    @app_commands.command(
         name="offece-reset",
         description="Reset the offenses for a user",
     )
@@ -210,7 +206,7 @@ class AutoMod(commands.Cog):
                 ephemeral=True,
             )
 
-    @automod.command(
+    @app_commands.command(
         name="offense",
         description="View the offenses for a user",
     )
@@ -233,7 +229,7 @@ class AutoMod(commands.Cog):
                 ephemeral=True,
             )
 
-    @automod.command(
+    @app_commands.command(
         name="view-rules",
         description="View auto punish rules",
     )
