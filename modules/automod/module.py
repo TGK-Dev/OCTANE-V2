@@ -163,6 +163,7 @@ class AutoMod(commands.GroupCog, description="Automod commands"):
         name="auto-punish", description="Enable/Disable custom automod punishment"
     )
     @app_commands.autocomplete(rule=rule_auto)
+    @app_commands.describe(rule="The rule to enable/disable auto punish for")
     async def auto_punish(self, interaction: Interaction, rule: str):
         rule: discord.AutoModRule = await interaction.guild.fetch_automod_rule(
             int(rule)
@@ -190,8 +191,8 @@ class AutoMod(commands.GroupCog, description="Automod commands"):
         name="offece-reset",
         description="Reset the offenses for a user",
     )
-    async def offense_reset(self, interaction: Interaction):
-        user = interaction.target
+    @app_commands.describe(user="The user to reset the offenses for")
+    async def offense_reset(self, interaction: Interaction, user: discord.Member):
         if user.id in self.offenders.keys():
             if interaction.guild.id in self.offenders[user.id].keys():
                 del self.offenders[user.id][interaction.guild.id]
