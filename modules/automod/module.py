@@ -136,6 +136,47 @@ message_actions_dict_cring = {
     },
 }
 
+message_actions_dict_vic_theme = {
+    1: {
+        "message": "Look, sweetheart, I’m only gonna say this once—don’t make a move unless I tell you to, alright, {user}? Be smart."
+    },
+    2: {
+        "message": "Honey, I’ve got a lot of patience, but don’t push your luck, {user}. You know how I like things done around here."
+    },
+    3: {
+        "message": "Hey, kiddo, starting to think you're not listening, {user}. Make sure you hear me loud and clear this time.",
+        "duration": 1,
+    },
+    4: {
+        "message": "Alright, champ, I’m not asking again. You're real close to stepping out of line, {user}, and I don’t like that.",
+        "duration": 5,
+    },
+    5: {
+        "message": "Listen up, tough guy, don’t make me get off my seat and set things straight myself. You’re walking a thin line, {user}.",
+        "duration": 15,
+    },
+    6: {
+        "message": "You got a good head on your shoulders, cupcake. Don’t waste it by doing something real stupid, {user}.",
+        "duration": 30,
+    },
+    7: {
+        "message": "Kid, I ain’t fooling around here. One more mistake, {user}, and you’re gonna regret testing me.",
+        "duration": 60,
+    },
+    8: {
+        "message": "Don’t make me raise my voice, alright, darling? I’ve given you enough chances, {user}.",
+        "duration": 120,
+    },
+    9: {
+        "message": "I’m done being nice, got it, {user}? You mess up again, and you’re gonna find out what happens when I lose my patience.",
+        "duration": 360,
+    },
+    10: {
+        "message": "That’s it, kitten. No more warnings, {user}. I told you I don’t like being ignored, and now it’s time for you to learn. Since you can’t listen, you’ll have to sit out, alone, until you can remember how to behave. Let this be a lesson—you cross me again, and it won’t be so gentle next time.",
+        "duration": 1440,
+    },
+}
+
 
 @app_commands.guild_only()
 @app_commands.default_permissions(ban_members=True)
@@ -292,6 +333,7 @@ class AutoMod(commands.GroupCog, description="Automod commands"):
                     message_actions_dict,
                     message_actions_dict_parent_theme,
                     message_actions_dict_cring,
+                    message_actions_dict_vic_theme,
                 ]
             )
             action = message_pack[len(self.offenders[execution.member.id][guild.id])]
