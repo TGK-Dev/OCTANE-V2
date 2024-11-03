@@ -211,8 +211,8 @@ class AutoMod(commands.GroupCog, description="Automod commands"):
         name="offense",
         description="View the offenses for a user",
     )
-    async def offense(self, interaction: Interaction):
-        user = interaction.target
+    @app_commands.describe(user="The user to view the offenses for")
+    async def offense(self, interaction: Interaction, user: discord.Member):
         if user.id in self.offenders.keys():
             if interaction.guild.id in self.offenders[user.id].keys():
                 await interaction.response.send_message(
