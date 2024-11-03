@@ -157,7 +157,10 @@ class AutoMod(commands.Cog):
     perm = discord.Permissions()
     perm.ban_members = True
     automod = app_commands.Group(
-        name="automod", description="Automod settings", default_permissions=perm
+        name="automod",
+        description="Automod settings",
+        default_permissions=perm,
+        allowed_installs=app_commands.AppInstallationType(guild=True, user=False),
     )
 
     @automod.command(
@@ -231,8 +234,8 @@ class AutoMod(commands.Cog):
             )
 
     @automod.command(
-            name="view-rules",
-            description="View auto punish rules",
+        name="view-rules",
+        description="View auto punish rules",
     )
     async def view_rules(self, interaction: Interaction):
         embed = discord.Embed(title="Auto Punish Rules", description="")
@@ -312,4 +315,7 @@ class AutoMod(commands.Cog):
 
 
 async def setup(bot):
-    await bot.add_cog(AutoMod(bot))
+    await bot.add_cog(
+        AutoMod(bot),
+        guilds=[discord.Object(999551299286732871), discord.Object(785839283847954433)],
+    )
