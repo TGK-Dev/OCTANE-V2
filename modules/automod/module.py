@@ -3,6 +3,7 @@ import discord
 import datetime
 from discord.ext import commands, tasks
 from discord import app_commands, Interaction
+from humanfriendly import format_timespan
 from utils.db import Document
 from typing import TypedDict, List
 
@@ -184,9 +185,10 @@ class AutoMod(commands.GroupCog, description="Automod commands"):
     def __init__(self, bot):
         self.bot = bot
         self.automod_confifg = Document(self.bot.db, "automod_config")
+        self.auto_offenses = Document(self.bot.db, "auto_offenses")
         self.offenders = {}
         self.clear_offenses.start()
-    
+
     def cog_unload(self):
         self.clear_offenses.cancel()
 
@@ -206,17 +208,15 @@ class AutoMod(commands.GroupCog, description="Automod commands"):
         for user in self.offenders.keys():
             for guild in self.offenders[user].keys():
                 for offense in self.offenders[user][guild]:
-                    # remove offenses older than 1 hour
+                    # remove offenses older than 1 week
                     if offense["offense_at"] < discord.utils.utcnow() - datetime.timedelta(
-                        hours=1
+                        days=1
                     ):
                         self.offenders[user][guild].remove(offense)
-        
+
     @clear_offenses.before_loop
     async def before_clear_offenses(self):
         await self.bot.wait_until_ready()
-
-
 
     @app_commands.command(
         name="auto-punish", description="Enable/Disable custom automod punishment"
@@ -366,6 +366,14 @@ class AutoMod(commands.GroupCog, description="Automod commands"):
                 + datetime.timedelta(seconds=60 * action["duration"]),
                 reason="Automod Punishment",
             )
+            log_chal = execution.guild.get_channel(803687195599962162)
+            rule = await execution.guild.fetch_automod_rule(execution.rule_id)
+            embed = discord.Embed(
+                title="Automod Punishment",
+                description=f"**User:** {user}\n**Duration:** {format_timespan(action['duration'] * 60)}\n**Reason:** Triggered {rule.name} for {len(self.offenders[user.id][guild.id])} times",
+            )
+            await log_chal.send(embed=embed)
+
         await execution.channel.send(
             message, delete_after=10 * 3 if "duration" in action.keys() else 10
         )
