@@ -209,9 +209,9 @@ class AutoMod(commands.GroupCog, description="Automod commands"):
             for guild in self.offenders[user].keys():
                 for offense in self.offenders[user][guild]:
                     # remove offenses older than 1 week
-                    if offense["offense_at"] < discord.utils.utcnow() - datetime.timedelta(
-                        days=1
-                    ):
+                    if offense[
+                        "offense_at"
+                    ] < discord.utils.utcnow() - datetime.timedelta(days=1):
                         self.offenders[user][guild].remove(offense)
 
     @clear_offenses.before_loop
@@ -319,6 +319,8 @@ class AutoMod(commands.GroupCog, description="Automod commands"):
         guild_config: AutoModGuildConfig = await self.automod_confifg.find(
             execution.guild.id
         )
+        if execution.action.type.name != "block_message":
+            return
         guild = execution.guild
         if not guild_config:
             return
