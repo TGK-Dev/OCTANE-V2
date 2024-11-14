@@ -3,7 +3,7 @@ from discord import app_commands, Interaction
 from discord.ext import commands
 from utils.db import Document
 from .view import Vote
-from typing import Literal
+from typing import Literal, Optional
 import re
 
 
@@ -22,6 +22,12 @@ class Suggestion(commands.GroupCog, name="de"):
         self.locations = self.bot.locations
         self.phreases = self.bot.phreases
 
+    def cd_bypass(interaction: Interaction) -> Optional[app_commands.Cooldown]:
+        if interaction.user.guild_permissions.ban_members:
+            return None
+        else:
+            return app_commands.Cooldown(1, 1800.0)
+
     suggest = app_commands.Group(
         name="suggest", description="Suggest a feature for the bot"
     )
@@ -29,10 +35,11 @@ class Suggestion(commands.GroupCog, name="de"):
         name="admin", description="Admin commands for suggestions"
     )
 
-    @suggest.command(name="location", description="Suggest a location for the bot")
+    @suggest.command(name="location", description="Suggest a location for the server")
     @app_commands.describe(
         location="location u want to suggest should be related to TGK"
     )
+    @app_commands.checks.dynamic_cooldown(cd_bypass)
     async def suggest_location(
         self, interaction: Interaction, location: app_commands.Range[str, 1, 50]
     ):
@@ -91,12 +98,13 @@ class Suggestion(commands.GroupCog, name="de"):
         }
         await self.locations.insert(data)
 
-    @suggest.command(name="phrase", description="Suggest a phrease for the bot")
-    @app_commands.describe(phrase ="phrease u want to suggest", _type="type of phrease")
+    @suggest.command(name="phrase", description="Suggest a phrease for the server location")
+    @app_commands.describe(phrase="phrease u want to suggest", _type="type of phrease")
+    @app_commands.checks.dynamic_cooldown(cd_bypass)
     async def suggest_phrease(
         self,
         interaction: Interaction,
-        phrase : app_commands.Range[str, 1, 100],
+        phrase: app_commands.Range[str, 1, 100],
         _type: Literal["win", "lose", "die"],
     ):
         config = await self.config.find({"_id": interaction.guild_id})
@@ -117,7 +125,7 @@ class Suggestion(commands.GroupCog, name="de"):
             )
 
         pattern = r"\{x\}"
-        if not re.search(pattern, phrase ) and _type == "win":
+        if not re.search(pattern, phrase) and _type == "win":
             return await interaction.response.send_message(
                 "Phrease should contain {x} as placeholder", ephemeral=True
             )
@@ -148,7 +156,7 @@ class Suggestion(commands.GroupCog, name="de"):
         data = {
             "_id": msg.id,
             "author": interaction.user.id,
-            "phrease": phrase ,
+            "phrease": phrase,
             "type": _type,
             "upvotes": 0,
             "downvotes": 0,
