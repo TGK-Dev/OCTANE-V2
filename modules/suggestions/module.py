@@ -117,7 +117,7 @@ class Suggestion(commands.GroupCog, name="de"):
             )
 
         pattern = r"\{x\}"
-        if not re.search(pattern, phrase ):
+        if not re.search(pattern, phrase ) and _type == "win":
             return await interaction.response.send_message(
                 "Phrease should contain {x} as placeholder", ephemeral=True
             )
