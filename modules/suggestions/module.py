@@ -92,11 +92,11 @@ class Suggestion(commands.GroupCog, name="de"):
         await self.locations.insert(data)
 
     @suggest.command(name="phrase", description="Suggest a phrease for the bot")
-    @app_commands.describe(phrease="phrease u want to suggest", _type="type of phrease")
+    @app_commands.describe(phrase ="phrease u want to suggest", _type="type of phrease")
     async def suggest_phrease(
         self,
         interaction: Interaction,
-        phrease: app_commands.Range[str, 1, 100],
+        phrase : app_commands.Range[str, 1, 100],
         _type: Literal["win", "lose", "die"],
     ):
         config = await self.config.find({"_id": interaction.guild_id})
@@ -117,7 +117,7 @@ class Suggestion(commands.GroupCog, name="de"):
             )
 
         pattern = r"\{x\}"
-        if not re.search(pattern, phrease):
+        if not re.search(pattern, phrase ):
             return await interaction.response.send_message(
                 "Phrease should contain {x} as placeholder", ephemeral=True
             )
@@ -126,7 +126,7 @@ class Suggestion(commands.GroupCog, name="de"):
 
         embed = discord.Embed(
             color=self.bot.default_color,
-            description=f"{phrease}\n\n**Type: {_type.capitalize()}**",
+            description=f"{phrase }\n\n**Type: {_type.capitalize()}**",
         )
         embed.timestamp = discord.utils.utcnow()
         embed.set_author(
@@ -148,7 +148,7 @@ class Suggestion(commands.GroupCog, name="de"):
         data = {
             "_id": msg.id,
             "author": interaction.user.id,
-            "phrease": phrease,
+            "phrease": phrase ,
             "type": _type,
             "upvotes": 0,
             "downvotes": 0,
