@@ -160,13 +160,17 @@ class Vote(discord.ui.View):
 
         await interaction.response.edit_message(embed=embed)
 
-
     @discord.ui.button(
         emoji="<:TGK_Settings:1306539203928002560>",
         custom_id="vote:settings",
         style=discord.ButtonStyle.gray,
     )
     async def settings(self, interaction: Interaction, button: discord.ui.Button):
+        if not interaction.user.guild_permissions.administrator:
+            return await interaction.response.send_message(
+                "Your not allowed to use this button", ephemeral=True
+            )
+
         if len(interaction.message.embeds) < 0:
             return await interaction.response.send_message(
                 "Invalid message", ephemeral=True
