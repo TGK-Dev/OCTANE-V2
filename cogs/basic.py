@@ -377,6 +377,7 @@ class Basic(commands.Cog):
         message="The message to say",
         reply="Whether to reply to the message",
         channel="The channel to send the message in",
+        ping="Whether to ping the user",
     )
     @app_commands.default_permissions(administrator=True)
     @app_commands.guild_only()
@@ -386,26 +387,38 @@ class Basic(commands.Cog):
         message: str,
         channel: discord.TextChannel = None,
         reply: str = None,
+        ping: bool = False,
     ):
-        if reply:
+        if reply and channel:
             try:
-                if channel:
-                    reply_message = await channel.fetch_message(int(reply))
-                else:
-                    reply_message = await interaction.channel.fetch_message(int(reply))
-            except discord.NotFound:
-                return await interaction.response.send_message(
-                    "Message not found", ephemeral=True, delete_after=2
+                msg = await channel.fetch_message(int(reply))
+            except discord.HTTPException:
+                await interaction.response.send_message(
+                    "The message you are trying to reply to doesn't exist",
+                    ephemeral=True,
                 )
-            if channel:
-                await interaction.response.send_message("Said", ephemeral=True)
-                return await channel.send(message, reference=reply_message)
+                return
 
+            await channel.send(message, reference=msg, mention_author=ping)
+        elif reply:
+            try:
+                msg = await interaction.channel.fetch_message(int(reply))
+            except discord.HTTPException:
+                await interaction.response.send_message(
+                    "The message you are trying to reply to doesn't exist",
+                    ephemeral=True,
+                )
+                return
+
+            await interaction.channel.send(message, reference=msg, mention_author=ping)
+        elif channel:
+            await channel.send(message)
         else:
-            if channel:
-                await interaction.response.send_message("Said", ephemeral=True)
-                return await channel.send(message)
-            await interaction.response.send_message(message, ephemeral=True)
+            await interaction.channel.send(message)
+
+        await interaction.response.send_message(
+            "Message sent successfully", ephemeral=True
+        )
 
 
 class Appeal_server(commands.GroupCog, name="appeal"):
