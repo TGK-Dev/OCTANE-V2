@@ -1121,7 +1121,7 @@ class Emoji_Request(View):
 
         if len(all_emojis) >= config["emojis"]["max"]:
             return await interaction.response.send_message(
-                "You have reached the max emoji limit", ephemeral=True
+                "Server has reached the max custom emoji perk limit", ephemeral=True
             )
 
         async with aiohttp.ClientSession() as session:
@@ -1134,8 +1134,15 @@ class Emoji_Request(View):
                 await session.close()
 
         user_profile = await interaction.client.Perk.calulate_profile(
-            interaction.client.Perk.types.emojis, interaction.guild, interaction.user
+            interaction.client.Perk.types.emojis, interaction.guild, user
         )
+
+        if user_profile["share_limit"] == 0:
+            await interaction.response.send_message(
+                "User does not have the emoji perk", ephemeral=True
+            )
+            return
+
         user_data: Custom_Emoji = await interaction.client.Perk.get_data(
             "emojis", interaction.guild.id, interaction.user.id
         )
