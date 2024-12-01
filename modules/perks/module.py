@@ -1,3 +1,5 @@
+import random
+import re
 import discord
 from discord.ext import commands
 from discord import app_commands, Interaction
@@ -743,21 +745,22 @@ class Perks(commands.Cog):
                 await interaction.edit_original_response(embed=embed)
                 return
 
-            userInfo: UserCustomArs = {
-                "UserId": interaction.user.id,
-                "GuildId": interaction.guild.id,
-                "Triggers": [],
-                "Duration": durations,
-                "TriggerLimit": highlight_limit,
-                "CreatedAt": datetime.datetime.utcnow(),
-                "Freezed": False,
-                "Ignore": {
-                    "Channels": [],
-                    "Roles": [],
-                },
-                "LastTrigger": None,
-            }
-            await self.db.CreateUserCustomReact(data=userInfo)
+            userInfo: UserCustomArs = await self.db.CreateUserCustomReact(
+                data={
+                    "UserId": interaction.user.id,
+                    "GuildId": interaction.guild.id,
+                    "Triggers": [],
+                    "Duration": durations,
+                    "TriggerLimit": highlight_limit,
+                    "CreatedAt": datetime.datetime.utcnow(),
+                    "Freezed": False,
+                    "Ignore": {
+                        "Channels": [],
+                        "Roles": [],
+                    },
+                    "LastTrigger": None,
+                }
+            )
 
         if len(userInfo["Triggers"]) >= userInfo["TriggerLimit"]:
             embed = discord.Embed(
@@ -769,14 +772,47 @@ class Perks(commands.Cog):
 
         if type == "reaction":
             try:
+                emoji_pattern = re.compile(r"<a?:\w+:(\d+)>")
+                matches = emoji_pattern.findall(react)
+
+                if len(matches) == 0:
+                    await interaction.edit_original_response(
+                        content=None,
+                        embed=discord.Embed(
+                            description="Please provide a valid emoji",
+                            color=discord.Color.red(),
+                        ),
+                    )
+                    return
+                if len(matches) > 1:
+                    await interaction.edit_original_response(
+                        content=None,
+                        embed=discord.Embed(
+                            description="Please provide a single emoji",
+                            color=discord.Color.red(),
+                        ),
+                    )
+                    return
+
+                emoji = interaction.client.get_emoji(int(matches[0]))
+                if not emoji:
+                    await interaction.edit_original_response(
+                        content=None,
+                        embed=discord.Embed(
+                            description="Please provide a valid emoji",
+                            color=discord.Color.red(),
+                        ),
+                    )
+                    return
                 message = await interaction.original_response()
-                await message.add_reaction(react)
-                await message.remove_reaction(react, interaction.guild.me)
+
+                await message.add_reaction(emoji)
+                await message.remove_reaction(emoji, interaction.guild.me)
             except Exception:
                 await interaction.edit_original_response(
                     content=None,
                     embed=discord.Embed(
-                        description=f"Faild to add reaction with {react} to the message perhaps it's not a valid emoji",
+                        description=f"Faild to add reaction with {react} to the message perhaps it's not a valid emoji or i don't have access to it",
                         color=discord.Color.red(),
                     ),
                 )
@@ -795,6 +831,11 @@ class Perks(commands.Cog):
         )
 
         await interaction.edit_original_response(embed=embed, content=None)
+
+        if interaction.guild.id in self.db.ar_cache.keys():
+            self.db.ar_cache[interaction.guild.id][interaction.user.id] = userInfo
+        else:
+            self.db.ar_cache[interaction.guild.id] = {interaction.user.id: userInfo}
 
     @ar.command(
         name="remove", description="Remove a custom Auto Reaction for your self"
@@ -851,6 +892,8 @@ class Perks(commands.Cog):
             embed=embed, view=None, content=None
         )
 
+        self.db.ar_cache[interaction.guild.id][interaction.user.id] = userInfo
+
     @ar.command(name="list", description="List all custom Auto Reactions for your self")
     @_BannedCheck()
     async def _ar_list(self, interaction: Interaction):
@@ -902,7 +945,7 @@ class Perks(commands.Cog):
         user_roles = [str(role.id) for role in interaction.user.roles]
         durations = 0
         highlight_limit = 0
-        claimed_roles = usersettings["Claimed"]["Highlights"]
+        claimed_roles = usersettings["Claimed"]["HighLights"]
         hlProfiles: dict[str, HighLightsProfiles] = config["Profiles"][
             "HighLightsProfiles"
         ]
@@ -922,14 +965,14 @@ class Perks(commands.Cog):
                         }
                         durations += hlProfiles[role]["Duration"]
 
-                highlight_limit += hlProfiles[role]["HighlightLimit"]
+                highlight_limit += hlProfiles[role]["TriggerLimit"]
 
         if userInfo:
             if (
                 userInfo["TriggerLimit"] != highlight_limit
                 or userInfo["Duration"] != durations
             ):
-                userInfo["highlightLimit"] = highlight_limit
+                userInfo["TriggerLimit"] = highlight_limit
                 userInfo["Duration"] = durations
                 await self.db.UpdateUserCustomHighlight(
                     user_id=interaction.user.id,
@@ -937,23 +980,24 @@ class Perks(commands.Cog):
                     data=userInfo,
                 )
         else:
-            UseerInfo: UserCustomHighLights = {
-                "UserId": interaction.user.id,
-                "GuildId": interaction.guild.id,
-                "Highlights": [],
-                "Duration": durations,
-                "TriggerLimit": highlight_limit,
-                "CreatedAt": datetime.datetime.utcnow(),
-                "Freezed": False,
-                "Ignore": {
-                    "Channels": [],
-                    "Roles": [],
-                },
-                "LastTrigger": None,
-            }
-            await self.db.CreateUserCustomHighlight(data=UseerInfo)
+            UseerInfo: UserCustomHighLights = await self.db.CreateUserCustomHighlight(
+                data={
+                    "UserId": interaction.user.id,
+                    "GuildId": interaction.guild.id,
+                    "Highlights": [],
+                    "Duration": durations,
+                    "TriggerLimit": highlight_limit,
+                    "CreatedAt": datetime.datetime.utcnow(),
+                    "Freezed": False,
+                    "Ignore": {
+                        "Channels": [],
+                        "Roles": [],
+                    },
+                    "LastTrigger": None,
+                }
+            )
 
-        if len(userInfo["Highlights"]) >= userInfo["HighlightLimit"]:
+        if len(userInfo["Highlights"]) >= userInfo["TriggerLimit"]:
             embed = discord.Embed(
                 description="You already have maximum highlights",
                 color=discord.Color.red(),
@@ -1011,13 +1055,16 @@ class Perks(commands.Cog):
                 and message._interaction.user.id != custom_channel["UserId"]
             ):
                 return
-            
-        if custom_channel['Activity']['LastMessage'] is not None:
-            if not datetime.datetime.utcnow() > (custom_channel['Activity']['LastMessage'] + datetime.timedelta(seconds=8)):
+
+        if custom_channel["Activity"]["LastMessage"] is not None:
+            if not datetime.datetime.utcnow() > (
+                custom_channel["Activity"]["LastMessage"]
+                + datetime.timedelta(seconds=8)
+            ):
                 return
-        
-        custom_channel['Activity']['LastMessage'] = datetime.datetime.utcnow()
-        custom_channel['Activity']['MessageCount'] += 1
+
+        custom_channel["Activity"]["LastMessage"] = datetime.datetime.utcnow()
+        custom_channel["Activity"]["MessageCount"] += 1
 
         await self.db.UpdateUserCustomChannel(
             user_id=message.author.id,
@@ -1026,10 +1073,43 @@ class Perks(commands.Cog):
         )
 
     @commands.Cog.listener()
+    async def on_hl_trigger(self, message: discord.Message):
+        if message.content is None or message.content == "":
+            return
+        
+        message_content = message.content.lower().split()
+        already_triggered_users = []
+
+        message_history: list[discord.Message] = list([msg async for msg in message.channel.history(before=message, limit=20)])
+        message_history.reverse()        
+        
+        recent_messages = message_history[-5]
+
+        for word in message_content:
+            usersInfo = await self.db.UserCustomHighLights.find_many_by_custom(
+                # make a query which returns all the users who have this word in their profile keyname is Highlights and it's a list
+                filter_dict={"Highlights": {
+                    "$exists": True,
+                    "$type": "array",
+                    "$in": [word]
+                }},
+
+            )
+            for userInfo in usersInfo:
+                if userInfo["UserId"] in already_triggered_users:
+                    continue
+                if userInfo["UserId"] == message.author.id:
+                    continue
+                
+
+
+
+
+    @commands.Cog.listener()
     async def on_ar_trigger(self, message: discord.Message):
         if len(message.mentions) == 0:
             return
-        guildCache: dict = self.db.ar_cache.get(message.guild.id)
+        guildCache: dict[int, UserCustomArs] = self.db.ar_cache.get(message.guild.id)
         if guildCache is None:
             self.db.ar_cache[message.guild.id] = {}
             guildCache = {}
@@ -1043,6 +1123,33 @@ class Perks(commands.Cog):
                 if userInfo is None:
                     continue
                 guildCache[mention.id] = userInfo
+
+            if userInfo["UserId"] == message.author.id:
+                continue
+
+            if (
+                userInfo["LastTrigger"]
+                and datetime.datetime.utcnow() > userInfo["LastTrigger"]
+            ):
+                continue
+
+            trigger = random.choice(userInfo["Triggers"])
+            if trigger["Type"] == "message":
+                await message.reply(trigger["Content"], mention_author=True)
+                userInfo["LastTrigger"] = (
+                    datetime.datetime.utcnow() + datetime.timedelta(minutes=1)
+                )
+            else:
+                await message.add_reaction(trigger["Content"])
+                userInfo["LastTrigger"] = (
+                    datetime.datetime.utcnow() + datetime.timedelta(seconds=40)
+                )
+
+            await self.db.UpdateUserCustomReact(
+                user_id=mention.id, guild_id=message.guild.id, data=userInfo
+            )
+            guildCache[mention.id] = userInfo
+            self.db.ar_cache[message.guild.id][mention.id] = userInfo
 
 
 async def setup(bot: commands.Bot):

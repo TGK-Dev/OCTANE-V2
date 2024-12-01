@@ -79,10 +79,10 @@ class StaffRolesView(View):
         self, interaction: discord.Interaction, error: Exception, item: discord.ui.Item
     ):
         if interaction.response.is_done():
-            return interaction.followup.send(
+            return await interaction.followup.send(
                 "An error occurred: {error}", ephemeral=True
             )
-        return interaction.response.send_message(
+        return await interaction.response.send_message(
             f"An error occurred: {error}", ephemeral=True
         )
 
@@ -179,10 +179,10 @@ class ChannelProfileModify(View):
         self, interaction: discord.Interaction, error: Exception, item: discord.ui.Item
     ):
         if interaction.response.is_done():
-            return interaction.followup.send(
+            return await interaction.followup.send(
                 "An error occurred: {error}", ephemeral=True
             )
-        return interaction.response.send_message(
+        return await interaction.response.send_message(
             f"An error occurred: {error}", ephemeral=True
         )
 
@@ -770,10 +770,10 @@ class RoleProfileModify(View):
         self, interaction: discord.Interaction, error: Exception, item: discord.ui.Item
     ):
         if interaction.response.is_done():
-            return interaction.followup.send(
+            return await interaction.followup.send(
                 "An error occurred: {error}", ephemeral=True
             )
-        return interaction.response.send_message(
+        return await interaction.response.send_message(
             f"An error occurred: {error}", ephemeral=True
         )
 
@@ -1272,10 +1272,10 @@ class ArprofileModify(View):
         self, interaction: discord.Interaction, error: Exception, item: discord.ui.Item
     ):
         if interaction.response.is_done():
-            return interaction.followup.send(
+            return await interaction.followup.send(
                 "An error occurred: {error}", ephemeral=True
             )
-        return interaction.response.send_message(
+        return await interaction.response.send_message(
             f"An error occurred: {error}", ephemeral=True
         )
 
@@ -1415,10 +1415,10 @@ class ArProfilesView(View):
         self, interaction: discord.Interaction, error: Exception, item: discord.ui.Item
     ):
         if interaction.response.is_done():
-            return interaction.followup.send(
+            return await interaction.followup.send(
                 "An error occurred: {error}", ephemeral=True
             )
-        return interaction.response.send_message(
+        return await interaction.response.send_message(
             f"An error occurred: {error}", ephemeral=True
         )
 
@@ -1673,10 +1673,10 @@ class HighlightModify(View):
         self, interaction: discord.Interaction, error: Exception, item: discord.ui.Item
     ):
         if interaction.response.is_done():
-            return interaction.followup.send(
+            return await interaction.followup.send(
                 "An error occurred: {error}", ephemeral=True
             )
-        return interaction.response.send_message(
+        return await interaction.response.send_message(
             f"An error occurred: {error}", ephemeral=True
         )
 
@@ -1821,10 +1821,10 @@ class HighlightProfilesView(View):
         self, interaction: discord.Interaction, error: Exception, item: discord.ui.Item
     ):
         if interaction.response.is_done():
-            return interaction.followup.send(
+            return await interaction.followup.send(
                 "An error occurred: {error}", ephemeral=True
             )
-        return interaction.response.send_message(
+        return await interaction.response.send_message(
             f"An error occurred: {error}", ephemeral=True
         )
 
@@ -2082,10 +2082,10 @@ class EmojiModify(View):
         self, interaction: discord.Interaction, error: Exception, item: discord.ui.Item
     ):
         if interaction.response.is_done():
-            return interaction.followup.send(
+            return await interaction.followup.send(
                 "An error occurred: {error}", ephemeral=True
             )
-        return interaction.response.send_message(
+        return await interaction.response.send_message(
             f"An error occurred: {error}", ephemeral=True
         )
 
@@ -2212,10 +2212,10 @@ class EmojiProfilesView(View):
         self, interaction: discord.Interaction, error: Exception, item: discord.ui.Item
     ):
         if interaction.response.is_done():
-            return interaction.followup.send(
+            return await interaction.followup.send(
                 "An error occurred: {error}", ephemeral=True
             )
-        return interaction.response.send_message(
+        return await interaction.response.send_message(
             f"An error occurred: {error}", ephemeral=True
         )
 
@@ -2489,10 +2489,10 @@ class PerksConfigPanel(View):
         self, interaction: discord.Interaction, error: Exception, item: discord.ui.Item
     ):
         if interaction.response.is_done():
-            return interaction.followup.send(
+            return await interaction.followup.send(
                 "An error occurred: {error}", ephemeral=True
             )
-        return interaction.response.send_message(
+        return await interaction.response.send_message(
             f"An error occurred: {error}", ephemeral=True
         )
 
@@ -2828,10 +2828,10 @@ class RoleFriendsManage(View):
         self, interaction: discord.Interaction, error: Exception, item: discord.ui.Item
     ):
         if interaction.response.is_done():
-            return interaction.followup.send(
+            return await interaction.followup.send(
                 "An error occurred: {error}", ephemeral=True
             )
-        return interaction.response.send_message(
+        return await interaction.response.send_message(
             f"An error occurred: {error}", ephemeral=True
         )
 
@@ -2964,10 +2964,10 @@ class ChannelFriendsManage(View):
         self, interaction: discord.Interaction, error: Exception, item: discord.ui.Item
     ):
         if interaction.response.is_done():
-            return interaction.followup.send(
+            return await interaction.followup.send(
                 "An error occurred: {error}", ephemeral=True
             )
-        return interaction.response.send_message(
+        return await interaction.response.send_message(
             f"An error occurred: {error}", ephemeral=True
         )
 

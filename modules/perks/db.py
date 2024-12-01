@@ -100,9 +100,11 @@ class Ignore(TypedDict):
     Users: List[int]
     Channels: List[int]
 
+
 class Activity(TypedDict):
     LastMessage: datetime.datetime
     MessageCount: int
+
 
 class UserCustomRoles(TypedDict):
     RoleId: int
@@ -610,7 +612,7 @@ class Backend:
 
     async def CreateUserCustomReact(self, data: UserCustomArs):
         data = await self.UserCustomArs.insert(data)
-        return data
+        return await self.GetUserCustomReact(data["UserId"], data["GuildId"])
 
     async def UpdateUserCustomReact(
         self, user_id: int, guild_id: int, data: UserCustomArs
@@ -624,7 +626,29 @@ class Backend:
         )
 
     async def GetUserCustomReact(self, user_id: int, guild_id: int) -> UserCustomArs:
-        data = await self.UserCustomArs.find(
-            {"UserId": user_id, "GuildId": guild_id}
-        )
+        data = await self.UserCustomArs.find({"UserId": user_id, "GuildId": guild_id})
         return data
+
+
+    # NOTE: Custom Highlight Related Functions
+
+    async def CreateUserCustomHighlight(self, data: UserCustomHighLights):
+        data = await self.UserCustomHighLights.insert(data)
+        return await self.GetUserCustomHighlight(data["UserId"], data["GuildId"])
+    
+    async def UpdateUserCustomHighlight(
+        self, user_id: int, guild_id: int, data: UserCustomHighLights
+    ):
+        return await self.UserCustomHighLights.update(
+            filter_dict={
+                "UserId": user_id,
+                "GuildId": guild_id,
+            },
+            data=data,
+        )
+    
+    async def GetUserCustomHighlight(self, user_id: int, guild_id: int) -> UserCustomHighLights:
+        data = await self.UserCustomHighLights.find({"UserId": user_id, "GuildId": guild_id})
+        return data
+    
+    
