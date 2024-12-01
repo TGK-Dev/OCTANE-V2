@@ -420,6 +420,19 @@ class Basic(commands.Cog):
             "Message sent successfully", ephemeral=True
         )
 
+        embed = discord.Embed(title="Say Log", description="")
+        embed.description += f"Used by: {interaction.user.mention}\n"
+        embed.description += f"Message: {message}\n"
+        embed.description += (
+            f"Channel: {channel.mention if channel else interaction.channel.mention}\n"
+        )
+        embed.description += f"Reply: {reply}\n"
+        embed.description += f"Ping: {ping}\n"
+        embed.set_footer(text=f"User ID: {interaction.user.id}")
+
+        chl = self.bot.get_channel(1130057933468745849)
+        await chl.send(embed=embed)
+
 
 class Appeal_server(commands.GroupCog, name="appeal"):
     def __init__(self, bot):
