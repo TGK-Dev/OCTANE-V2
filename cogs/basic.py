@@ -410,11 +410,18 @@ class Basic(commands.Cog):
                 )
                 return
 
-            await interaction.channel.send(message, reference=msg, mention_author=ping)
+            await interaction.channel.send(
+                message,
+                reference=msg,
+                mention_author=ping,
+                allowed_mentions=discord.AllowedMentions.none(),
+            )
         elif channel:
-            await channel.send(message)
+            await channel.send(message, allowed_mentions=discord.AllowedMentions.none())
         else:
-            await interaction.channel.send(message)
+            await interaction.channel.send(
+                message, allowed_mentions=discord.AllowedMentions.none()
+            )
 
         await interaction.response.send_message(
             "Message sent successfully", ephemeral=True
