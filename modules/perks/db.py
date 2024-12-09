@@ -99,6 +99,7 @@ class GuildConfig(TypedDict):
 class Ignore(TypedDict):
     Users: List[int]
     Channels: List[int]
+    Users: List[int]
 
 
 class Activity(TypedDict):

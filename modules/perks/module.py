@@ -980,7 +980,7 @@ class Perks(commands.Cog):
                     data=userInfo,
                 )
         else:
-            UseerInfo: UserCustomHighLights = await self.db.CreateUserCustomHighlight(
+            userInfo: UserCustomHighLights = await self.db.CreateUserCustomHighlight(
                 data={
                     "UserId": interaction.user.id,
                     "GuildId": interaction.guild.id,
@@ -991,7 +991,7 @@ class Perks(commands.Cog):
                     "Freezed": False,
                     "Ignore": {
                         "Channels": [],
-                        "Roles": [],
+                        "Users": [],
                     },
                     "LastTrigger": None,
                 }
@@ -1076,34 +1076,108 @@ class Perks(commands.Cog):
     async def on_hl_trigger(self, message: discord.Message):
         if message.content is None or message.content == "":
             return
-        
+
         message_content = message.content.lower().split()
         already_triggered_users = []
 
-        message_history: list[discord.Message] = list([msg async for msg in message.channel.history(before=message, limit=20)])
-        message_history.reverse()        
-        
-        recent_messages = message_history[-5]
+        message_history: list[discord.Message] = list(
+            [msg async for msg in message.channel.history(before=message, limit=20)]
+        )
+        message_history.reverse()
+
+        recent_messages = message_history[-10:]
 
         for word in message_content:
             usersInfo = await self.db.UserCustomHighLights.find_many_by_custom(
                 # make a query which returns all the users who have this word in their profile keyname is Highlights and it's a list
-                filter_dict={"Highlights": {
-                    "$exists": True,
-                    "$type": "array",
-                    "$in": [word]
-                }},
-
+                filter_dict={
+                    "Highlights": {"$exists": True, "$type": "array", "$in": [word]}
+                },
             )
+
             for userInfo in usersInfo:
+                userInfo: UserCustomHighLights
                 if userInfo["UserId"] in already_triggered_users:
                     continue
-                if userInfo["UserId"] == message.author.id:
+                if message.author.id == userInfo["UserId"]:
                     continue
-                
 
+                if (
+                    message.author.id in userInfo["Ignore"]["Users"]
+                    or message.channel.id in userInfo["Ignore"]["Channels"]
+                ):
+                    continue
 
+                if userInfo["LastTrigger"] and datetime.datetime.utcnow() < userInfo[
+                    "LastTrigger"
+                ] + datetime.timedelta(minutes=5):
+                    continue
 
+                if any(
+                    [
+                        message.author.id
+                        for msg in recent_messages
+                        if msg.author.id == userInfo["UserId"]
+                    ]
+                ):
+                    continue
+
+                await self.send_highlight_message(
+                    message=message,
+                    userInfo=userInfo,
+                    word=word,
+                    message_history=message_history,
+                )
+                already_triggered_users.append(userInfo["UserId"])
+
+        already_triggered_users.clear()
+
+    async def send_highlight_message(
+        self,
+        message: discord.Message,
+        userInfo: UserCustomHighLights,
+        word: str,
+        message_history: list[discord.Message],
+    ):
+        embed = discord.Embed(
+            title=f"Highlight Triggered in {message.guild.name}", description=""
+        )
+        message_history = message_history[-10:]
+
+        for msg in message_history:
+            msg: discord.Message
+            if msg.author.bot and len(msg.embeds) > 0:
+                embed.description += f"**[<t:{int(msg.created_at.timestamp())}:T>] {msg.author.name}**: *Embed Message*\n"
+            else:
+                if len(msg.content) > 20:
+                    content = msg.content[:20] + "..."
+                else:
+                    content = msg.content
+                embed.description += f"**[<t:{int(msg.created_at.timestamp())}:T>] {msg.author.name}**: {content}\n"
+
+        if len(embed.description) > 2000:
+            embed.description = embed.description[:2000]
+
+        embed.set_footer(
+            text=f"Triggered by {message.author.name}",
+            icon_url=message.author.avatar.url
+            if message.author.avatar
+            else message.author.default_avatar,
+        )
+
+        try:
+            user = message.guild.get_member(userInfo["UserId"])
+            if not user:
+                user = await message.guild.fetch_member(userInfo["UserId"])
+            await user.send(embed=embed)
+        except discord.errors.NotFound:
+            await self.db.UserCustomHighLights.delete(userInfo)
+            return
+        except discord.errors.Forbidden:
+            return
+
+        userInfo["LastTrigger"] = datetime.datetime.utcnow()
+        await self.db.UserCustomHighLights.update(userInfo)
 
     @commands.Cog.listener()
     async def on_ar_trigger(self, message: discord.Message):
