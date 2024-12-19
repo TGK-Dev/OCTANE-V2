@@ -784,7 +784,7 @@ class donation(commands.Cog):
         self.bot.donorBank = Document(self.db2, "donorBank")
 
         # Dont delete
-        self.celeb_lb.start()
+        # self.celeb_lb.start()
 
     def cog_unload(self):
         self.celeb_lb.cancel()
