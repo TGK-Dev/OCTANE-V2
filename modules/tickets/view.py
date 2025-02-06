@@ -1699,7 +1699,7 @@ class TicketControl(View):
         linkView.add_item(
             discord.ui.Button(
                 label="View Transcript",
-                url=f"https://api.natbot.xyz/transcripts?url={TranscriptUrl}",
+                url=f"https://nat.jay2404.me/api/transcripts?url={TranscriptUrl}",
                 style=discord.ButtonStyle.url,
                 emoji="<:tgk_link:1105189183523401828>",
             )
@@ -1779,7 +1779,7 @@ class Refresh_Trancsript(View):
 
         attachment = interaction.message.attachments[0]
         attachment_url = urllib.parse.quote(attachment.url, safe="")
-        transcript_url = f"https://api.natbot.xyz/transcripts?url={attachment_url}"
+        transcript_url = f"https://nat.jay2404.me/api/transcripts?url={attachment_url}"
         view = Refresh_Trancsript()
         view.add_item(
             discord.ui.Button(
