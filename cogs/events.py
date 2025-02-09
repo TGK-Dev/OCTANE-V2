@@ -4,6 +4,7 @@ import asyncio
 import re
 
 from discord.ext import commands, tasks
+from utils.db import Document
 
 
 class Events(commands.Cog):
@@ -12,6 +13,7 @@ class Events(commands.Cog):
         self.counter_task = self.update_member_counter.start()
         self.activiy_webhook = None
         self.vote_task_progress = False
+        self.bot.whitelist = Document(bot.db, "whitelist")
 
     def cog_unload(self):
         self.counter_task.cancel()
@@ -108,9 +110,13 @@ class Events(commands.Cog):
             return
         if after.author.id != 270904126974590976:
             return
-        
-        if after.channel.id not in [812711254790897714,1210094990315753472,
-                                    1116295238584111155,1086323496788963328]:
+
+        if after.channel.id not in [
+            812711254790897714,
+            1210094990315753472,
+            1116295238584111155,
+            1086323496788963328,
+        ]:
             return
         if len(after.embeds) == 0:
             return
@@ -118,7 +124,7 @@ class Events(commands.Cog):
 
         if not embed.description.startswith("Successfully donated "):
             return
-        
+
         prize = re.findall(r"\*\*(.*?)\*\*", embed.description)[0]
         emojis = list(set(re.findall(":\w*:\d*", prize)))
         for emoji in emojis:
@@ -129,16 +135,16 @@ class Events(commands.Cog):
 
         donor = after._interaction.user
         await after.reply(
-                    f"{donor.mention} successfully donated **{prize}** to the server pool!",
-                    allowed_mentions=discord.AllowedMentions.none(),
+            f"{donor.mention} successfully donated **{prize}** to the server pool!",
+            allowed_mentions=discord.AllowedMentions.none(),
         )
-        
-
 
     @commands.Cog.listener()
     async def on_guild_join(self, guild: discord.Guild):
         if guild.owner_id not in self.bot.owner_ids:
-            await guild.leave()
+            whitelist = await self.whitelist.find(guild.id)
+            if not whitelist:
+                await guild.leave()
 
     @commands.Cog.listener()
     async def on_command_error(self, ctx, error):

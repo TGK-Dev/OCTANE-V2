@@ -36,6 +36,9 @@ class Dev(commands.Cog, name="dev", description="Dev commands"):
         return _list[:24]
 
     dev = app_commands.Group(name="dev", description="Dev commands")
+    whitelist = app_commands.Group(
+        name="whitelist", description="Whitelist commands", parent=dev
+    )
 
     @dev.command(name="reload", description="Reloads a cog")
     @app_commands.autocomplete(cog=cog_auto_complete)
@@ -176,6 +179,58 @@ class Dev(commands.Cog, name="dev", description="Dev commands"):
             delete_after=120,
         )
 
+    @whitelist.command(name="add", description="Adds a guild to the whitelist")
+    @app_commands.describe(guild="The guild to whitelist")
+    @app_commands.check(is_dev)
+    async def add(self, interaction: discord.Interaction, guild: str):
+        data = await self.bot.whitelist.find(guild)
+        if data:
+            return await interaction.response.send_message(
+                embed=discord.Embed(
+                    description=f"{guild} is already whitelisted",
+                    color=interaction.client.default_color,
+                ),
+                ephemeral=True,
+            )
+        else:
+            await self.bot.whitelist.insert(
+                {
+                    "_id": guild,
+                    "whitelisted_at": datetime.datetime.utcnow(),
+                    "whitelisted_by": interaction.user.id,
+                }
+            )
+            await interaction.response.send_message(
+                embed=discord.Embed(
+                    description=f"{guild} has been whitelisted",
+                    color=interaction.client.default_color,
+                ),
+                ephemeral=False,
+            )
+
+    @whitelist.command(name="remove", description="Removes a guild from the whitelist")
+    @app_commands.describe(guild="The guild to remove from the whitelist")
+    @app_commands.check(is_dev)
+    async def remove(self, interaction: discord.Interaction, guild: str):
+        data = await self.bot.whitelist.find(guild)
+        if not data:
+            return await interaction.response.send_message(
+                embed=discord.Embed(
+                    description=f"{guild} is not whitelisted",
+                    color=interaction.client.default_color,
+                ),
+                ephemeral=True,
+            )
+        else:
+            await self.bot.whitelist.delete(guild)
+            await interaction.response.send_message(
+                embed=discord.Embed(
+                    description=f"{guild} has been removed from the whitelist",
+                    color=interaction.client.default_color,
+                ),
+                ephemeral=False,
+            )
+
     @commands.command(name="eval", description="Evaluates a python code")
     async def _eval(self, ctx: commands.Context, *, code):
         if ctx.author.id not in self.bot.owner_ids:
@@ -214,7 +269,7 @@ class Dev(commands.Cog, name="dev", description="Dev commands"):
         for i in range(0, len(result), 2000):
             page.append(
                 discord.Embed(
-                    description=f"```py\n{result[i:i + 2000]}\n```",
+                    description=f"```py\n{result[i : i + 2000]}\n```",
                     color=ctx.author.color,
                 )
             )
