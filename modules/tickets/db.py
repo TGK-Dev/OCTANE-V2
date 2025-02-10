@@ -84,8 +84,8 @@ class TicketDB:
             "transcript_channel": None,
             "default_channel": None,
             "nameing_scheme": {
-                "locked": None,
-                "unlocked": None,
+                "locked": "🔒 -",
+                "unlocked": "🔓 -",
             },
             "panel_message": 0,
             "panels": {},

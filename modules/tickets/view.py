@@ -198,7 +198,7 @@ class TicketConfig_View(View):
                     "ping_role": None,
                     "ticket_message": None,
                     "panel_message": None,
-                    "nameing_scheme": None,
+                    "nameing_scheme": "🎫 ",
                 }
                 panel_view = TicketPanel(data, self.data, view.select.interaction)
                 embed = await interaction.client.tickets.panel_embed(
@@ -233,6 +233,14 @@ class TicketConfig_View(View):
                     ],
                 )
                 panel_select.add_item(panel_select.select)
+
+                if len(self.data["panels"].keys()) == 0:
+                    return await view.select.interaction.response.edit_message(
+                        content="No panels to delete",
+                        view=None,
+                        embed=None,
+                        delete_after=2,
+                    )
 
                 await view.select.interaction.response.edit_message(view=panel_select)
 
@@ -277,6 +285,13 @@ class TicketConfig_View(View):
                     ],
                 )
                 panel_select.add_item(panel_select.select)
+                if len(self.data["panels"].keys()) == 0:
+                    return await view.select.interaction.response.edit_message(
+                        content="No panels to delete",
+                        view=None,
+                        embed=None,
+                        delete_after=2,
+                    )
 
                 await view.select.interaction.response.edit_message(view=panel_select)
 
@@ -286,16 +301,17 @@ class TicketConfig_View(View):
                     await interaction.delete_original_response()
                     return
 
+                await panel_select.select.interaction.response.defer()
                 del self.data["panels"][panel_select.select.values[0]]
                 await interaction.client.tickets.update_config(
                     _id=self.data["_id"], data=self.data
                 )
-                await panel_select.select.interaction.edit_original_response(
+                await panel_select.select.interaction.followup.send(
                     embed=await interaction.client.tickets.get_config_embed(
                         data=self.data
                     ),
-                    view=None,
                 )
+                await panel_select.select.interaction.delete_original_response()
 
 
 class TicketPanel(View):
@@ -307,14 +323,14 @@ class TicketPanel(View):
         super().__init__(timeout=300)
 
         if self.data["active"] is True:
-            self.children[0].emoji = "<:tgk_toggle_on:1215647030974750750>"
+            self.children[0].emoji = "<:toggle_on:1123932825956134912>"
         else:
-            self.children[0].emoji = "<:tgk_toggle_off:1215647089610981478>"
+            self.children[0].emoji = "<:toggle_off:1123932890993020928>"
 
         if self.data["name"] is None:
             self.children[1].disabled = True
-            if self.data["name"].lower() == "partnership":
-                self.children[4].disabled = True
+        if self.data["name"] and self.data["name"].lower() == "partnership":
+            self.children[4].disabled = True
         else:
             self.children[1].disabled = False
 
@@ -326,9 +342,9 @@ class TicketPanel(View):
     async def _active(self, interaction: Interaction, button: Button):
         self.data["active"] = True if self.data.get("active") is False else False
         button.emoji = (
-            "<:tgk_toggle_on:1215647030974750750>"
+            "<:toggle_on:1123932825956134912>"
             if self.data["active"] is True
-            else "<:tgk_toggle_on:1215647030974750750>"
+            else "<:toggle_on:1123932825956134912>"
         )
         await interaction.response.edit_message(
             embed=await interaction.client.tickets.panel_embed(
@@ -1218,21 +1234,16 @@ class Channel_Config(View):
     )
     async def _confirm(self, interaction: Interaction, button: Button):
         embed = discord.Embed(description="", color=interaction.client.default_color)
-        embed_args = await get_formated_embed(
-            [
-                "Default Category",
-                "Default Channel",
-                "Log Channel",
-                "Transcript Channel",
-                "Nameing Scheme",
-            ]
+        embed.description += "<:tgk_channel:1073908465405268029> `Channel Config`\n\n"
+        embed.description += f"**Default Ticket Category:** {self.data['default_category'].mention if self.data['default_category'] is not None else 'None'}\n"
+        embed.description += f"**Default Ticket Panel Channel:** {self.data['default_channel'].mention if self.data['default_channel'] is not None else 'None'}\n"
+        embed.description += f"**Log Channel:** {self.data['log_channel'].mention if self.data['log_channel'] is not None else 'None'}\n"
+        embed.description += f"**Transcript Channel:** {self.data['transcript_channel'].mention if self.data['transcript_channel'] is not None else 'None'}\n"
+        embed.description += "**Nameing Scheme:**\n"
+        embed.description += (
+            f"**Unlocked:** `{self.data['nameing_scheme']['unlocked']} `\n"
         )
-
-        embed.description += f"{await get_formated_field(guild=interaction.guild, name=embed_args['Default Category'], type='channel', data=self.data['default_category'])}\n"
-        embed.description += f"{await get_formated_field(guild=interaction.guild, name=embed_args['Default Channel'], type='channel', data=self.data['default_channel'])}\n"
-        embed.description += f"{await get_formated_field(guild=interaction.guild, name=embed_args['Log Channel'], type='channel', data=self.data['log_channel'])}\n"
-        embed.description += f"{await get_formated_field(guild=interaction.guild, name=embed_args['Transcript Channel'], type='channel', data=self.data['transcript_channel'])}\n"
-        embed.description += f"{embed_args['Nameing Scheme']} Locked:`{self.data['nameing_scheme']['locked']}` Unlocked: `{self.data['nameing_scheme']['unlocked']}\n"
+        embed.description += f"**Locked:** `{self.data['nameing_scheme']['locked']} `\n"
 
         await interaction.response.edit_message(embed=embed, view=None)
         self.value = True
