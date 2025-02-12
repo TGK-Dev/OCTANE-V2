@@ -1084,7 +1084,7 @@ class Panel_Channel(View):
         modal.name = TextInput(
             label="Enter the nameing scheme",
             placeholder="Enter the nameing scheme you want to use eg. (⸝⸝🎫。)",
-            min_length=3,
+            min_length=1,
             max_length=100,
         )
         if self.data.get("nameing_scheme") is not None:
