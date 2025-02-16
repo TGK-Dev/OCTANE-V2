@@ -470,10 +470,15 @@ class Perks(commands.Cog, name="perk", description="manage your custom perks"):
                 "Server has no custom perks", ephemeral=True
             )
         if user_data:
-            return await interaction.response.send_message(
-                "You already have a custom role use /privrole edit to edit it",
-                ephemeral=True,
-            )
+            arole = interaction.guild.get_role(user_data["role_id"])
+            if arole:
+                return await interaction.response.send_message(
+                    f"You already have a custom role {arole.mention} use /privrole edit to edit it",
+                    ephemeral=True,
+                )
+            else:
+                await self.backend.delete(self.backend.types.roles, user_data)
+
         total_duraction = 0
         total_share_limit = 0
         for key, item in config["profiles"]["roles"].items():
@@ -773,10 +778,15 @@ class Perks(commands.Cog, name="perk", description="manage your custom perks"):
             self.backend.types.config, interaction.guild.id, interaction.user.id
         )
         if user_data:
-            return await interaction.response.send_message(
-                "You already have a custom channel use /privchannel edit to edit it",
-                ephemeral=True,
-            )
+            achannel = interaction.guild.get_channel(user_data["channel_id"])
+            if achannel:
+                return await interaction.response.send_message(
+                    f"You already have a custom channel {achannel.mention} use /privchannel edit to edit it",
+                    ephemeral=True,
+                )
+            else:
+                await self.backend.delete(self.backend.types.channels, user_data)
+
         if not config:
             return await interaction.response.send_message(
                 "Server has no custom perks", ephemeral=True
