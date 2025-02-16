@@ -307,9 +307,10 @@ class TicketConfig_View(View):
                     _id=self.data["_id"], data=self.data
                 )
                 await panel_select.select.interaction.followup.send(
-                    embed=await interaction.client.tickets.get_config_embed(
-                        data=self.data
-                    ),
+                    embed=discord.Embed(
+                        description=f"Deleted the panel {panel_select.select.values[0]}",
+                        color=interaction.client.default_color,
+                    )
                 )
                 await panel_select.select.interaction.delete_original_response()
 
