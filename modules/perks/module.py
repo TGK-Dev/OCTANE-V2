@@ -1929,8 +1929,8 @@ class Perks(commands.Cog, name="perk", description="manage your custom perks"):
             return
         if len(message.mentions) > 0:
             self.bot.dispatch("auto_react", message)
-        if message.content is not None or message.content != "":
-            self.bot.dispatch("auto_highlight", message)
+        # if message.content is not None or message.content != "":
+        #     self.bot.dispatch("auto_highlight", message)
 
         custom_channel: Custom_Channel = await self.backend.channel.find(
             {"channel_id": message.channel.id, "guild_id": message.guild.id}
