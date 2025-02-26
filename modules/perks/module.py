@@ -22,11 +22,11 @@ class Perks(commands.Cog, name="perk", description="manage your custom perks"):
     def __init__(self, bot):
         self.bot = bot
         self.backend: Perks_DB = Perks_DB(bot, Document)
-        self.refresh_cache.start()
-        self.profile_roles.start()
-        self.profile_reacts.start()
-        self.profile_channels.start()
-        self.check_channel_activity.start()
+        # self.refresh_cache.start()
+        # self.profile_roles.start()
+        # self.profile_reacts.start()
+        # self.profile_channels.start()
+        # self.check_channel_activity.start()
         self.bot.Perk = self.backend
 
     def cog_unload(self):
