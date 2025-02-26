@@ -20,7 +20,7 @@ auto_payout = {
         "item": "Pepe Trophy",
     },  # pepet
     1042408506181025842: {
-        "prize": 250000000,
+        "prize": 69000000,
         "event": "Weekly Rumble",
         "item": None,
     },  # 100m
