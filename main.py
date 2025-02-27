@@ -93,7 +93,12 @@ class Botbase(commands.Bot):
                 await self.load_extension(f"cogs.{file[:-3]}")
 
         for folder in os.listdir("./modules"):
-            if folder == "__pycache__" or folder in ["Security", "Channels", "game"]:
+            if folder == "__pycache__" or folder in [
+                "Security",
+                "Channels",
+                "game",
+                "perks",
+            ]:
                 continue
             for file in os.listdir(f"./modules/{folder}"):
                 if file == "module.py":
