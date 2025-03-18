@@ -61,17 +61,16 @@ class Events(commands.Cog):
                 embed: discord.Embed = message.embeds[0]
                 if embed.description.startswith("Your server can be"):
                     await message.reply(
-                        content="<@1338853475035119709>",
+                        content="<@&1338853475035119709>",
                         embed=discord.Embed(
-                            title="Bump Notification",
-                            description="""<a:W_bounce:1339811617478803527> Bump Perks <a:W_bounce:1339811617478803527>\n
-                        <:W_pinkarrow:1339811750949683294> Access to 7x channel for 10 minutes\n
-                        <:W_pinkarrow:1339811750949683294> Obtain custom color for 7 days\n
-                        <:W_pinkarrow:1339811750949683294> +3 Amari level\n
+                            description="""<a:W_bounce:1339811617478803527> Bump Perks <a:W_bounce:1339811617478803527>
+                        <:W_pinkarrow:1339811750949683294> Access to 7x channel for 10 minutes
+                        <:W_pinkarrow:1339811750949683294> Obtain custom color for 7 days
+                        <:W_pinkarrow:1339811750949683294> +3 Amari level
 
-                        𝓝𝓸𝓽𝓮\n
+                        𝓝𝓸𝓽𝓮
                         <:W_pinkarrow:1339811750949683294>Perks can be claimed for every 𝟑𝟎 bumps, stackable<a:W_catheart:1339813341840801863>
-                        <:W_pinkarrow:1339811750949683294>Open ticket to claim perks, <#1334016397348704372>"\n""",
+                        <:W_pinkarrow:1339811750949683294>Open ticket to claim perks, <#1334016397348704372>""",
                             color=discord.Color.green(),
                         ),
                         allowed_mentions=discord.AllowedMentions(
