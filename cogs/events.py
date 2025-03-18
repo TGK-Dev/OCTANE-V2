@@ -47,8 +47,38 @@ class Events(commands.Cog):
 
     @commands.Cog.listener()
     async def on_message(self, message: discord.Message):
-        if not message.guild or message.guild.id != 785839283847954433:
+        if not message.guild:
             return
+
+        if message.guild.id != 785839283847954433:
+            if (
+                message.guild.id == 1334016396228689961
+                and message.channel.id == 1334016397491044415
+                and message.author.id == 813077581749288990
+            ):
+                if len(message.embeds) == 0:
+                    return
+                embed: discord.Embed = message.embeds[0]
+                if embed.description.startswith("Your server can be"):
+                    await message.reply(
+                        content="<@1338853475035119709>",
+                        embed=discord.Embed(
+                            title="Bump Notification",
+                            description="""<a:W_bounce:1339811617478803527> Bump Perks <a:W_bounce:1339811617478803527>\n
+                        <:W_pinkarrow:1339811750949683294> Access to 7x channel for 10 minutes\n
+                        <:W_pinkarrow:1339811750949683294> Obtain custom color for 7 days\n
+                        <:W_pinkarrow:1339811750949683294> +3 Amari level\n
+
+                        𝓝𝓸𝓽𝓮\n
+                        <:W_pinkarrow:1339811750949683294>Perks can be claimed for every 𝟑𝟎 bumps, stackable<a:W_catheart:1339813341840801863>
+                        <:W_pinkarrow:1339811750949683294>Open ticket to claim perks, <#1334016397348704372>"\n""",
+                            color=discord.Color.green(),
+                        ),
+                        allowed_mentions=discord.AllowedMentions(
+                            everyone=False, users=False, roles=True
+                        ),
+                    )
+                return
 
         if message.webhook_id in [1216992114961940530]:
             await message.delete(delay=5)
