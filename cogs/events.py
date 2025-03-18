@@ -61,7 +61,7 @@ class Events(commands.Cog):
                 embed: discord.Embed = message.embeds[0]
                 if embed.description.startswith("Your server can be"):
                     await message.reply(
-                        content="<@&1338853475035119709>",
+                        content="<@&1338853475035119709> bump is now available </bump:959230305699500072>",
                         embed=discord.Embed(
                             description="""<a:W_bounce:1339811617478803527> Bump Perks <a:W_bounce:1339811617478803527>
                         <:W_pinkarrow:1339811750949683294> Access to 7x channel for 10 minutes
