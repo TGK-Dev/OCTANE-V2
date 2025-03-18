@@ -68,7 +68,7 @@ class Events(commands.Cog):
                     embed.description += "<:W_pinkarrow:1339811750949683294> Access to 7x channel for 10 minutes\n"
                     embed.description += "<:W_pinkarrow:1339811750949683294> Obtain custom color for 7 days\n"
                     embed.description += (
-                        "<:W_pinkarrow:1339811750949683294> +3 Amari levels\n"
+                        "<:W_pinkarrow:1339811750949683294> +3 Amari levels\n\n"
                     )
                     embed.description += "**𝓝𝓸𝓽𝓮**\n"
                     embed.description += "<:W_pinkarrow:1339811750949683294> You can only use this perk once per server\n"
