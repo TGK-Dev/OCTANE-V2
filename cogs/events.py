@@ -60,22 +60,22 @@ class Events(commands.Cog):
                     return
                 embed: discord.Embed = message.embeds[0]
                 if embed.description.startswith("Your server can be"):
+                    embed = discord.Embed(
+                        title="<a:W_bounce:1339811617478803527> Bump Perks <a:W_bounce:1339811617478803527>",
+                        description="",
+                        color=discord.Color.green(),
+                    )
+                    embed.description += "<:W_pinkarrow:1339811750949683294> Access to 7x channel for 10 minutes\n"
+                    embed.description += "<:W_pinkarrow:1339811750949683294> Obtain custom color for 7 days\n"
+                    embed.description += (
+                        "<:W_pinkarrow:1339811750949683294> +3 Amari levels\n"
+                    )
+                    embed.description += "**𝓝𝓸𝓽𝓮**\n"
+                    embed.description += "<:W_pinkarrow:1339811750949683294> You can only use this perk once per server\n"
+                    embed.description += "<:W_pinkarrow:1339811750949683294>Open ticket to claim perks, <#1334016397348704372>"
                     await message.reply(
                         content="<@&1338853475035119709> bump is now available </bump:959230305699500072>",
-                        embed=discord.Embed(
-                            description="""<a:W_bounce:1339811617478803527> Bump Perks <a:W_bounce:1339811617478803527>
-                        <:W_pinkarrow:1339811750949683294> Access to 7x channel for 10 minutes
-                        <:W_pinkarrow:1339811750949683294> Obtain custom color for 7 days
-                        <:W_pinkarrow:1339811750949683294> +3 Amari level
-
-                        𝓝𝓸𝓽𝓮
-                        <:W_pinkarrow:1339811750949683294>Perks can be claimed for every 𝟑𝟎 bumps, stackable<a:W_catheart:1339813341840801863>
-                        <:W_pinkarrow:1339811750949683294>Open ticket to claim perks, <#1334016397348704372>""",
-                            color=discord.Color.green(),
-                        ),
-                        allowed_mentions=discord.AllowedMentions(
-                            everyone=False, users=False, roles=True
-                        ),
+                        embed=embed,
                     )
                 return
 
