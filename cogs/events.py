@@ -71,7 +71,7 @@ class Events(commands.Cog):
                         "<:W_pinkarrow:1339811750949683294> +3 Amari levels\n\n"
                     )
                     embed.description += "**𝓝𝓸𝓽𝓮**\n"
-                    embed.description += "<:W_pinkarrow:1339811750949683294> You can only use this perk once per server\n"
+                    embed.description += "<:W_pinkarrow:1339811750949683294>Perks can be claimed for every 𝟑𝟎 bumps, stackable<a:W_catheart:1339813341840801863>\n"
                     embed.description += "<:W_pinkarrow:1339811750949683294>Open ticket to claim perks, <#1334016397348704372>"
                     await message.reply(
                         content="<@&1338853475035119709> bump is now available </bump:959230305699500072>",
