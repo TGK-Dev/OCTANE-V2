@@ -51,33 +51,7 @@ class Events(commands.Cog):
             return
 
         if message.guild.id != 785839283847954433:
-            if (
-                message.guild.id == 1334016396228689961
-                and message.channel.id == 1334016397491044415
-                and message.author.id == 813077581749288990
-            ):
-                if len(message.embeds) == 0:
-                    return
-                embed: discord.Embed = message.embeds[0]
-                if embed.description.startswith("Your server can be"):
-                    embed = discord.Embed(
-                        title="<a:W_bounce:1339811617478803527> Bump Perks <a:W_bounce:1339811617478803527>",
-                        description="",
-                        color=discord.Color.green(),
-                    )
-                    embed.description += "<:W_pinkarrow:1339811750949683294> Access to 7x channel for 10 minutes\n"
-                    embed.description += "<:W_pinkarrow:1339811750949683294> Obtain custom color for 7 days\n"
-                    embed.description += (
-                        "<:W_pinkarrow:1339811750949683294> +3 Amari levels\n\n"
-                    )
-                    embed.description += "**𝓝𝓸𝓽𝓮**\n"
-                    embed.description += "<:W_pinkarrow:1339811750949683294>Perks can be claimed for every 𝟑𝟎 bumps, stackable<a:W_catheart:1339813341840801863>\n"
-                    embed.description += "<:W_pinkarrow:1339811750949683294>Open ticket to claim perks, <#1334016397348704372>"
-                    await message.reply(
-                        content="<@&1338853475035119709> bump is now available </bump:959230305699500072>",
-                        embed=embed,
-                    )
-                return
+            return
 
         if message.webhook_id in [1216992114961940530]:
             await message.delete(delay=5)
