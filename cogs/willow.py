@@ -8,8 +8,6 @@ from utils.converters import chunk
 from utils.views.modal import General_Modal
 from utils.views.buttons import Confirm
 from typing import List, TypedDict
-import random
-
 
 
 class UserBumps(TypedDict):
@@ -71,10 +69,18 @@ class willow(commands.Cog):
                     description=config["available_message"],
                     color=discord.Color.green(),
                 )
-                await message.reply(
-                    content=f"<@{config['ping_role']}> bump is now available </bump:959230305699500072>",
-                    embed=embed,
-                )
+                role = message.guild.get_role(config["ping_role"])
+                if role:
+                    await message.reply(
+                        content=f"{role.mention} bump is now available </bump:959230305699500072>",
+                        embed=embed,
+                    )
+                else:
+                    await message.reply(
+                        content="Bump is now available </bump:959230305699500072>",
+                        embed=embed,
+                    )
+
                 return
             if (
                 embed.description.startswith("**Thanks for bumping")
