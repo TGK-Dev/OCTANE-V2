@@ -43,7 +43,7 @@ class Ticket(commands.GroupCog, name="ticket"):
             if not guild:
                 try:
                     guild = await self.bot.fetch_guild(data["_id"])
-                except discord.NotFound:
+                except discord.HTTPException:
                     continue
             await self.RestoreViews(guild)
 
