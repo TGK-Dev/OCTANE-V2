@@ -292,7 +292,7 @@ class RoleMenu_Panel(View):
                     label="Remove Role",
                     value="remove",
                     description="Remove a role from the menu",
-                    emoji="<:tgk_minus:1163044783401467965>",
+                    emoji="<:tgk_minus:1370371640487186503>",
                 ),
                 SelectOption(
                     label="Clear Roles",
@@ -547,7 +547,7 @@ class RoleMenu_Button(Button):
                     for role in menu["roles"].keys()
                 ]
                 await interaction.response.send_message(
-                    content="<a:TGK_loading:1222135771935412287> Please wait...",
+                    content="<a:TGK_loading:1370371395288043570> Please wait...",
                     ephemeral=True,
                 )
                 added_roles = ""
@@ -645,7 +645,7 @@ class RoleMenu_Select(Select):
                     for role in menu["roles"].keys()
                 ]
                 await interaction.response.send_message(
-                    content="<a:TGK_loading:1222135771935412287> Please wait...",
+                    content="<a:TGK_loading:1370371395288043570> Please wait...",
                     ephemeral=True,
                 )
                 added_roles = ""

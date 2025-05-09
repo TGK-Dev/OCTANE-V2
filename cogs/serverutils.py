@@ -297,7 +297,7 @@ class Payout(commands.GroupCog, name="payout", description="Payout commands"):
 
         embed = message.embeds[0]
         if (
-            embed.title != "<:Crwn2:872850260756664350> **__WINNER!__**"
+            embed.title != "<:Crwn2:1370375826218160149> **__WINNER!__**"
             and len(message.mentions) == 1
         ):
             return
@@ -693,7 +693,7 @@ class Payout(commands.GroupCog, name="payout", description="Payout commands"):
                 cmd += f"/serverevents payout user:{data['winner']} quantity:{data['prize']} item:{data['item']}"
             embed.add_field(name="Command", value=f"{cmd}")
             embed.set_footer(
-                text=f"Queue Number: {payouts.index(data)+1}/{len(payouts)}"
+                text=f"Queue Number: {payouts.index(data) + 1}/{len(payouts)}"
             )
             await asyncio.sleep(1.25)
             link_view = discord.ui.View()

@@ -365,7 +365,7 @@ class Blacklist_cog(commands.GroupCog, name="blacklist"):
             elif isinstance(blacklist["Blacklist_reason"], list):
                 _str = ""
                 for reason in enumerate(blacklist["Blacklist_reason"]):
-                    _str += f"{reason[0]+1}. {reason[1]}\n"
+                    _str += f"{reason[0] + 1}. {reason[1]}\n"
                 embed.add_field(name="Reasons", value=_str)
             else:
                 embed.description += f"**Reason:** {blacklist['Blacklist_reason']}\n"
@@ -493,7 +493,7 @@ class Blacklist_cog(commands.GroupCog, name="blacklist"):
                 elif isinstance(user_blacklist["Blacklist_reason"], list):
                     embed.description += "**Reasons:**\n"
                     for reason in enumerate(user_blacklist["Blacklist_reason"]):
-                        embed.description += f"{reason[0]+1}. {reason[1]}\n"
+                        embed.description += f"{reason[0] + 1}. {reason[1]}\n"
                 else:
                     embed.description += (
                         f"**Reason:** {user_blacklist['Blacklist_reason']}\n"
@@ -514,7 +514,7 @@ class Blacklist_cog(commands.GroupCog, name="blacklist"):
                 elif isinstance(user_blacklist["Blacklist_reason"], list):
                     str_ = ""
                     for reason in enumerate(user_blacklist["Blacklist_reason"]):
-                        str_ += f"{reason[0]+1}. {reason[1]}\n"
+                        str_ += f"{reason[0] + 1}. {reason[1]}\n"
                     embed.add_field(name="Reasons", value=str_)
                 else:
                     embed.description += (
@@ -541,8 +541,8 @@ class Blacklist_cog(commands.GroupCog, name="blacklist"):
                 embed.description += f"**Reason:** {reason}\n"
                 embed.description += (
                     "**Strikes:"
-                    + "<:tgk_red:1184768688335900702> " * len(strike["strikes"])
-                    + "<:tgk_white:1184768731033895012>"
+                    + "<:tgk_red:1370370463565484075> " * len(strike["strikes"])
+                    + "<:tgk_white:1370370483618451568>"
                     * (profile_data["strike_limit"] - len(strike["strikes"]))
                     + "**\n"
                 )
@@ -581,8 +581,8 @@ class Blacklist_cog(commands.GroupCog, name="blacklist"):
         embed.description += f"**Profile:** {profile}\n"
         embed.description += (
             "**Total Strikes:** "
-            + "<:tgk_red:1184768688335900702> " * len(user_data["strikes"])
-            + "<:tgk_white:1184768731033895012>"
+            + "<:tgk_red:1370370463565484075> " * len(user_data["strikes"])
+            + "<:tgk_white:1370370483618451568>"
             * (config["profiles"][profile]["strike_limit"] - len(user_data["strikes"]))
             + "\n"
         )
@@ -593,17 +593,17 @@ class Blacklist_cog(commands.GroupCog, name="blacklist"):
 
         for index, strike in enumerate(user_data["strikes"]):
             embed.add_field(
-                name=f"Strike {index+1}",
+                name=f"Strike {index + 1}",
                 value=f"**Reason:** {strike['Strike_reason']}\n**By:** <@{strike['Strike_by']}> ({strike['Strike_by']})\n**At:** <t:{int(strike['Strike_at'].timestamp())}:R>\n**Expire In:** <t:{int(strike['Strike_expire'].timestamp())}:R>",
                 inline=False,
             )
             options.append(
                 discord.SelectOption(
-                    label=f"Strike {index+1}",
+                    label=f"Strike {index + 1}",
                     description=f"{strike['Strike_reason']}"
                     if len(strike["Strike_reason"]) < 100
                     else f"{strike['Strike_reason'][:95]}...",
-                    value=f"{index+1}",
+                    value=f"{index + 1}",
                     emoji="<:tgk_messagePing:1091682102824681553>",
                 )
             )
@@ -668,8 +668,8 @@ class Blacklist_cog(commands.GroupCog, name="blacklist"):
             embed.description += f"**Profile:** {profile['profile']}\n"
             embed.description += (
                 "**Strikes:** "
-                + "<:tgk_red:1184768688335900702> " * len(profile["strikes"])
-                + "<:tgk_white:1184768731033895012>"
+                + "<:tgk_red:1370370463565484075> " * len(profile["strikes"])
+                + "<:tgk_white:1370370483618451568>"
                 * (max_strike - len(profile["strikes"]))
                 + "\n"
             )

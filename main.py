@@ -171,7 +171,7 @@ async def on_message(message):
 async def on_app_command_error(interaction: discord.Interaction, error: Exception):
     if isinstance(error, app_commands.errors.CommandOnCooldown):
         embed = discord.Embed(
-            description=f"<:tgk_red:1184768688335900702> | You are on cooldown for {format_timespan(int(error.retry_after))}",
+            description=f"<:tgk_red:1370370463565484075> | You are on cooldown for {format_timespan(int(error.retry_after))}",
             color=bot.default_color,
         )
         return await interaction.response.send_message(

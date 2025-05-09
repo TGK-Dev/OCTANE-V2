@@ -450,7 +450,7 @@ class TicketPanel(View):
     )
     async def _questions(self, interaction: Interaction, button: Button):
         embed = discord.Embed(
-            description="<:tgk_description:1215649279360897125>  `Panel Questions`\n\n",
+            description="<:tgk_description:1370374917266079824>  `Panel Questions`\n\n",
             color=interaction.client.default_color,
         )
         j = 1
@@ -536,7 +536,7 @@ class TicketPanel(View):
     @button(
         label="Emoji",
         style=discord.ButtonStyle.gray,
-        emoji="<:tgk_fishing:1196665275794325504>",
+        emoji="<:tgk_fishing:1370375292274872444>",
     )
     async def _emoji(self, interaction: Interaction, button: Button):
         modal = General_Modal(
@@ -566,7 +566,7 @@ class TicketPanel(View):
     @button(
         label="Save",
         style=discord.ButtonStyle.gray,
-        emoji="<:tgk_save:1210649255501635594>",
+        emoji="<:tgk_save:1370374117429350504>",
     )
     async def _save(self, interaction: Interaction, button: Button):
         for chl in self.children:
@@ -612,7 +612,7 @@ class Panel_Question(View):
         )
         j = 0
         embed.description += (
-            "<:tgk_description:1215649279360897125>  `Panel Questions`\n\n"
+            "<:tgk_description:1370374917266079824>  `Panel Questions`\n\n"
         )
         for qestion in self.data.values():
             embed.description += f"**{j}. {qestion['question']}**\n"
@@ -831,7 +831,7 @@ class Panel_Message(View):
             description="", color=self.interaction.client.default_color
         )
         embed.description += (
-            "<:tgk_description:1215649279360897125> `Ticket Message`\n\n"
+            "<:tgk_description:1370374917266079824> `Ticket Message`\n\n"
         )
         embed.description += (
             f"```\n{self.message}\n```"
@@ -971,7 +971,7 @@ class Description(View):
             description="", color=self.interaction.client.default_color
         )
         embed.description += (
-            f"<:tgk_description:1215649279360897125> `{self.name}'s Description`\n\n"
+            f"<:tgk_description:1370374917266079824> `{self.name}'s Description`\n\n"
         )
         embed.description += (
             f"```\n{self.description}\n```"
@@ -1402,7 +1402,7 @@ class PanelButton(discord.ui.Button):
                 return
 
         await interaction.response.send_message(
-            content=f"<a:TGK_loading:1222135771935412287> Please wait while we create {self.custom_id.split(':')[2]}'s ticket",
+            content=f"<a:TGK_loading:1370371395288043570> Please wait while we create {self.custom_id.split(':')[2]}'s ticket",
             ephemeral=True,
         )
 
@@ -1665,7 +1665,7 @@ class TicketControl(View):
             )
         await interaction.edit_original_response(
             embed=discord.Embed(
-                description="<a:TGK_loading:1222135771935412287> Crating a transcript and deleting the ticket",
+                description="<a:TGK_loading:1370371395288043570> Crating a transcript and deleting the ticket",
                 color=interaction.client.default_color,
             ),
             view=None,
@@ -1780,7 +1780,7 @@ class Refresh_Trancsript(View):
     @button(
         label="Refresh",
         style=discord.ButtonStyle.gray,
-        emoji="<:tgk_refresh:1171330950416842824>",
+        emoji="<:tgk_sync:1370374364259942521>",
         custom_id="transcript:refresh",
     )
     async def refresh(self, interaction: Interaction, button: Button):

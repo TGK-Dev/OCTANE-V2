@@ -1396,7 +1396,7 @@ class Perks(commands.Cog, name="perk", description="manage your custom perks"):
         embed.description += "<:tgk_bid:1114854528018284595> `Emoji Request`\n\n"
         embed.description += f"{fromated_args['User']}{interaction.user.mention}\n"
         embed.description += f"{fromated_args['Name']}{name}\n\n"
-        embed.description += "<:tgk_hint:1206282482744561744> Use below buttons to accept or reject the request"
+        embed.description += "<:tgk_hint:1370373819826442292> Use below buttons to accept or reject the request"
 
         file = discord.File(fp=io.BytesIO(emoji), spoiler=False, filename=filename)
         req_message = await emoji_reqeust_channel.send(
@@ -1927,7 +1927,7 @@ class Perks(commands.Cog, name="perk", description="manage your custom perks"):
             return
         if message.guild is None:
             return
-        
+
         if message.guild.id == 785839283847954433:
             return
 

@@ -182,7 +182,7 @@ class Events(commands.Cog):
         else:
             embed = discord.Embed(
                 color=0xE74C3C,
-                description=f"<:dnd:840490624670892063> | Error: `{error}`",
+                description=f"<:tgk_red:1370370463565484075> | Error: `{error}`",
             )
             await ctx.send(embed=embed)
 

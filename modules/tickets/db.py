@@ -169,7 +169,7 @@ class TicketDB:
         embed.description += f"{embed_arg['Panel Count']}{len(data['panels'].keys())}\n"
 
         embed.description += (
-            "\n<:tgk_hint:1206282482744561744> Use buttons to edit the config\n"
+            "\n<:tgk_hint:1370373819826442292> Use buttons to edit the config\n"
         )
 
         return embed
@@ -216,7 +216,7 @@ class TicketDB:
         embed.description += f"{await get_formated_field(guild=guild, name=embed_args['Emoji'], data=data['emoji'], type='str')}\n"
 
         embed.description += (
-            "\n<:tgk_hint:1206282482744561744> Use buttons to edit the panel\n"
+            "\n<:tgk_hint:1370373819826442292> Use buttons to edit the panel\n"
         )
 
         return embed

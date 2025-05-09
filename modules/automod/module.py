@@ -34,7 +34,7 @@ message_actions_dict = {
         "duration": 15,
     },
     6: {
-        "message": "😾 *sigh* {user},I was just about to serve dinner to my legion of feline overlords when you dared to summon me. 30 minutes of exile. No one interrupts Lord Mittens' <:peepowithcatto:1271485194620243988> dinner time. ⛓️",
+        "message": "😾 *sigh* {user},I was just about to serve dinner to my legion of feline overlords when you dared to summon me. 30 minutes of exile. No one interrupts Lord Mittens'  dinner time. ⛓️",
         "duration": 30,
     },
     7: {

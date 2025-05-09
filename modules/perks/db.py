@@ -639,11 +639,11 @@ class Perks_DB:
         embed.description += "<:level_roles:1123938667212312637> `Perks`"
         embed.description += "\n\n"
 
-        embed.description += f"{await get_formated_field(guild=guild,name=formated_args['Admin Roles'], type='role', data=config['admin_roles'])}\n"
-        embed.description += f"{await get_formated_field(guild=guild,name=formated_args['Custom Roles Position'], type='role', data=config['custom_roles_position'])}\n"
-        embed.description += f"{await get_formated_field(guild=guild,name=formated_args['Custom Channel Category'], type='str', data=config['top_channel_category']['name'])}\n"
+        embed.description += f"{await get_formated_field(guild=guild, name=formated_args['Admin Roles'], type='role', data=config['admin_roles'])}\n"
+        embed.description += f"{await get_formated_field(guild=guild, name=formated_args['Custom Roles Position'], type='role', data=config['custom_roles_position'])}\n"
+        embed.description += f"{await get_formated_field(guild=guild, name=formated_args['Custom Channel Category'], type='str', data=config['top_channel_category']['name'])}\n"
         embed.description += f"{formated_args['Max Emojis']}{config['emojis']['max']}\n"
-        embed.description += f"{await get_formated_field(guild=guild,name=formated_args['Request Channel'], type='channel', data=config['emojis']['request_channel'])}\n"
+        embed.description += f"{await get_formated_field(guild=guild, name=formated_args['Request Channel'], type='channel', data=config['emojis']['request_channel'])}\n"
 
         embed.description += f"{formated_args['Custom Channel Category']}{len(config['custom_category']['cat_list'])}\n\n"
 
@@ -658,7 +658,7 @@ class Perks_DB:
         embed.description += f"{profile_formated_args['Emojis']} {len(config['profiles']['emojis'].keys())}\n\n"
 
         embed.description += (
-            "<:tgk_hint:1206282482744561744> Use buttons below to changes the settings"
+            "<:tgk_hint:1370373819826442292> Use buttons below to changes the settings"
         )
 
         return embed

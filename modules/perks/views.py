@@ -359,7 +359,7 @@ class PerkConfig(View):
                 embed.description += f"{formated_args['Duration']} `None`\n"
                 embed.description += f"{formated_args['Share Limit']} `None`\n"
                 embed.description += f"{formated_args['Perk Type']} `None`\n\n"
-                embed.description += "<:tgk_hint:1206282482744561744> Use the buttons below to set the profile\n\n"
+                embed.description += "<:tgk_hint:1370373819826442292> Use the buttons below to set the profile\n\n"
 
                 profile_create_view = Profile_Manage(
                     self.user, message=interaction.message, new=True
@@ -543,7 +543,7 @@ class Profile_Manage(View):
         embed.description += f"{formated_args['Share Limit']} `{'None' if data['share_limit'] is None else data['share_limit']}`\n"
         embed.description += f"{formated_args['Perk Type']} `{'None' if self.type is None else self.type}`\n\n"
 
-        embed.description += "<:tgk_hint:1206282482744561744> Use the buttons below to set the profile\n\n"
+        embed.description += "<:tgk_hint:1370373819826442292> Use the buttons below to set the profile\n\n"
 
         return embed
 
@@ -635,7 +635,7 @@ class Profile_Manage(View):
     @button(
         label="Save",
         style=discord.ButtonStyle.gray,
-        emoji="<:tgk_save:1210649255501635594>",
+        emoji="<:tgk_save:1370374117429350504>",
     )
     async def save(self, interaction: Interaction, button: Button):
         if not all(
@@ -856,7 +856,7 @@ class Friends_manage(View):
     @button(
         label="Sync",
         style=discord.ButtonStyle.gray,
-        emoji="<:tgk_sync:1145387798099140688>",
+        emoji="<:tgk_sync:1370374364259942521>",
     )
     async def sync(self, interaction: Interaction, button: Button):
         match self.type:

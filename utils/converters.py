@@ -102,12 +102,12 @@ def dict_to_tree(data, indent=0):
 
 def get_bar(per: int):
     emojis = {
-        "start_fill": "<:bar_start_fill:1149296377222930463>",
-        "start_empty": "<:bar_start_empty:1149296657893171294>",
-        "mid_fill": "<:bar_mid_fill:1149298022287679538>",
-        "mid_empty": "<:bar_mid_empty:1149298212021211136>",
-        "end_fill": "<:bar_end_fill:1149297916037582858>",
-        "end_empty": "<:bar_end_empty:1149297776535027733>",
+        "start_fill": "<:bar_start_fill:1370369434195333150>",
+        "start_empty": "<:bar_start_empty:1370369456563425280>",
+        "mid_fill": "<:bar_mid_fill:1370369513983447120>",
+        "mid_empty": "<:bar_mid_empty:1370369544220053525>",
+        "end_fill": "<:bar_end_fill:1370377621208039474>",
+        "end_empty": "<:bar_end_empty:1370369487160868937>",
     }
 
     num_fill = int(per / 10)
@@ -126,6 +126,7 @@ def get_bar(per: int):
 
     return bar
 
+
 def chunk(it, size):
-	it = iter(it)
-	return iter(lambda: tuple(islice(it, size)), ())
+    it = iter(it)
+    return iter(lambda: tuple(islice(it, size)), ())

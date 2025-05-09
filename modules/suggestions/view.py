@@ -31,7 +31,7 @@ class Vote(discord.ui.View):
         return True
 
     @discord.ui.button(
-        emoji="<:tgk_uparrow:952869374811844659>",
+        emoji="<:tgk_up:1370373206367539200>",
         custom_id="vote:upvote",
         style=discord.ButtonStyle.gray,
     )
@@ -96,7 +96,7 @@ class Vote(discord.ui.View):
         await interaction.response.edit_message(embed=embed)
 
     @discord.ui.button(
-        emoji="<:tgk_downarrow:952869754916450354>",
+        emoji="<:tgk_down:1370373234129764485>",
         custom_id="vote:downvote",
         style=discord.ButtonStyle.gray,
     )
@@ -161,7 +161,7 @@ class Vote(discord.ui.View):
         await interaction.response.edit_message(embed=embed)
 
     @discord.ui.button(
-        emoji="<:TGK_Settings:1306539203928002560>",
+        emoji="<:TGK_Settings:1370372861910454435>",
         custom_id="vote:settings",
         style=discord.ButtonStyle.gray,
     )

@@ -85,7 +85,7 @@ class LevelingConfig(View):
     @button(
         label="Toggle Leveling",
         style=discord.ButtonStyle.gray,
-        emoji="<:tgk_toggle:1073899271197298738>",
+        emoji="<:tgk_removePerson:1369677727766155405>",
         row=0,
     )
     async def toggle_leveling(self, interaction: Interaction, button: Button):
