@@ -45,6 +45,7 @@ class Botbase(commands.Bot):
             help_command=None,
             application_id=application_id,
             max_messages=2000,
+            enable_debug_events=True,
         )
         self.default_color = 0x2B2D31
         self.error_color = 0xFF0000
@@ -229,17 +230,13 @@ async def on_app_command_error(interaction: discord.Interaction, error: Exceptio
     file = discord.File(buffer, filename=f"Error-{interaction.command.name}.log")
     buffer.close()
 
-    url = "https://canary.discord.com/api/webhooks/1076590771542708285/88D3SRMTYHPe4copSvTQ451KXx7Tk2WDsRYUPN4wtVI1qQbqDmyn0eAiUOhV7XW8SO3G"
+    channel = bot.get_channel(1130057933468745849)
 
-    async with aiohttp.ClientSession() as session:
-        webhook = discord.Webhook.from_url(url, session=session)
-        await webhook.send(
-            embed=embed,
-            avatar_url=interaction.client.user.avatar.url
-            if interaction.client.user.avatar
-            else interaction.client.user.default_avatar,
-            username=f"{interaction.client.user.name}'s Error Logger",
-            file=file,
+    if channel:
+        await channel.send(embed=embed, file=file)
+    else:
+        logging.error(
+            "Error channel not found. Please check the channel ID or permissions."
         )
 
 

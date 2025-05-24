@@ -180,6 +180,13 @@ class Payout(commands.GroupCog, name="payout", description="Payout commands"):
     def cog_unload(self):
         self.claim_task.cancel()
 
+    async def cog_load(self):
+        configs = await self.bot.payout_config.get_all()
+        for config in configs:
+            if config["express"]:
+                config["express"] = False
+                await self.bot.payout_config.update(config)
+
     @commands.Cog.listener()
     async def on_ready(self):
         self.bot.add_view(Payout_Buttton())
@@ -510,7 +517,7 @@ class Payout(commands.GroupCog, name="payout", description="Payout commands"):
 
         try:
             msg: discord.Message = await self.bot.wait_for(
-                "message", check=check, timeout=60
+                "serverevents_payout", check=check, timeout=60
             )
             view = discord.ui.View()
             view.add_item(
@@ -625,55 +632,62 @@ class Payout(commands.GroupCog, name="payout", description="Payout commands"):
         config["express"] = True
         await interaction.client.payout_config.update(config)
         for data in payouts:
-
-            def check(m: discord.Message):
-                if m.channel.id != interaction.channel.id:
-                    return False
-                if m.author.id != 270904126974590976:
-                    if m.author.id == interaction.user.id:
-                        if m.content.lower() in ["skip", "next", "pass"]:
-                            return True
-                    return False
-
-                if len(m.embeds) == 0:
-                    return False
-                embed = m.embeds[0]
-                if embed.description is None or embed.description == "":
-                    return False
-                if embed.description.startswith("Successfully paid"):
-                    found_winner = interaction.guild.get_member(
-                        int(
-                            embed.description.split(" ")[2]
-                            .replace("<", "")
-                            .replace(">", "")
-                            .replace("!", "")
-                            .replace("@", "")
-                        )
+            payout_winner = interaction.guild.get_member(data["winner"])
+            if payout_winner is None:
+                try:
+                    payout_winner = await interaction.client.fetch_user(data["winner"])
+                except discord.NotFound:
+                    await interaction.client.payout_pending.delete(data["_id"])
+                    await interaction.followup.send(
+                        f"Could not find winner with ID {data['winner']}, skipping payout.",
+                        ephemeral=True,
                     )
-                    if data["winner"] != found_winner.id:
-                        return False
-                    items = re.findall(r"\*\*(.*?)\*\*", embed.description)[0]
-                    if "⏣" in items:
-                        items = int(items.replace("⏣", "").replace(",", ""))
-                        if items == data["prize"]:
-                            return True
-                        else:
-                            return False
-                    else:
-                        emojis = list(set(re.findall(":\w*:\d*", items)))
-                        for emoji in emojis:
-                            items = items.replace(emoji, "", 100)
-                            items = items.replace("<>", "", 100)
-                            items = items.replace("<a>", "", 100)
-                            items = items.replace("  ", " ", 100)
-                        mathc = re.search(r"^([\d,]+) (.+)$", items)
-                        item_found = mathc.group(2)
-                        quantity_found = int(mathc.group(1).replace(",", "", 100))
-                        if (
-                            item_found.lower() == data["item"].lower()
-                            and quantity_found == data["prize"]
-                        ):
-                            return True
+                    continue
+
+            def check(m: dict):
+                if m["d"]["channel_id"] != str(interaction.channel.id):
+                    return False
+                if not m["d"]["components"][0]["components"][0]["content"].startswith(
+                    "Successfully paid"
+                ):
+                    return False
+                reg = re.compile(r"Successfully paid (.*?) (\*\*.*?\*\*)")
+                donation_info_raw = reg.findall(
+                    m["d"]["components"][0]["components"][0]["content"]
+                )
+                donation_info = {
+                    "user": donation_info_raw[0][0],
+                    "item": donation_info_raw[0][1],
+                }
+                if payout_winner.display_name != donation_info["user"]:
+                    return False
+                if "⏣" in donation_info["item"]:
+                    item = int(
+                        donation_info["item"]
+                        .replace("⏣", "", 100)
+                        .replace(",", "", 100)
+                        .replace(" ", "", 100)
+                        .replace("**", "", 100)
+                    )
+                    if item == data["prize"]:
+                        return True
+                else:
+                    items = donation_info["item"]
+                    emojis = list(set(re.findall(":\w*:\d*", items)))
+                    for emoji in emojis:
+                        items = items.replace(emoji, "", 100)
+                        items = items.replace("<>", "", 100)
+                        items = items.replace("<a>", "", 100)
+                        items = items.replace("  ", " ", 100)
+                        items = items.replace("**", "", 100)
+                    mathc = re.search(r"^([\d,]+) (.+)$", items)
+                    item_found = mathc.group(2)
+                    quantity_found = int(mathc.group(1).replace(",", "", 100))
+                    if (
+                        item_found.lower() == data["item"].lower()
+                        and quantity_found == data["prize"]
+                    ):
+                        return True
 
             embed = discord.Embed(title="Payout Info", description="")
             embed.description += f"**Winner:** <@{data['winner']}>\n"
@@ -707,8 +721,11 @@ class Payout(commands.GroupCog, name="payout", description="Payout commands"):
             )
             await interaction.followup.send(embed=embed, ephemeral=True, view=link_view)
             try:
-                msg: discord.Message = await self.bot.wait_for(
-                    "message", check=check, timeout=60
+                message_raw = await self.bot.wait_for("serverevents_payout", check=check, timeout=100)
+                msg = discord.Message(
+                    state=self.bot._connection,
+                    data=message_raw["d"],
+                    channel=interaction.channel,
                 )
                 if msg.author.id == interaction.user.id:
                     if msg.content.lower() in ["skip", "next", "pass"]:
