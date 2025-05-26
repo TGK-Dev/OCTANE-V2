@@ -466,7 +466,7 @@ class Admin(commands.GroupCog):
 async def setup(bot):
     await bot.add_cog(
         Dev(bot),
-        guilds=[discord.Object(999551299286732871), discord.Object(785839283847954433)],
+        guilds=[discord.Object(999551299286732871), discord.Object(785839283847954433), discord.Object(1334016396228689961)],
     )
     await bot.add_cog(
         Admin(bot),
