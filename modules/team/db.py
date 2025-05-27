@@ -64,12 +64,7 @@ class Backend:
         """
         player = await self.players.find(player_id)
         if not player:
-            player = {
-                "_id": player_id,
-                "team": "",
-                "points": 0,
-            }
-            await self.players.insert(player)
+            return None
         return player
 
     async def update_player(self, player_id: int, data: TeamMember) -> None:

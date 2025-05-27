@@ -6,7 +6,6 @@ from .view import QueueView
 
 
 @app_commands.guild_only()
-@app_commands.default_permissions(administrator=True)
 class TeamModule(commands.GroupCog, name="team"):
     def __init__(self, bot: commands.Bot):
         self.bot = bot
@@ -24,6 +23,8 @@ class TeamModule(commands.GroupCog, name="team"):
     )
 
     async def interaction_check(self, interaction: Interaction) -> bool:
+        if interaction.command.name in ["lb", "stats"]:
+            return True
         config = await self._backend.get_config(interaction.guild.id)
         if not interaction.user.guild_permissions.administrator:
             user_roles = [role.id for role in interaction.user.roles]
@@ -110,9 +111,8 @@ class TeamModule(commands.GroupCog, name="team"):
     @staff.command(name="queue", description="send the queue view")
     async def queue_view(self, interaction: Interaction):
         embed = discord.Embed(
-            title="Join the Event Queue",
-            description="Click the button below to join the event queue teams will be assigned randomly.",
-            color=discord.Color.blue(),
+            description="You'll be assigned a team randomly. Join below if you wish to participate to earn rewards of bots like dank, karuta and sofi!!\n\n-# PS: Rank up the contributors lb to earn individual rewards while competing for the team!",
+            color=0xE6B2BA,
         )
         await interaction.response.send_message(
             embed=embed, view=QueueView(), ephemeral=False
@@ -129,12 +129,143 @@ class TeamModule(commands.GroupCog, name="team"):
             return
         config = await self._backend.get_config(interaction.guild.id)
         team = config["teams"].get(player["team"], None)
-        embed = discord.Embed(
-            title=f"{member.display_name}'s Stats",
-            description=f"Team: {team['team_name'] if team else 'No Team'}\n"
-            f"Points: {player['points']} \n Team Points: {team['total_points'] if team else 0}",
-            color=discord.Color.green(),
+        embed = discord.Embed(color=0xE6B2BA, description="")
+        embed.set_author(
+            name=f"{member.display_name}'s Stats",
+            icon_url=member.display_avatar.url if member.display_avatar else None,
         )
+        embed.description += (
+            f"<:W_dropdown2:1376381988180721706> Team: {player['team']}\n"
+        )
+        embed.description += (
+            f"<:W_dropdown2:1376381988180721706> Points: {player['points']}\n"
+        )
+        embed.description += f"<:W_dropdown:1376381917926260846> Total Points : {team['total_points'] if team else 0}\n"
+        await interaction.response.send_message(embed=embed, ephemeral=False)
+
+    @staff.command(name="endqueue", description="End the queue and assign teams")
+    async def end_queue(self, interaction: Interaction):
+        await interaction.response.send_message(
+            "Ending the queue and assigning teams...", ephemeral=True
+        )
+
+        config = await self._backend.get_config(interaction.guild.id)
+        team1 = config["teams"]["IRIS"]
+        team2 = config["teams"]["ASTER"]
+
+        team1_role = interaction.guild.get_role(team1["team_role"])
+        team2_role = interaction.guild.get_role(team2["team_role"])
+
+        await interaction.edit_original_response(
+            content="Got the teams, assigning members to teams..."
+        )
+
+        queued_memebers = await self._backend.queues.get_all()
+        # divide members randomly into two teams with queued members
+        if len(queued_memebers) < 2:
+            await interaction.response.send_message(
+                "Not enough members in the queue to form teams.", ephemeral=True
+            )
+            return
+        team1_members = []
+        team2_members = []
+
+        await interaction.edit_original_response(
+            content="Dividing members into teams, please wait..."
+        )
+
+        for member in queued_memebers:
+            if len(team1_members) <= len(team2_members):
+                team1_members.append(member)
+            else:
+                team2_members.append(member)
+
+        if len(team1_members) == 0 or len(team2_members) == 0:
+            await interaction.response.send_message(
+                "Not enough members in the queue to form teams.", ephemeral=True
+            )
+            return
+
+        for member in team1_members:
+            player = await self._backend.get_player(member["_id"])
+            player["team"] = "IRIS"
+            player["points"] = 0
+            await self._backend.update_player(member["_id"], player)
+            member = interaction.guild.get_member(member["_id"])
+            if member:
+                await member.add_roles(team1_role, reason="Assigned to IRIS team")
+
+        for member in team2_members:
+            player = await self._backend.get_player(member["_id"])
+            player["team"] = "ASTER"
+            player["points"] = 0
+            await self._backend.update_player(member["_id"], player)
+            member = interaction.guild.get_member(member["_id"])
+            if member:
+                await member.add_roles(team2_role, reason="Assigned to ASTER team")
+
+        await interaction.edit_original_response(
+            content="Queue ended and teams have been assigned successfully.",
+            ephemeral=True,
+        )
+
+    @app_commands.command(name="lb", description="Get the leaderboard for the event")
+    async def leaderboard(self, interaction: Interaction):
+        config = await self._backend.get_config(interaction.guild.id)
+        team1 = config["teams"]["IRIS"]
+        team2 = config["teams"]["ASTER"]
+
+        team1_points = team1["total_points"] if team1 else 0
+        team2_points = team2["total_points"] if team2 else 0
+
+        team1_players = await self._backend.players.find_many_by_custom(
+            {"team": "IRIS"}
+        )
+        team2_players = await self._backend.players.find_many_by_custom(
+            {"team": "ASTER"}
+        )
+
+        team1_players = sorted(
+            team1_players, key=lambda x: int(x["points"]), reverse=True
+        )[:5]
+        team2_players = sorted(
+            team2_players, key=lambda x: int(x["points"]), reverse=True
+        )[:5]
+
+        embed = discord.Embed(color=0xE6B2BA, description="")
+        embed.set_author(
+            name="Willow's 1k Celebration",
+            icon_url=interaction.guild.icon.url if interaction.guild.icon else None,
+        )
+
+        iris_value = "\nTop Contributors:\n"
+        iris_value += f"🥇<@{team1_players[0]['_id']}>: {team1_players[0]['points']}\n"
+        iris_value += f"🥈<@{team1_players[1]['_id']}>: {team1_players[1]['points']}\n"
+        iris_value += f"🥉<@{team1_players[2]['_id']}>: {team1_players[2]['points']}\n"
+        iris_value += f"<:W_dropdown2:1376381988180721706> <@{team1_players[3]['_id']}>: {team1_players[3]['points']}\n"
+        iris_value += f"<:W_dropdown:1376381917926260846> <@{team1_players[4]['_id']}>: {team1_players[4]['points']}\n\n"
+
+        embed.add_field(
+            name=f"<:W_iris:1376477418138898492> Team IRIS Total Points: {team1_points}",
+            value=iris_value,
+            inline=False,
+        )
+
+        aster_value = "\nTop Contributors:\n"
+        aster_value += f"🥇<@{team2_players[0]['_id']}>: {team2_players[0]['points']}\n"
+        aster_value += f"🥈<@{team2_players[1]['_id']}>: {team2_players[1]['points']}\n"
+        aster_value += f"🥉<@{team2_players[2]['_id']}>: {team2_players[2]['points']}\n"
+        aster_value += f"<:W_dropdown2:1376381988180721706> <@{team2_players[3]['_id']}>: {team2_players[3]['points']}\n"
+        aster_value += f"<:W_dropdown:1376381917926260846> <@{team2_players[4]['_id']}>: {team2_players[4]['points']}\n"
+
+        embed.add_field(
+            name=f"<:W_aster:1376476650295787581> Team ASTER Total Points: {team2_points}",
+            value=aster_value,
+            inline=False,
+        )
+
+        embed.description += "# <:W_iris:1376477418138898492> IRIS vs <:W_aster:1376476650295787581>  ASTER Leaderboard\n"
+
         await interaction.response.send_message(embed=embed, ephemeral=False)
 
 
