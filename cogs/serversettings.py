@@ -105,7 +105,7 @@ class serversettings(commands.Cog):
                 embed.description += f"**Enabled:** `{config['joingate']['enabled']}`\n"
                 embed.description += f"**Decancer:** `{config['joingate']['decancer'] if config['joingate']['decancer'] is not None else 'None'}`\n"
                 embed.description += f"**Action:** `{config['joingate']['action'] if config['joingate']['action'] is not None else 'None'}`\n"
-                embed.description += f"**Account Age:** `{str(config['joingate']['accountage']) +('Days') if config['joingate']['accountage'] is not None else 'None'}`\n"
+                embed.description += f"**Account Age:** `{str(config['joingate']['accountage']) + ('Days') if config['joingate']['accountage'] is not None else 'None'}`\n"
                 embed.description += f"**Whitelist:** {','.join([f'<@{user}>' for user in config['joingate']['whitelist']]) if len(config['joingate']['whitelist']) > 0 else '`None`'}\n"
                 embed.description += f"**Auto Role:** {','.join([f'<@&{role}>' for role in config['joingate']['autorole']]) if len(config['joingate']['autorole']) > 0 else '`None`'}\n"
                 embed.description += f"**Log Channel:** {interaction.guild.get_channel(config['joingate']['logchannel']).mention if config['joingate']['logchannel'] is not None else '`None`'}\n"
@@ -444,13 +444,11 @@ class JoinGateBackEnd(commands.Cog):
             return
 
         if data["joingate"]["decancer"]:
-            if member.name.startswith("カ"):
+            if member.display_name.startswith("カ"):
                 return
-            is_cancerous = self.is_cancerous(member.global_name)
+            is_cancerous = self.is_cancerous(member.display_name)
             if not is_cancerous:
-                if not member.display_name:
-                    return
-                is_cancerous = self.is_cancerous(member.display_name)
+                return
             if is_cancerous:
                 new_nick = await self.nick_maker(member.guild, member.display_name)
 
@@ -466,12 +464,13 @@ class JoinGateBackEnd(commands.Cog):
                 embed.set_footer(text=f"User ID: {member.id}")
                 embed.timestamp = datetime.datetime.utcnow()
 
-                # logchannel = member.guild.get_channel(data["joingate"]["logchannel"])
+                logchannel = member.guild.get_channel(data["joingate"]["logchannel"])
                 try:
                     await member.edit(nick=new_nick, reason="joingate decancer")
                 except Exception:
                     return
-                # if logchannel: await logchannel.send(embed=embed)
+                if logchannel:
+                    await logchannel.send(embed=embed)
 
     @commands.Cog.listener()
     async def on_joingate_check(self, member: discord.Member):

@@ -233,12 +233,11 @@ class TeamModule(commands.GroupCog, name="team"):
             {"team": "ASTER"}
         )
 
-        if team1_players is None or team2_players is None:
+        if team1_players == [] or team2_players == []:
             await interaction.response.send_message(
                 "No players found for the teams.", ephemeral=True
             )
             return
-
         team1_players = sorted(
             team1_players, key=lambda x: int(x["points"]), reverse=True
         )[:5]
@@ -252,12 +251,29 @@ class TeamModule(commands.GroupCog, name="team"):
             icon_url=interaction.guild.icon.url if interaction.guild.icon else None,
         )
 
+        iris_top = [
+            interaction.guild.get_member(player["_id"])
+            for player in team1_players
+            if interaction.guild.get_member(player["_id"])
+        ]
+        aster_top = [
+            interaction.guild.get_member(player["_id"])
+            for player in team2_players
+            if interaction.guild.get_member(player["_id"])
+        ]
+
         iris_value = "\nTop Contributors:\n"
-        iris_value += f"🥇<@{team1_players[0]['_id']}>: {team1_players[0]['points']}\n"
-        iris_value += f"🥈<@{team1_players[1]['_id']}>: {team1_players[1]['points']}\n"
-        iris_value += f"🥉<@{team1_players[2]['_id']}>: {team1_players[2]['points']}\n"
-        iris_value += f"<:W_dropdown2:1376381988180721706> <@{team1_players[3]['_id']}>: {team1_players[3]['points']}\n"
-        iris_value += f"<:W_dropdown:1376381917926260846> <@{team1_players[4]['_id']}>: {team1_players[4]['points']}\n\n"
+        if len(iris_top) < 5 or len(aster_top) < 5:
+            await interaction.response.send_message(
+                "Not enough players in one of the teams to display the leaderboard.",
+                ephemeral=True,
+            )
+            return
+        iris_value += f"🥇{iris_top[0].name} {team1_players[0]['points']}\n"
+        iris_value += f"🥈{iris_top[1].name} {team1_players[1]['points']}\n"
+        iris_value += f"🥉{iris_top[2].name} {team1_players[2]['points']}\n"
+        iris_value += f"<:W_dropdown2:1376381988180721706> {iris_top[3].name} {team1_players[3]['points']}\n"
+        iris_value += f"<:W_dropdown:1376381917926260846> {iris_top[4].name} {team1_players[4]['points']}\n\n"
 
         embed.add_field(
             name=f"<:W_iris:1376477418138898492> Team IRIS Total Points: {team1_points}",
@@ -266,11 +282,11 @@ class TeamModule(commands.GroupCog, name="team"):
         )
 
         aster_value = "\nTop Contributors:\n"
-        aster_value += f"🥇<@{team2_players[0]['_id']}>: {team2_players[0]['points']}\n"
-        aster_value += f"🥈<@{team2_players[1]['_id']}>: {team2_players[1]['points']}\n"
-        aster_value += f"🥉<@{team2_players[2]['_id']}>: {team2_players[2]['points']}\n"
-        aster_value += f"<:W_dropdown2:1376381988180721706> <@{team2_players[3]['_id']}>: {team2_players[3]['points']}\n"
-        aster_value += f"<:W_dropdown:1376381917926260846> <@{team2_players[4]['_id']}>: {team2_players[4]['points']}\n"
+        aster_value += f"🥇{aster_top[0].name} {team2_players[0]['points']}\n"
+        aster_value += f"🥈{aster_top[1].name} {team2_players[1]['points']}\n"
+        aster_value += f"🥉{aster_top[2].name} {team2_players[2]['points']}\n"
+        aster_value += f"<:W_dropdown2:1376381988180721706> {aster_top[3].name} {team2_players[3]['points']}\n"
+        aster_value += f"<:W_dropdown:1376381917926260846> {aster_top[4].name} {team2_players[4]['points']}\n"
 
         embed.add_field(
             name=f"<:W_aster:1376476650295787581> Team ASTER Total Points: {team2_points}",
