@@ -187,26 +187,34 @@ class TeamModule(commands.GroupCog, name="team"):
             return
 
         for member in team1_members:
-            player = await self._backend.get_player(member["_id"])
-            player["team"] = "IRIS"
-            player["points"] = 0
-            await self._backend.update_player(member["_id"], player)
+            player = {
+                "_id": member["_id"],
+                "team": "IRIS",
+                "points": 0,
+            }
+            await self._backend.players.upsert(member["_id"], player)
             member = interaction.guild.get_member(member["_id"])
             if member:
                 await member.add_roles(team1_role, reason="Assigned to IRIS team")
 
         for member in team2_members:
-            player = await self._backend.get_player(member["_id"])
-            player["team"] = "ASTER"
-            player["points"] = 0
-            await self._backend.update_player(member["_id"], player)
+            player = {
+                "_id": member["_id"],
+                "team": "ASTER",
+                "points": 0,
+            }
+            await self._backend.players.upsert(member["_id"], player)
             member = interaction.guild.get_member(member["_id"])
             if member:
                 await member.add_roles(team2_role, reason="Assigned to ASTER team")
 
         await interaction.edit_original_response(
-            content="Queue ended and teams have been assigned successfully.",
-            ephemeral=True,
+            embed=discord.Embed(
+                title="Teams Assigned",
+                description=f"Team IRIS: {len(team1_members)} members\nTeam ASTER: {len(team2_members)} members",
+                color=0xE6B2BA,
+            ),
+            content=None,
         )
 
     @app_commands.command(name="lb", description="Get the leaderboard for the event")
@@ -224,6 +232,12 @@ class TeamModule(commands.GroupCog, name="team"):
         team2_players = await self._backend.players.find_many_by_custom(
             {"team": "ASTER"}
         )
+
+        if team1_players is None or team2_players is None:
+            await interaction.response.send_message(
+                "No players found for the teams.", ephemeral=True
+            )
+            return
 
         team1_players = sorted(
             team1_players, key=lambda x: int(x["points"]), reverse=True
