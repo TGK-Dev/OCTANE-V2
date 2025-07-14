@@ -379,7 +379,7 @@ class Basic(commands.Cog):
         channel="The channel to send the message in",
         ping="Whether to ping the user",
     )
-    @app_commands.default_permissions(administrator=True)
+    @app_commands.checks.has_permissions(ban_members=True)
     @app_commands.guild_only()
     async def say(
         self,
