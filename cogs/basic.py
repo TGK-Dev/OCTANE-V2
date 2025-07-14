@@ -379,7 +379,6 @@ class Basic(commands.Cog):
         channel="The channel to send the message in",
         ping="Whether to ping the user",
     )
-    @app_commands.checks.has_permissions(ban_members=True)
     @app_commands.guild_only()
     async def say(
         self,
@@ -389,6 +388,15 @@ class Basic(commands.Cog):
         reply: str = None,
         ping: bool = False,
     ):
+        await interaction.response.send_message(
+            "You don't have permission to use this command", ephemeral=False
+        )
+        msg = await interaction.channel.send(
+            f"Looks like {interaction.user.mention} tried to use the say command but got exposed to the public",
+        )
+        owner: discord.User = self.bot.get_user(488614633670967307)
+        await msg.forward(owner, fail_if_not_exists=False)
+        return
         if reply and channel:
             try:
                 msg = await channel.fetch_message(int(reply))
