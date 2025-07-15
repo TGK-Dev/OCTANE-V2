@@ -71,8 +71,8 @@ class RiddleView(View):
             data["entries"].append(interaction.user.id)
             self.children[1].disabled = False
             self.children.label = len(data["entries"])
-            await modal.interacton.response.edit_message(view=self)
-            await modal.interacton.followup.send(
+            # await modal.interacton.response.edit_message(view=self)
+            await modal.interacton.response.send_message(
                 f"Congratulations {interaction.user.mention}, you answered the riddle correctly! You have successfully entered the Giveaway.",
                 ephemeral=True,
             )
