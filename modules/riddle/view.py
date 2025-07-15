@@ -1,6 +1,8 @@
 import datetime
 import discord
 from discord.ui import View
+from utils.paginator import Paginator
+from utils.converters import chunk
 
 
 class Model(discord.ui.Modal, title="Riddle Answer"):
@@ -25,6 +27,7 @@ class Model(discord.ui.Modal, title="Riddle Answer"):
 class RiddleView(View):
     def __init__(self):
         super().__init__(timeout=None)
+        self.children[1].disabled = True
 
     @discord.ui.button(
         emoji="<a:TGK_TADA:1250113598835920936>",
@@ -66,7 +69,10 @@ class RiddleView(View):
         answer = modal.value.lower()
         if answer == data["answer"]:
             data["entries"].append(interaction.user.id)
-            await modal.interacton.response.send_message(
+            self.children[1].disabled = False
+            self.children.label = len(data["entries"])
+            await modal.interacton.response.edit_message(view=self)
+            await modal.interacton.followup.send(
                 f"Congratulations {interaction.user.mention}, you answered the riddle correctly! You have successfully entered the Giveaway.",
                 ephemeral=True,
             )
@@ -77,3 +83,43 @@ class RiddleView(View):
             )
 
         await interaction.client.riddle.update(data)
+
+    @discord.ui.button(
+        label=None,
+        style=discord.ButtonStyle.gray,
+        emoji="<:tgk_people_group:1369679193754832957>",
+        custom_id="giveaway:Entries",
+        disabled=True,
+    )
+    async def entries_button(
+        self,
+        interaction: discord.Interaction,
+        button: discord.ui.Button,
+    ):
+        await interaction.response.send_message(
+            "This feature is not implemented yet.", ephemeral=True
+        )
+        # data = await interaction.client.riddle.find(interaction.message.id)
+        # if not data:
+        #     await interaction.response.send_message(
+        #         "This riddle has already been answered or does not exist.",
+        #         ephemeral=True,
+        #     )
+        #     return
+        # await interaction.response.defer(ephemeral=True)
+        # embeds = []
+        # chunked_entries = chunk(data["entries"], 10)
+        # for i, chunks in enumerate(chunked_entries):
+        #     embed = discord.Embed(
+        #         title=f"Riddle Entries - Page {i + 1}",
+        #         description="\n".join(
+        #             f"{interaction.client.get_user(user_id).mention}"
+        #             for user_id in chunks
+        #         ),
+        #         color=discord.Color.blue(),
+        #     )
+        #     embeds.append(embed)
+
+        # await Paginator(interaction=interaction, pages=embeds).start(
+        #     embeded=True, quick_navigation=False, deffered=True
+        # )
