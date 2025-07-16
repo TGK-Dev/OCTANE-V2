@@ -69,11 +69,15 @@ class RiddleView(View):
         answer = modal.value.lower()
         if answer == data["answer"]:
             data["entries"].append(interaction.user.id)
-            self.children[1].disabled = False
-            self.children.label = len(data["entries"])
-            # await modal.interacton.response.edit_message(view=self)
-            await modal.interacton.response.send_message(
-                f"Congratulations {interaction.user.mention}, you answered the riddle correctly! You have successfully entered the Giveaway.",
+            try:
+                self.children[1].disabled = False
+                self.children[1].label = len(data["entries"])
+            except Exception:
+                pass
+
+            await modal.interacton.response.edit_message(view=self)
+            await modal.interacton.followup.send(
+                content=f"Congratulations {interaction.user.mention}, you answered the riddle correctly! You have successfully entered the Giveaway.",
                 ephemeral=True,
             )
         else:
@@ -96,30 +100,27 @@ class RiddleView(View):
         interaction: discord.Interaction,
         button: discord.ui.Button,
     ):
-        await interaction.response.send_message(
-            "This feature is not implemented yet.", ephemeral=True
-        )
-        # data = await interaction.client.riddle.find(interaction.message.id)
-        # if not data:
-        #     await interaction.response.send_message(
-        #         "This riddle has already been answered or does not exist.",
-        #         ephemeral=True,
-        #     )
-        #     return
-        # await interaction.response.defer(ephemeral=True)
-        # embeds = []
-        # chunked_entries = chunk(data["entries"], 10)
-        # for i, chunks in enumerate(chunked_entries):
-        #     embed = discord.Embed(
-        #         title=f"Riddle Entries - Page {i + 1}",
-        #         description="\n".join(
-        #             f"{interaction.client.get_user(user_id).mention}"
-        #             for user_id in chunks
-        #         ),
-        #         color=discord.Color.blue(),
-        #     )
-        #     embeds.append(embed)
+        data = await interaction.client.riddle.find(interaction.message.id)
+        if not data:
+            await interaction.response.send_message(
+                "This riddle has already been answered or does not exist.",
+                ephemeral=True,
+            )
+            return
+        await interaction.response.defer(ephemeral=True, thinking=True)
+        embeds = []
+        chunked_entries = chunk(data["entries"], 10)
+        for i, chunks in enumerate(chunked_entries):
+            embed = discord.Embed(
+                title=f"Riddle Entries - Page {i + 1}",
+                description="\n".join(
+                    f"{interaction.client.get_user(user_id).mention}"
+                    for user_id in chunks
+                ),
+                color=discord.Color.blue(),
+            )
+            embeds.append(embed)
 
-        # await Paginator(interaction=interaction, pages=embeds).start(
-        #     embeded=True, quick_navigation=False, deffered=True
-        # )
+        await Paginator(interaction=interaction, pages=embeds).start(
+            embeded=True, quick_navigation=False, deffered=True, hidden=True
+        )
