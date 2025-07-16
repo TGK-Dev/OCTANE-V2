@@ -29,18 +29,42 @@ class Swan(commands.Cog):
         role = ctx.guild.get_role(1380538780234154034)
         veriy_role = ctx.guild.get_role(1379689865960226926)
         if not role:
-            await ctx.send("Verification role not found.")
+            embed = discord.Embed(
+                title="Error",
+                description="Verification role not found.",
+                color=discord.Color.red(),
+            )
+            await ctx.send(embed=embed)
             return
         if role not in member.roles:
-            await ctx.send("User already verified.")
+            embed = discord.Embed(
+                title="Already Verified",
+                description="User already verified.",
+                color=discord.Color.orange(),
+            )
+            await ctx.send(embed=embed)
             return
         try:
             await member.remove_roles(role)
             await member.add_roles(veriy_role)
-            await ctx.send(f"{member.mention} has allowed access to the server.")
+            embed = discord.Embed(
+                title="Access Granted",
+                description=f"{member.mention} has allowed access to the server.",
+                color=discord.Color.green(),
+            )
+            await ctx.send(embed=embed, delete_after=2)
+            # Send welcome message to channel 1379071789182881887
+            welcome_channel = ctx.guild.get_channel(1379071789182881887)
+            if welcome_channel:
+                await welcome_channel.send(f"Welcome {member.mention} to the server!")
             await ctx.message.delete()
         except discord.Forbidden:
-            await ctx.send("I do not have permission to manage roles.")
+            embed = discord.Embed(
+                title="Permission Error",
+                description="I do not have permission to manage roles.",
+                color=discord.Color.red(),
+            )
+            await ctx.send(embed=embed)
 
 
 async def setup(bot: commands.Bot):
