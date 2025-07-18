@@ -156,7 +156,6 @@ class Docs(commands.Cog, name="Documentation"):
 
     @app_commands.command(name='docs', description='Gives you a documentation link for a d.py entity.')
     @app_commands.describe(query='The entity to search for.', key='The documentation to search in. (Optional)')
-    @app_commands.check(is_dev)
     async def rtfm(self, interaction: Interaction, query: str, key: str = None):
         await interaction.response.defer(thinking=True)
         key = key or ""
