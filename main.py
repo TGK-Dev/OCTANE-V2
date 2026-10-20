@@ -16,6 +16,10 @@ from motor.motor_asyncio import AsyncIOMotorClient
 
 from utils.converters import dict_to_tree
 from utils.checks import Blocked
+from discord import Intents
+
+INTENTS = Intents.all()
+INTENTS.presences = False
 
 load_dotenv()
 
@@ -33,7 +37,7 @@ discord.utils.setup_logging(
 class Botbase(commands.Bot):
     def __init__(self, application_id, sync: bool = False):
         super().__init__(
-            intents=discord.Intents.all(),
+            intents=INTENTS,
             command_prefix="-",
             description="A Bot for server management",
             case_insensitive=False,
